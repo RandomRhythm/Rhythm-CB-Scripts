@@ -18,16 +18,17 @@
 'along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+Const forwriting = 2
+Const ForAppending = 8
+Const ForReading = 1
+Dim strIPquery
 dim strCarBlackAPIKey
 Dim intTotalQueries
 Dim IntDaysQuery
 Dim strStartDateQuery
 Dim strEndDateQuery
-Dim strIPquery
-Const forwriting = 2
-Const ForAppending = 8
-Const ForReading = 1
-Dim DictIPAddresses: set DictIPAddresses = CreateObject("Scripting.Dictionary")'
+Dim DictIPAddresses: set DictIPAddresses = CreateObject("Scripting.Dictionary")
+Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 '---Config Section
 BoolDebugTrace = False 
@@ -150,24 +151,30 @@ strAVEurl = StrBaseCBURL & "/api/v1/sensor" & strIPquery
 objHTTP.open "GET", strAVEurl, False
 
 objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
-  
 
 on error resume next
   objHTTP.send 
   if err.number <> 0 then
-    logdata CurrentDirectory & "\VT_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+    logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Sensor Dump Carbon Black lookup failed with HTTP error. - " & err.description,False 
     exit function 
   end if
 on error goto 0  
 'creates a lot of data. Don't enable debug logging on next line unless your going to disable it again
 if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "_Sensor" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
 strCBresponseText = objHTTP.responseText
-
+if instr(strCBresponseText, "401 Unauthorized") then
+  Msgbox "Carbon Black did not like the API key supplied"
+  wscript.quit(997)
+end if
+if instr(strCBresponseText, "400 Bad Request") then
+  msgbox "Server did not like the query. Try using " & chr(34) & "*" & CHr(34) & " for the start and end dates" & vbcrlf & strAVEurl
+  wscript.quit(996)
+end if
 strArrayCBresponse = split(strCBresponseText, vblf & "  {")
 for each strCBResponseText in strArrayCBresponse
 
   if len(strCBresponseText) > 0 then
-    logdata strDebugPath & "cbresponse.log", strCBresponseText, false
+    if BoolDebugTrace = True then logdata strDebugPath & "cbresponse.log", strCBresponseText, false
     if instr(strCBresponseText, "Sample not found by hash ") then
       'hash not found
     else
@@ -198,27 +205,21 @@ end function
 
 Function GetData(contents, ByVal EndOfStringChar, ByVal MatchString)
 MatchStringLength = Len(MatchString)
-x= 0
+x= instr(contents, MatchString)
 
-do while x < len(contents) - (MatchStringLength +1)
-
-  x = x + 1
-  if Mid(contents, x, MatchStringLength) = MatchString then
-    'Gets server name for section
-    for y = 1 to len(contents) -x
-      if instr(Mid(contents, x + MatchStringLength, y),EndOfStringChar) = 0 then
-          TempData = Mid(contents, x + MatchStringLength, y)
-        else
-          exit do  
-      end if
-    next
+  if X >0 then
+    strSubContents = Mid(contents, x + MatchStringLength, len(contents) - MatchStringLength - x +1)
+    if instr(strSubContents,EndOfStringChar) > 0 then
+      GetData = Mid(contents, x + MatchStringLength, instr(strSubContents,EndOfStringChar) -1)
+      exit function
+    else
+      GetData = Mid(contents, x + MatchStringLength, len(contents) -x -1)
+      exit function
+    end if
   end if
-loop
-GetData = TempData
+GetData = ""
+
 end Function
-
-
-
 
 
 function LogData(TextFileName, TextToWrite,EchoOn)

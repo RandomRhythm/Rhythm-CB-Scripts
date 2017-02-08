@@ -1,4 +1,4 @@
-'CB Sensor Dump
+'CB Sensor Dump v1.8
 'This script will dump sensor information via the CB Response (Carbon Black) API
 
 'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
@@ -279,7 +279,7 @@ function UDate(oldDate)
 end function
 
 
-Function encrypt(StrText, key) 
+Function encrypt(StrText, key) 'Rafael Paraná - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
   Dim lenKey, KeyPos, LenStr, x, Newstr 
    
   Newstr = "" 
@@ -296,7 +296,7 @@ Function encrypt(StrText, key)
   encrypt = Newstr 
  End Function 
   
-Function Decrypt(StrText,key) 
+Function Decrypt(StrText,key) 'Rafael Paraná - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
   Dim lenKey, KeyPos, LenStr, x, Newstr 
    
   Newstr = "" 

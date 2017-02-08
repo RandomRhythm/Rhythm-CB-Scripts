@@ -130,8 +130,7 @@ BoolEnableCbCommunityCheck = True
 BoolEnableBit9EarlyAccessCheck = True
 bool3155533Check = True
 boolAdditionalQueries = True
-strStaticFPversion = "24.0.0.194
-"
+strStaticFPversion = "24.0.0.193"
 strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End Config section
 

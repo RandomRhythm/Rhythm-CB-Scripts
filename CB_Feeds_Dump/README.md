@@ -24,4 +24,4 @@ Script runs addtional queries to identify vulnerable and patched components. Cur
 additional queries can be run via aq.txt in the current directory.
 name|query
 Example:
-	knowndll|/api/v1/binary?q=observed_filename:known.dll&digsig_result:Unsigned
+     knowndll|/api/v1/binary?q=observed_filename:known.dll&digsig_result:Unsigned

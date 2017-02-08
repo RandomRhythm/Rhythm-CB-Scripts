@@ -4,13 +4,13 @@
 
 You must edit the code of this script to adjust the query timeframe and host filter. The following section of code defines the query:
 
-'---Config Section
+
 boolEchoInfo = False
 IntDayStartQuery = "*" 'days to go back for start date of query. Set to "*" to query all binaries or set to -24 to query last 24 time measurement
 IntDayEndQuery = "*" 'days to go back for end date of query. Set to * for no end date
 strTimeMeasurement = "d" '"h" for hours "d" for days
 strHostFilter = "" 'computer name to filter to. Typically uppercase and is case sensitive.
-'---End Config Section
+
 
 Script runs addtional queries to identify vulnerable and patched components. Currently supports the following:
 * Flash Player

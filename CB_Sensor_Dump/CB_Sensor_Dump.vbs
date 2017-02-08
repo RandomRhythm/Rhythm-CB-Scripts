@@ -59,7 +59,7 @@ if strIPquery <> "" then
 end if
 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
-strDebugPath = CurrentDirectory & "\Debug\VT\"
+strDebugPath = CurrentDirectory & "\Debug\"
 if objFSO.folderexists(CurrentDirectory & "\debug") = false then objFSO.createfolder CurrentDirectory & "\debug"
 if objFSO.folderexists(strDebugPath) = false then objFSO.createfolder strDebugPath
 strSSfilePath = CurrentDirectory & "\CBSensor_" & udate(now) & ".csv"

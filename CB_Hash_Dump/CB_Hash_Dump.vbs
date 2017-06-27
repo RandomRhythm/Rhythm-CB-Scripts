@@ -1,4 +1,4 @@
-'CB Hash Dump v2.2 - Dumps hashes from CB (Carbon Black) Response
+'CB Hash Dump v2.3 - Dumps hashes from CB (Carbon Black) Response
 'Dumps CSV "MD5|Path|Publisher|Company|Product|CB Prevalence|Logical Size|Score
 
 'This script will dump sensor information via the CB Response (Carbon Black) API
@@ -119,7 +119,6 @@ if not objFSO.fileexists(strFile) and strData = "" then
   end if
 end if
 
-if len(StrBaseCBURL) = 0 then msgbox "null"
 if StrBaseCBURL = "" and strTempAPIKey <> "" then
     strTempEncryptedAPIKey = ""
       StrBaseCBURL = inputbox("Enter your " & strAPIproduct & " base URL (example: https://ryancb-example.my.carbonblack.io")
@@ -132,6 +131,7 @@ if strTempAPIKey = "" then
     msgbox "invalid api key"
     wscript.quit(999)
 end if
+
 strCarBlackAPIKey = strTempAPIKey
 
 
@@ -417,24 +417,24 @@ end function
 
 
 
-Function encrypt(StrText, key) 'Rafael Paraná - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
+Function encrypt(StrText, key) 'Rafael Paran? - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
   Dim lenKey, KeyPos, LenStr, x, Newstr 
    
   Newstr = "" 
   lenKey = Len(key) 
   KeyPos = 1 
   LenStr = Len(StrText) 
-  StrText = StrReverse(StrText) 
+  StrTmpText = StrReverse(StrText) 
   For x = 1 To LenStr 
-       Newstr = Newstr & chr(asc(Mid(StrText,x,1)) + Asc(Mid(key,KeyPos,1))) 
+       Newstr = Newstr & chr(asc(Mid(StrTmpText,x,1)) + Asc(Mid(key,KeyPos,1))) 
        KeyPos = keypos+1 
        If KeyPos > lenKey Then KeyPos = 1 
-       'if x = 4 then msgbox "error with char " & Chr(34) & asc(Mid(StrText,x,1)) - Asc(Mid(key,KeyPos,1)) & Chr(34) & " At position " & KeyPos & vbcrlf & Mid(StrText,x,1) & Mid(key,KeyPos,1) & vbcrlf & asc(Mid(StrText,x,1)) & asc(Mid(key,KeyPos,1))
+       'if x = 4 then msgbox "error with char " & Chr(34) & asc(Mid(StrTmpText,x,1)) - Asc(Mid(key,KeyPos,1)) & Chr(34) & " At position " & KeyPos & vbcrlf & Mid(StrTmpText,x,1) & Mid(key,KeyPos,1) & vbcrlf & asc(Mid(StrTmpText,x,1)) & asc(Mid(key,KeyPos,1))
   Next 
   encrypt = Newstr 
 End Function 
   
-Function Decrypt(StrText,key) 'Rafael Paraná - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
+Function Decrypt(StrText,key) 'Rafael Paran? - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
   Dim lenKey, KeyPos, LenStr, x, Newstr 
    
   Newstr = "" 
@@ -477,5 +477,4 @@ FormatDate = datepart("yyyy",strFDate) & "-" & strTmpMonth & "-" & strTmpDay & "
 
 
 end function
-
 

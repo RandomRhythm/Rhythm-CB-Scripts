@@ -1,4 +1,4 @@
-'CB Sensor Dump v1.8
+'CB Sensor Dump v1.9
 'This script will dump sensor information via the CB Response (Carbon Black) API
 
 'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.

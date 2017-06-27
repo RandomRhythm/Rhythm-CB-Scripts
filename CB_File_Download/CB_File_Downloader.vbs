@@ -1,4 +1,4 @@
-'CB File Downloader v1.4
+'CB File Downloader v1.5
 'Similar concept in Python - https://github.com/carbonblack/cbapi-python/blob/master/examples/response/dump_all_binaries.py
 
 'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.

@@ -1,4 +1,4 @@
-'CB Feed Dump v3.3
+Ôªø'CB Feed Dump v3.5 'Support for YARA and CbInspection feeds
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -82,6 +82,8 @@ Dim BoolEnableCbCommunityCheck
 Dim BoolEnableBit9EarlyAccessCheck
 Dim boolDebugVersionCompare
 Dim boolDebugFlash
+Dim boolEnableYARA
+Dim boolEnableCbInspection
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 'debug
@@ -90,16 +92,16 @@ boolDebugFlash = False
 boolDebugVersionCompare = False
 'end debug
 
-'---Config Section
+'---Query Config Section
 boolEchoInfo = False 
 IntDayStartQuery = "*" 'days to go back for start date of query. Set to "*" to query all binaries or set to -24 to query last 24 time measurement
 IntDayEndQuery = "*" 'days to go back for end date of query. Set to * for no end date
 strTimeMeasurement = "d" '"h" for hours "d" for days
 strHostFilter = "" 'computer name to filter to. Typically uppercase and is case sensitive.
-'---End Config Section
+'---End Query Config Section
 
 
-
+'---Script Settings
 boolEnableabusech = True
 boolEnablealienvault = True
 boolEnableBit9AdvancedThreats = True
@@ -130,11 +132,11 @@ BoolEnableCbCommunityCheck = True
 BoolEnableBit9EarlyAccessCheck = True
 bool3155533Check = True
 boolAdditionalQueries = True
-strStaticFPversion = "26.0.0.126"
+boolEnableYARA = True
+boolEnableCbInspection = True
+strStaticFPversion = "26.0.0.137"
 strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
-'---End Config section
-
-
+'---End script settings section
 
 if strHostFilter <> "" then 
   msgbox "filtering to host " & strHostFilter
@@ -210,7 +212,7 @@ if boolAdditionalQueries = True then
 end if
 
 strFlashVersion = ReturnLatestFlashVer
-if boolDebugFlash = true then msgbox "fash version:" & strFlashVersion
+if boolDebugFlash = true then msgbox "flash version:" & strFlashVersion
 
 
 strFile = CurrentDirectory & "\cb.dat"
@@ -328,7 +330,11 @@ for each strCBFeedID in DictFeedInfo
       if BoolEnableCbCommunityCheck = True then strQueryFeed = "/api/v1/process?q=alliance_score_cbcommunity:*"
     Case "Bit9EarlyAccess"
       if BoolEnableBit9EarlyAccessCheck = True then strQueryFeed = "/api/v1/binary?q=alliance_score_bit9earlyaccess:*"
-    case "Flash Player"
+	Case "yara"
+      if boolEnableYARA = True then strQueryFeed = "/api/v1/binary?q=alliance_score_yara:*"	  
+	Case "CbInspection"
+      if boolEnableCbInspection = True then strQueryFeed = "/api/v1/binary?q=alliance_score_cbinspection:*"	
+	  case "Flash Player"
       strQueryFeed = "/api/v1/binary?q=flash&digsig_publisher:Adobe  Systems  Incorporated"
     case "mshtml.dll"
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "mshtml.dll" & chr(34) & "&digsig_publisher:Microsoft Corporation"
@@ -847,26 +853,24 @@ AddPipe = strPipeAdded
 end function
 
 
-
-
-Function encrypt(StrText, key) 'Rafael Paran· - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
+Function encrypt(StrText, key) 'Rafael Paran? - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
   Dim lenKey, KeyPos, LenStr, x, Newstr 
    
   Newstr = "" 
   lenKey = Len(key) 
   KeyPos = 1 
   LenStr = Len(StrText) 
-  StrText = StrReverse(StrText) 
+  StrTmpText = StrReverse(StrText) 
   For x = 1 To LenStr 
-       Newstr = Newstr & chr(asc(Mid(StrText,x,1)) + Asc(Mid(key,KeyPos,1))) 
+       Newstr = Newstr & chr(asc(Mid(StrTmpText,x,1)) + Asc(Mid(key,KeyPos,1))) 
        KeyPos = keypos+1 
        If KeyPos > lenKey Then KeyPos = 1 
-       'if x = 4 then msgbox "error with char " & Chr(34) & asc(Mid(StrText,x,1)) - Asc(Mid(key,KeyPos,1)) & Chr(34) & " At position " & KeyPos & vbcrlf & Mid(StrText,x,1) & Mid(key,KeyPos,1) & vbcrlf & asc(Mid(StrText,x,1)) & asc(Mid(key,KeyPos,1))
+       'if x = 4 then msgbox "error with char " & Chr(34) & asc(Mid(StrTmpText,x,1)) - Asc(Mid(key,KeyPos,1)) & Chr(34) & " At position " & KeyPos & vbcrlf & Mid(StrTmpText,x,1) & Mid(key,KeyPos,1) & vbcrlf & asc(Mid(StrTmpText,x,1)) & asc(Mid(key,KeyPos,1))
   Next 
   encrypt = Newstr 
- End Function 
+End Function  
   
-Function Decrypt(StrText,key) 'Rafael Paran· - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
+Function Decrypt(StrText,key) 'Rafael Paran√° - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
   Dim lenKey, KeyPos, LenStr, x, Newstr 
    
   Newstr = "" 
@@ -1230,7 +1234,6 @@ Function ReturnLatestFlashVer
   ReturnLatestFlashVer = strStaticFPversion
 
 end function
-
 
 
 

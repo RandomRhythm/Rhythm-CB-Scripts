@@ -1,4 +1,4 @@
-'CB Sensor Dump v1.8
+'CB Sensor Dump v1.9
 'This script will dump sensor information via the CB Response (Carbon Black) API
 
 'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
@@ -279,24 +279,24 @@ function UDate(oldDate)
 end function
 
 
-Function encrypt(StrText, key) 'Rafael Paran· - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
+Function encrypt(StrText, key) 'Rafael Paran? - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
   Dim lenKey, KeyPos, LenStr, x, Newstr 
    
   Newstr = "" 
   lenKey = Len(key) 
   KeyPos = 1 
   LenStr = Len(StrText) 
-  StrText = StrReverse(StrText) 
+  StrTmpText = StrReverse(StrText) 
   For x = 1 To LenStr 
-       Newstr = Newstr & chr(asc(Mid(StrText,x,1)) + Asc(Mid(key,KeyPos,1))) 
+       Newstr = Newstr & chr(asc(Mid(StrTmpText,x,1)) + Asc(Mid(key,KeyPos,1))) 
        KeyPos = keypos+1 
        If KeyPos > lenKey Then KeyPos = 1 
-       'if x = 4 then msgbox "error with char " & Chr(34) & asc(Mid(StrText,x,1)) - Asc(Mid(key,KeyPos,1)) & Chr(34) & " At position " & KeyPos & vbcrlf & Mid(StrText,x,1) & Mid(key,KeyPos,1) & vbcrlf & asc(Mid(StrText,x,1)) & asc(Mid(key,KeyPos,1))
+       'if x = 4 then msgbox "error with char " & Chr(34) & asc(Mid(StrTmpText,x,1)) - Asc(Mid(key,KeyPos,1)) & Chr(34) & " At position " & KeyPos & vbcrlf & Mid(StrTmpText,x,1) & Mid(key,KeyPos,1) & vbcrlf & asc(Mid(StrTmpText,x,1)) & asc(Mid(key,KeyPos,1))
   Next 
   encrypt = Newstr 
- End Function 
+End Function 
   
-Function Decrypt(StrText,key) 'Rafael Paran· - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
+Function Decrypt(StrText,key) 'Rafael Paran√° - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
   Dim lenKey, KeyPos, LenStr, x, Newstr 
    
   Newstr = "" 

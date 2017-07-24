@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿'CB Feed Dump v3.5 'Support for YARA and CbInspection feeds
+=======
+'CB Feed Dump v3.4
+>>>>>>> b01c5bb64fb286ba42a457ebe7ef901c5cc10ff5
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -136,7 +140,11 @@ boolEnableYARA = True
 boolEnableCbInspection = True
 strStaticFPversion = "26.0.0.137"
 strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
+<<<<<<< HEAD
 '---End script settings section
+=======
+'---End Config section
+>>>>>>> b01c5bb64fb286ba42a457ebe7ef901c5cc10ff5
 
 if strHostFilter <> "" then 
   msgbox "filtering to host " & strHostFilter

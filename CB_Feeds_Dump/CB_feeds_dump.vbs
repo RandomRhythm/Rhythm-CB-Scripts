@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-﻿'CB Feed Dump v3.5 'Support for YARA and CbInspection feeds
-=======
-'CB Feed Dump v3.4
->>>>>>> b01c5bb64fb286ba42a457ebe7ef901c5cc10ff5
-'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
+﻿'CB Feed Dump v3.8 'YARA FEED
+'Pulls alert related data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
 'name|query
@@ -88,10 +84,14 @@ Dim boolDebugVersionCompare
 Dim boolDebugFlash
 Dim boolEnableYARA
 Dim boolEnableCbInspection
+Dim boolMS17010Check
+Dim yaraFeedID
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
+Dim dictYARA: Set dictYARA = CreateObject("Scripting.Dictionary")
+Dim intParseCount: intParseCount = 10
 
 'debug
-BoolDebugTrace = False
+BoolDebugTrace = True
 boolDebugFlash = False
 boolDebugVersionCompare = False
 'end debug
@@ -106,6 +106,7 @@ strHostFilter = "" 'computer name to filter to. Typically uppercase and is case 
 
 
 '---Script Settings
+boolAddYARAtoReports = True 'Combines binary reports to include the YARA rules column
 boolEnableabusech = True
 boolEnablealienvault = True
 boolEnableBit9AdvancedThreats = True
@@ -138,13 +139,10 @@ bool3155533Check = True
 boolAdditionalQueries = True
 boolEnableYARA = True
 boolEnableCbInspection = True
+boolMS17010Check = True
 strStaticFPversion = "26.0.0.137"
-strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
-<<<<<<< HEAD
+'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End script settings section
-=======
-'---End Config section
->>>>>>> b01c5bb64fb286ba42a457ebe7ef901c5cc10ff5
 
 if strHostFilter <> "" then 
   msgbox "filtering to host " & strHostFilter
@@ -279,6 +277,7 @@ if boolEnableMshtmlCheck = True then DictFeedInfo.Add "mshtml.dll", "mshtml.dll"
 if boolEnableSilverlightCheck = True then DictFeedInfo.Add "silverlight", "silverlight"
 if boolEnableIexploreCheck = True then DictFeedInfo.Add "iexplore.exe", "iexplore.exe"
 if bool3155533Check = True then DictFeedInfo.Add "vbscript.dll", "vbscript.dll"
+if boolMS17010Check = true then DictFeedInfo.Add "srv.sys", "srv.sys"
 if boolAdditionalQueries = True then 
   for each strAquery in DictAdditionalQueries
     DictFeedInfo.Add DictAdditionalQueries.item(strAquery), strAquery
@@ -354,6 +353,9 @@ for each strCBFeedID in DictFeedInfo
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "iexplore.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation"
     Case "vbscript.dll"
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "vbscript.dll" & chr(34) & "& digsig_publisher:Microsoft Corporation"
+	Case "srv.sys"
+      strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "srv.sys" & chr(34) & "& digsig_publisher:Microsoft Corporation"
+
     Case else
       'strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "screenconnect" & chr(34) '& "& digsig_publisher:Microsoft Corporation"
       if DictAdditionalQueries.exists(strCBFeedName) then 
@@ -361,7 +363,15 @@ for each strCBFeedID in DictFeedInfo
       end if
   end select
   if strQueryFeed <> "" then
-    wscript.sleep 10
+    if instr(strQueryFeed, "/api/v1/binary?q=") > 0 and (boolEnableYARA = True or boolAddYARAtoReports = True) and dictYARA.count  = 0 then
+		CbFeedQuery "feed_id:" & yaraFeedID, "YARA"
+		if dictYARA.count  = 0  then 
+			'wscript.echo "Nothing returned from YARA feed so disabling it."
+			boolAddYARAtoReports = False
+			boolEnableYARA = False
+		end if
+	end if
+	wscript.sleep 10
     intTotalQueries = 10
     intTotalQueries = DumpCarBlack(0, False, intTotalQueries, strQueryFeed)
     logdata CurrentDirectory & "\CB_Feeds.log", date & " " & time & ": " & "Total number of items being retrieved for feed " & DictFeedInfo.item(strCBFeedID) & ": " & intTotalQueries ,boolEchoInfo
@@ -437,7 +447,7 @@ Dim StrTmpFeedIP
 Dim boolProcessChildren: boolProcessChildren = False
 'msgbox StrBaseCBURL & "/api/v1/binary?q=is_executable_image:true AND server_added_timestamp:[" & strStartDateQuery & "T00:00:00 TO " & strEndDateQuery & "T00:00:00]&start=" & intCBcount & "&rows=" & intCBrows
 'msgbox StrBaseCBURL & "/api/v1/binary?q=is_executable_image:true" & strStartDateQuery & strEndDateQuery & "&start=" & intCBcount & "&rows=" & intCBrows
-strAVEurl = StrBaseCBURL & strURLQuery 
+strAVEurl = StrBaseCBURL & strURLQuery
 if BoolProcessData = True and instr(strAVEurl, "?") > 0 then
   strAVEurl = strAVEurl & "&start=" & intCBcount & "&rows=" & intCBrows
 end if
@@ -478,6 +488,7 @@ for each strCBResponseText in strArrayCBresponse
       elseif instr(strCBresponseText, "provider_url" & Chr(34) & ": ") > 0 and instr(strCBresponseText, "id" & Chr(34) & ": ") > 0 then
         strTmpFeedID = getdata(strCBresponseText, ",", "id" & Chr(34) & ": ")
         strTmpFeedName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
+		if strTmpFeedName = "yara" then yaraFeedID = strTmpFeedID
         if DictFeedInfo.exists(strTmpFeedID) = false then DictFeedInfo.add strTmpFeedID, strTmpFeedName
       elseif instr(strAVEurl, "?") = 0 then 'Specific process query for children and parent
         
@@ -686,6 +697,24 @@ if StrCBMD5 <> "" then
   if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "vbscript.dll" & chr(34)  & "& digsig_publisher:Microsoft Corporation" then
        strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
   end if  
+  if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "srv.sys" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
+	strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
+  end if
+  'monitor for IP addresses in command lines
+  if len(strCBcmdline) > 5 then
+   Set re = new regexp  'Create the RegExp object 'more info at https://msdn.microsoft.com/en-us/library/ms974570.aspx
+	boolLogIP = False
+    re.Pattern = "\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b"'http://www.regular-expressions.info/ip.html
+    re.IgnoreCase = true
+    on error resume next
+	WLRegXresult = re.Test(strCBcmdline)
+	if err.number <> 0 then msgbox "problem with regex: " & WatchItem
+	on error goto 0
+	'msgbox "regex match=" & WLRegXresult & " for " & WatchItem
+    if WLRegXresult = True then
+		 boolLogIP = True
+	end if
+  end if
   strCBfilePath = AddPipe(strCBfilePath) 'CB File Path
   strCBdigSig = AddPipe(strCBdigSig) 'CB Digital Sig
   strCBcompanyName = AddPipe(strCBcompanyName)'CB Company Name
@@ -706,6 +735,8 @@ if StrCBMD5 <> "" then
   if boolHeaderWritten = False then
       'strSSrow = "MD5,Path," & "Publisher," & "Company," & "Product," & "CB Prevalence," & "Logical Size,Host Name,Info Link,Alliance Score,Parent Name,Command Line,TOR IP,ID GUID,Child Count,Version,64-bit,Vuln"
       if left(lcase(strQueryFeed), 15) = "/api/v1/binary?" then
+		strYaraLine = ""
+		if (boolEnableYARA = True or boolAddYARAtoReports = True) then strYaraLine = ",YARA"
        'not using Parent Name,Command Line,TOR IP,ID GUID,Child Count
        strSSrow = "MD5,Path," & "Publisher," & "Company," & "Product," & "CB Prevalence," & "Logical Size,Host Name,Info Link,Alliance Score,Version,64-bit,Vuln"
       else 'process
@@ -714,6 +745,8 @@ if StrCBMD5 <> "" then
         strSSrow = "MD5,Path," & "Host Name,Info Link,Alliance Score,Parent Name,Command Line,TOR IP,ID GUID,Child Count"
       end if
       logdata strHashOutPath, strSSrow, False
+	  if boolLogIP = True then logdata left(strHashOutPath, len(strHashOutPath) -4) & "_IP.txt", strSSrow, False
+	  
       boolHeaderWritten = True
   END IF
   'limited output
@@ -732,14 +765,21 @@ if StrCBMD5 <> "" then
   
   'strSSrow = StrCBMD5 & strCBfilePath & strCBdigSig & strCBcompanyName & strCBproductName & strCBprevalence & strCBFileSize & strCBHostname & strCBInfoLink & strCBAllianceScore & strCBparent_name & strCBcmdline & strTORIPaddresses & strCBID & strCBChildCount & strCBVersion & strCBis64 & strCBVuln
   if left(lcase(strQueryFeed), 15) = "/api/v1/binary?" then
+	strYaraLine = ""
+	if boolAddYARAtoReports = True then
+		if dictYARA.exists(StrCBMD5) then
+			strYaraLine = "|" & dictYARA.item(StrCBMD5)
+		end if
+	end if
     'not using Parent Name,Command Line,TOR IP,ID GUID,Child Count
-    strSSrow = StrCBMD5 & strCBfilePath & strCBdigSig & strCBcompanyName & strCBproductName & strCBprevalence & strCBFileSize & strCBHostname & strCBInfoLink & strCBAllianceScore & strCBVersion & strCBis64 & strCBVuln
+    strSSrow = StrCBMD5 & strCBfilePath & strCBdigSig & strCBcompanyName & strCBproductName & strCBprevalence & strCBFileSize & strCBHostname & strCBInfoLink & strCBAllianceScore & strCBVersion & strCBis64 & strCBVuln & strYaraLine
   else
     'not using Publisher	Company	Product	CB Prevalence	Logical Size Version,64-bit,Vuln
     strSSrow = StrCBMD5 & strCBfilePath & strCBHostname & strCBInfoLink & strCBAllianceScore & strCBparent_name & strCBcmdline & strTORIPaddresses & strCBID & strCBChildCount
   end if
   strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
   logdata strHashOutPath, strTmpSSlout, False
+  if boolLogIP = True then logdata left(strHashOutPath, len(strHashOutPath) -4) & "_IP.txt", strTmpSSlout, False
 end if
 strCBfilePath = ""
 strCBdigSig = ""
@@ -918,7 +958,14 @@ end function
 Function ParseVulns(strTmpVulnPath, StrTmpVulnVersion)
 StrVulnVersion = removeInvalidVersion(StrTmpVulnVersion)
 strVulnPath = lcase(strTmpVulnPath)
-
+if instr(StrVulnVersion, ".") then
+	intWinMajor = left(StrVulnVersion, instr(StrVulnVersion, ".") -1)
+	if instr(right(StrVulnVersion, len(StrVulnVersion) - instr(StrVulnVersion, ".")), ".") then
+		intWinMinor = left(right(StrVulnVersion, len(StrVulnVersion) - instr(StrVulnVersion, ".")), instr(StrVulnVersion, ".") -1)
+	end if
+end if
+'msgbox "StrVulnVersion=" & StrVulnVersion & "|intWinMajor=" & intWinMajor & "|intWinMinor=" & intWinMinor
+'msgbox "strVulnPath=" & strVulnPath
 Dim StrVersionCompare
 Dim ArrayVulnVer
 if instr(lcase(strVulnPath), "c:\windows\syswow64\macromed\flash\") > 0 or instr(lcase(strVulnPath), "c:\windows\system32\macromed\flash\") > 0 then
@@ -930,15 +977,7 @@ if instr(lcase(strVulnPath), "c:\windows\syswow64\macromed\flash\") > 0 or instr
       ParseVulns = "up to date Flash Player detected"
     else 'out of date
       if isnumeric(left(StrVulnVersion, 2)) then
-        if cint(left(StrVulnVersion, 2)) < 18 then 
-          ParseVulns = "unsupported Flash Player major version detected"
-        elseif cint(left(StrVulnVersion, 2)) = 18 then 
-          if FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, strLTSFlashVersion) then
-            ParseVulns = "up to date Flash Player detected"  
-          else
-            ParseVulns = "outdated Flash Player version detected"
-          end if
-        elseif left(StrVulnVersion,2) <>  left(strLTSFlashVersion,2) then
+        if left(StrVulnVersion,2) <>  left(strStaticFPversion,2) then
           ParseVulns = "unsupported Flash Player major version detected"
         else
           ParseVulns = "outdated Flash Player version detected"
@@ -1013,7 +1052,7 @@ if instr(strVulnVersion, ".") > 0 then
   end if
 end if
 elseif instr(lcase(strVulnPath), "c:\windows\syswow64\lpk.dll") > 0 or instr(lcase(strVulnPath), "c:\windows\system32\lpk.dll") > 0 then
-  'atm*.dll does not show in ATTK results 
+  'atm*.dll does not show in all results 
   'so suplimented with lpk.dll which isn't a good indication of being patched for MS15-078 
   'but can indicate a vulnerable system if really outdated
   if intWinMajor = 6 then 
@@ -1114,7 +1153,7 @@ StrVersionCompare = "11"
     if FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, StrVersionCompare) then
       ParseVulns = "IE on a supported version"
     else
-      ParseVulns = "Internet Explorer (IE) is at a version that may not recieve publicly released security updates. IE version 11 is the only version still recieving updates."
+      ParseVulns = "Internet Explorer (IE) is at a version that may not receive publicly released security updates. IE version 11 is the only version still receiving updates for Windows 7/Windows Server 2008 R2 and most newer operating systems."
     end if
 elseif instr(lcase(strVulnPath), "\vbscript.dll") > 0 and instr(lcase(strVulnPath), "\windows") > 0 and instr(lcase(strVulnPath), "\winsxs\") = 0 then
     'Internet Explorer 9 on all supported x86-based versions of Windows Vista and Windows Server 2008
@@ -1141,6 +1180,34 @@ elseif instr(lcase(strVulnPath), "\vbscript.dll") > 0 and instr(lcase(strVulnPat
     else
       ParseVulns = "Internet Explorer missing patch released under MS16-051 KB3155533"
     end if
+elseif lcase(strVulnPath) = "c:\windows\system32\drivers\srv.sys" then
+
+	if instr(StrVulnVersion, "6.1.7601.") > 0 then
+		  StrVersionCompare = "6.1.7601.23689" '6.1.7601.23689 Win7/Server2008R2 x64/ia-64/x86
+    elseif instr(StrVulnVersion, "6.1.7600.") > 0 then
+		ParseVulns = "Windows missing patch released under MS17-010 KB4013389"
+		exit function
+	elseif instr(StrVulnVersion, "6.0.6002.19") > 0 then
+		StrVersionCompare = "6.0.6002.19743"  '6.0.6002.19743 vista/2008 x64
+    elseif instr(StrVulnVersion, "6.0.6000.") > 0 then
+		ParseVulns = "Windows missing patch released under MS17-010 KB4013389"
+		exit function
+	elseif instr(StrVulnVersion, "6.0.6002.2") > 0 then
+		StrVersionCompare = "6.0.6002.24067"  '6.0.6002.24067 vista/2008 x86
+    elseif instr(StrVulnVersion, "6.2.9200.") > 0 then
+		StrVersionCompare = "6.2.9200.22099"  'Server 2012		
+	elseif instr(StrVulnVersion, "6.3.9600.") > 0 then
+		StrVersionCompare = "6.3.9600.18604"  '6.3.9600.18604 Win8.1/rt/Server2012r2 x64/x86		
+    elseif instr(StrVulnVersion, "10.0.14393.") > 0 then
+		StrVersionCompare = "10.0.14393.953"  '10.0.14393.953 win10
+	end if
+    if FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, StrVersionCompare) then
+      ParseVulns = "Windows has been patched for MS17-010 KB4013389"
+    else
+      ParseVulns = "Windows missing patch released under MS17-010 KB4013389"
+    end if
+
+
 end if
 end function
 
@@ -1248,6 +1315,129 @@ end function
 
 
 
+Function CbFeedQuery(strQuery, strUniquefName)
+Dim intParseCount: intParseCount = 10
+Set objHTTP = CreateObject("WinHttp.WinHttpRequest.5.1")
+strAppendQuery = ""
+boolexit = False 
+do while boolexit = False 
+	strAVEurl = StrBaseCBURL & "/api/v1/threat_report?q=" & strQuery & strAppendQuery
+	objHTTP.open "GET", strAVEurl, False
+	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+
+	on error resume next
+	  objHTTP.send 
+	  if err.number <> 0 then
+		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+		exit function 
+	  end if
+	on error goto 0 
+	CBresponseText = objHTTP.responseBody
+	if len(CBresponseText) > 0 then
+	
+		binTempResponse = objHTTP.responseBody
+		  StrTmpResponse = RSBinaryToString(binTempResponse)
+		logdata CurrentDirectory & "\Cb_TQueryResults.log", StrTmpResponse,False 
+
+		if instr(StrTmpResponse, vblf & "    {") > 0 then
+		  strArrayCBresponse = split(StrTmpResponse, vblf & "    {")
+		else
+		  strArrayCBresponse = split(StrTmpResponse, vblf & "  {")
+		end if
+		for each strCBResponseText in strArrayCBresponse
+			 strTmpIOC = getdata(strCBResponseText, "]", "[")
+
+			 strItem = getdata(strTmpIOC, chr(34) ,chr(34))
+				strCBid = getdata(strCBResponseText, chr(34), chr(34) & "id" & Chr(34) & ": " & Chr(34))
+        strTitle = getdata(strCBResponseText, chr(34), "title" & Chr(34) & ": " & Chr(34))
+
+        if strTitle <> "" then
+          if instr(strTitle, "Matched yara rules: ") and ishash(strItem) then
+            dictYARA.add strItem, replace(right(strTitle,len(strTitle) -20), ",", "^")
+          end if
+          strRowOut = strCBid & "|" & strTitle & "|" & strItem
+          strRowOut = chr(34) & replace(strRowOut,"|",chr(34) & "," & Chr(34)) & chr(34)
+          logdata CurrentDirectory & "\Feed_" & strUniquefName & ".csv",strRowOut , false
+        end if
+		next
+	end if
+  intResultCount = getdata(StrTmpResponse, ",", "total_results" & Chr(34) & ": ")
+	if isnumeric(intResultCount) then
+
+    intAnswer = vbno 'msgbox (intParseCount & " items have been pulled down. Do you want to pull down more? There are a total of " & intResultCount & " items to retrieve",vbYesNo, "Cb Scripts")
+		if intAnswer = vbno and intParseCount < clng(intResultCount) then
+			
+			strAppendQuery = "&start=" & intParseCount & "&rows=" & 1000
+			intParseCount = intParseCount + 1000
+		else
+			boolexit = True
+			exit function
+		end if
+	else
+		boolexit = True
+		msgbox "Error 1"
+		msgbox intResultCount
+		exit function
+	end if
+loop
+End function
 
 
 
+Function RSBinaryToString(xBinary)
+  'Antonin Foller, http://www.motobit.com
+  'RSBinaryToString converts binary data (VT_UI1 | VT_ARRAY Or MultiByte string)
+  'to a string (BSTR) using ADO recordset
+
+  Dim Binary
+  'MultiByte data must be converted To VT_UI1 | VT_ARRAY first.
+  If vartype(xBinary)=8 Then Binary = MultiByteToBinary(xBinary) Else Binary = xBinary
+  
+  Dim RS, LBinary
+  Const adLongVarChar = 201
+  Set RS = CreateObject("ADODB.Recordset")
+  LBinary = LenB(Binary)
+  
+  If LBinary>0 Then
+    RS.Fields.Append "mBinary", adLongVarChar, LBinary
+    RS.Open
+    RS.AddNew
+      RS("mBinary").AppendChunk Binary 
+    RS.Update
+    RSBinaryToString = RS("mBinary")
+  Else
+    RSBinaryToString = ""
+  End If
+End Function
+
+
+Function IsHash(TestString)
+
+    Dim sTemp
+    Dim iLen
+    Dim iCtr
+    Dim sChar
+    
+    'returns true if all characters in a string are alphabetical
+    '   or numeric
+    'returns false otherwise or for empty string
+    
+    sTemp = TestString
+    iLen = Len(sTemp)
+    If iLen > 0 Then
+        For iCtr = 1 To iLen
+            sChar = Mid(sTemp, iCtr, 1)
+            if isnumeric(sChar) or "a"= lcase(sChar) or "b"= lcase(sChar) or "c"= lcase(sChar) or "d"= lcase(sChar) or "e"= lcase(sChar) or "f"= lcase(sChar)  then
+              'allowed characters for hash (hex)
+            else
+              IsHash = False
+              exit function
+            end if
+        Next
+    
+    IsHash = True
+    else
+      IsHash = False
+    End If
+    
+End Function

@@ -91,7 +91,7 @@ Dim dictYARA: Set dictYARA = CreateObject("Scripting.Dictionary")
 Dim intParseCount: intParseCount = 10
 
 'debug
-BoolDebugTrace = True
+BoolDebugTrace = False
 boolDebugFlash = False
 boolDebugVersionCompare = False
 'end debug

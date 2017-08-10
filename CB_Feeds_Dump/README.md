@@ -1,4 +1,4 @@
-#CB Feeds Dump - Pulls data from the CB Response feeds and dumps to CSV. 
+#CB Feeds Dump - Pulls alert data from the CB Response feeds and dumps to CSV. 
 
 ###This script will export two CSV files for each feed/query. One CSV containing all data and a limited CSV containing unique entries.
 
@@ -12,7 +12,7 @@ You must edit the code of this script to adjust the query timeframe and host fil
 	strHostFilter = "" 'computer name to filter to. Typically uppercase and is case sensitive.
 	'---End Config Section
 
-Script runs addtional queries to identify vulnerable and patched components. Currently supports the following:
+Script runs addtional queries to identify vulnerable and patched components. Currently supports the following checks:
 * Flash Player
 * MS15-065 KB3065822
 * MS15-078 KB3079904 not applied
@@ -20,6 +20,7 @@ Script runs addtional queries to identify vulnerable and patched components. Cur
 * Silverlight MS16-006 CVE-2016-0034
 * MS16-051 KB3155533
 * Internet Explorer Major Version
+* MS17-010
 
 additional queries can be run via aq.txt in the current directory.
 name|query

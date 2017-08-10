@@ -1,5 +1,5 @@
 ﻿'CB Feed Dump v3.8 'YARA FEED
-'Pulls alert related data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
+'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
 'name|query
@@ -363,6 +363,7 @@ for each strCBFeedID in DictFeedInfo
       end if
   end select
   if strQueryFeed <> "" then
+	wscript.sleep 10 
     if instr(strQueryFeed, "/api/v1/binary?q=") > 0 and (boolEnableYARA = True or boolAddYARAtoReports = True) and dictYARA.count  = 0 then
 		CbFeedQuery "feed_id:" & yaraFeedID, "YARA"
 		if dictYARA.count  = 0  then 

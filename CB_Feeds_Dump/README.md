@@ -1,6 +1,6 @@
-#CB Feeds Dump - Pulls alert data from the CB Response feeds and dumps to CSV. 
+# CB Feeds Dump - Pulls alert data from the CB Response feeds and dumps to CSV. 
 
-###This script will export two CSV files for each feed/query. One CSV containing all data and a limited CSV containing unique entries.
+### This script will export two CSV files for each feed/query. One CSV containing all data and a limited CSV containing unique entries.
 
 You must edit the code of this script to adjust the query timeframe and host filter. The following section of code defines the query:
 

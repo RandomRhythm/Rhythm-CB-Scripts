@@ -1,5 +1,5 @@
-#CB Hash Dump - Dumps hashes from CB (Carbon Black) Response
-###This script will export a CSV of binary files matching the specified query in CB Response (Carbon Black).
+# CB Hash Dump - Dumps hashes from CB (Carbon Black) Response
+### This script will export a CSV of binary files matching the specified query in CB Response (Carbon Black).
 
 You must edit the code of this script to adjust the query. The following section of code defines the query:
 

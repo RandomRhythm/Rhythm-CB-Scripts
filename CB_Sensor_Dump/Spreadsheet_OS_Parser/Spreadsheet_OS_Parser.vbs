@@ -1,6 +1,6 @@
 'Spreadsheet OS Parser for CB_Sensor_Dump csv output
 'requires Microsoft Excel
-'v1.1 Support for reporting on MS17-010 KB4013389
+'v1.4 
 
 'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
 'All rights reserved.
@@ -17,6 +17,8 @@
 
 'You should have received a copy of the GNU General Public License
 'along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'Spreadsheet OS parser for CB feeds csv output
+'requires Microsoft Excel
 
 Const forwriting = 241
 Const ForAppending = 8
@@ -33,7 +35,6 @@ intWriteRowCounter = 1
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strCachePath = CurrentDirectory & "\cache"
 
-
 strDebugPath = CurrentDirectory & "\Debug"
 wscript.echo "Please open the vuln CSV report"
 OpenFilePath1 = SelectFile( )
@@ -49,10 +50,9 @@ if objFSO.folderexists(strCachePath) = False then _
 objFSO.createfolder(strCachePath)
 
 
-Dim dictOutdated: Set dictOutdated = CreateObject("Scripting.Dictionary")'
-Dim dictUnsupported: Set dictUnsupported = CreateObject("Scripting.Dictionary")'
-Dim DictUpdated: Set DictUpdated = CreateObject("Scripting.Dictionary")'
-Dim DictVersion: Set DictVersion = CreateObject("Scripting.Dictionary")'
+Dim DictOSWorkversion: Set DictOSWorkversion = CreateObject("Scripting.Dictionary")'
+Dim DictOSServversion: Set DictOSServversion = CreateObject("Scripting.Dictionary")
+Dim DictOSconsolidated: Set DictOSconsolidated = CreateObject("Scripting.Dictionary")
 Set objExcel = CreateObject("Excel.Application")
 OpenFilePath1 = OpenFilePath1
 Set objWorkbook = objExcel.Workbooks.Open _
@@ -67,7 +67,7 @@ Do Until objExcel.Cells(1,mycolumncounter).Value = ""
   if objExcel.Cells(1,mycolumncounter).Value = "Product" then intalertTypeLocation = mycolumncounter'Alert Type
   if objExcel.Cells(1,mycolumncounter).Value = "CB Prevalence" then intactionLocation = mycolumncounter'Action taken (blocked, notify)
   if objExcel.Cells(1,mycolumncounter).Value = "Logical Size" then intoccurredLocation = mycolumncounter 'Time stamp
-  if objExcel.Cells(1,mycolumncounter).Value = "Host Name" then int_hostname_location = mycolumncounter 'C&C IP address
+  if objExcel.Cells(1,mycolumncounter).Value = "Computer" then int_hostname_location = mycolumncounter 'C&C IP address
   if objExcel.Cells(1,mycolumncounter).Value = "Info Link" then intcncportLocation = mycolumncounter 'C&C port number
   if objExcel.Cells(1,mycolumncounter).Value = "Alliance Score" then intchannelLocation = mycolumncounter 'communication
   if objExcel.Cells(1,mycolumncounter).Value = "Parent Name" then intheaderLocation = mycolumncounter 'header
@@ -76,7 +76,7 @@ Do Until objExcel.Cells(1,mycolumncounter).Value = ""
   if objExcel.Cells(1,mycolumncounter).Value = "Child Count" then intosinfoLocation = mycolumncounter 'osinfo
   if objExcel.Cells(1,mycolumncounter).Value = "Version" then int_version_location = mycolumncounter 'smtp-to
   if objExcel.Cells(1,mycolumncounter).Value = "64-bit" then intSMTPFromLocation = mycolumncounter'smtp-mail-from
-  if objExcel.Cells(1,mycolumncounter).Value = "Vuln" then int_vuln_location = mycolumncounter'subject
+  if objExcel.Cells(1,mycolumncounter).Value = "Operating System" then int_vuln_location = mycolumncounter'subject
   
   mycolumncounter = mycolumncounter +1
 loop
@@ -88,133 +88,112 @@ elseif BoolHostFilter = True then
 end if
 
 intRowCounter = 2
-strTmpvalue = objExcel.Cells(intRowCounter,int_path_Location).Value
-strTmpvalue = lcase(strTmpvalue)
-if instr(strTmpvalue, "iexplore.exe") > 0  or instr(strTmpvalue, "internet explorer") then
-  strProduct = "Internet Explorer"
-  strVulnType = "Outdated " 
-  strPatched = "Up to date "
-  strVulnDetail = " version"
-  strPatchDetail = " version"
-  strChatText = " Version Support"
-  boolJustMajorVersion = True
-elseif instr(strTmpvalue, "macromed") > 0  or instr(strTmpvalue, "flash") then
-  strProduct = "Flash Player"
-  strVulnType = "Outdated " 
-  strPatched = "Up to date "
-  strVulnDetail = " version"
-  strPatchDetail = " version"
-  strChatText = " Version Support"
-elseif instr(strTmpvalue, "mshtml.dll") > 0 then
-  strProduct = "MS15-065 KB3065822"  
-  strVulnType = "Patch " 
-  strPatched = "Patch "
-  strVulnDetail = " not applied"
-  strPatchDetail = " applied"
-  strChatText = " Patched"
-elseif instr(strTmpvalue, "netapi32.dll") > 0 then
-  strProduct = "MS08-067"  
-  strVulnType = "Patch " 
-  strPatched = "Patch "
-  strVulnDetail = " not applied"
-  strPatchDetail = " applied"
-  strChatText = " Patched"
-elseif instr(strTmpvalue, "vbscript.dll") > 0 then
-  strProduct = "MS16-051 KB3155533"  
-  strVulnType = "Patch " 
-  strPatched = "Patch "
-  strVulnDetail = " not applied"
-  strPatchDetail = " applied"
-  strChatText = " Patched"
-elseif instr(strTmpvalue, "silverlight") > 0 then
-  strProduct = "Silverlight"  
-  strVulnType = "Vulnerable " 
-  strPatched = ""
-  strVulnDetail = ""
-  strPatchDetail = " Update Applied"
-  strChatText = " Patched"
-elseif instr(strTmpvalue, "srv.sys") > 0 then
-  strProduct = "Windows SMB Server"  
-  strVulnType = "Vulnerable " 
-  strPatched = ""
-  strVulnDetail = ""
-  strPatchDetail = " update applied"
-  strChatText = " Patched"
-  else
-  strProduct = inputbox("enter product name")
-end if  
-Do Until objExcel.Cells(intRowCounter,1).Value = "" 'loop till you hit null value (end of rows)
+
+Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null value (end of rows)
   strTmpVulnInfo = objExcel.Cells(intRowCounter,int_vuln_location).Value
-  strTmpCompNames = objExcel.Cells(intRowCounter,int_hostname_location).Value
-  if instr(strTmpCompNames, "/") = 0 then strTmpCompNames = strTmpCompNames & "/"
-  arrayComNames = split(strTmpCompNames, "/")
-  strTmpVersionNumber = objExcel.Cells(intRowCounter,int_version_location).Value
-  for each strCompName in arrayComNames
-    if strCompName <> "" then
-      
-
-        if strTmpVulnInfo = "unsupported " & strProduct & " major version detected" or _ 
-        instr(strTmpVulnInfo," not receive publicly released security updates") > 0 then
-          if dictUnsupported.exists(strCompName) = false then 
-            dictUnsupported.add strCompName, strTmpVersionNumber
-            UpdateVersionDict strTmpVersionNumber
-          end if 
-        end if
-        if strTmpVulnInfo = "outdated " & strProduct & " version detected" or instr(strTmpVulnInfo, "not applied") > 0 or _
-        instr(strTmpVulnInfo, "missing patch") or instr(strTmpVulnInfo, "Silverlight flaw") then
-          if dictOutdated.exists(strCompName) = false then 
-            dictOutdated.add strCompName, strTmpVersionNumber
-            UpdateVersionDict strTmpVersionNumber
-          end if
-        elseif strTmpVulnInfo = "up to date " & strProduct & " detected" or strTmpVulnInfo = "IE on a supported version" or _
-        instr(strTmpVulnInfo, " applied") > 0 or instr(strTmpVulnInfo, " patched with") > 0 or _
-		instr(strTmpVulnInfo, " patched for ")		then
-          if DictUpdated.exists(strCompName) = false then 
-            DictUpdated.add strCompName, strTmpVersionNumber         
-            UpdateVersionDict strTmpVersionNumber
-          end if
-         end if 
+  if instr(strTmpVulnInfo, "Server") then
+    if DictOSServversion.exists(strTmpVulnInfo) = False then
+      DictOSServversion.add strTmpVulnInfo, 1
+    else
+      DictOSServversion.item(strTmpVulnInfo) = DictOSServversion.item(strTmpVulnInfo) + 1
+    end if  
+  else 
+    if DictOSWorkversion.exists(strTmpVulnInfo) = False then
+      DictOSWorkversion.add strTmpVulnInfo, 1
+    else
+      DictOSWorkversion.item(strTmpVulnInfo) = DictOSWorkversion.item(strTmpVulnInfo) + 1
     end if
-  next
+  end if
+  if instr(strTmpVulnInfo, "OSX") then
+    strConsolidated = "Mac OSX"
+  elseif instr(strTmpVulnInfo, "2003") then
+    strConsolidated = "Windows 2003"
+  elseif instr(strTmpVulnInfo, "2008") then
+    strConsolidated = "Windows 2008"
+  elseif instr(strTmpVulnInfo, "2012") then
+    strConsolidated = "Windows 2012"
+  elseif instr(strTmpVulnInfo, "2016") then
+    strConsolidated = "Windows 2016"
+  elseif instr(strTmpVulnInfo, "XP") then
+    strConsolidated = "Windows XP"
+  elseif instr(strTmpVulnInfo, "Vista") then
+    strConsolidated = "Windows Vista"
+  elseif instr(strTmpVulnInfo, "7") then
+    strConsolidated = "Windows 7"
+  elseif instr(strTmpVulnInfo, "8") then
+    strConsolidated = "Windows 8"
+  elseif instr(strTmpVulnInfo, "8.1") then
+    strConsolidated = "Windows 8.1"
+  elseif instr(strTmpVulnInfo, "10") then
+    strConsolidated = "Windows 10"
+ end if
+  if DictOSconsolidated.exists(strConsolidated) = False then
+    DictOSconsolidated.add strConsolidated, 1
+  else
+    DictOSconsolidated.item(strConsolidated) = DictOSconsolidated.item(strConsolidated) + 1
+  end if
 
+  
   intRowCounter = intRowCounter +1
 loop
+
 intRowCounter = 1
-if dictUnsupported.count > 0 then
-  Move_next_Workbook_Worksheet( "Unsupported")
-  Write_Spreadsheet_line "Unsupported " & strProduct & " major version|Version Number"
-  for each strCompName in dictUnsupported
-    Write_Spreadsheet_line strCompName & "|" & dictUnsupported.item(strCompName)
+  Move_next_Workbook_Worksheet( "Operating Systems")
+  Write_Spreadsheet_line "Operating Systems|Count"
+if DictOSconsolidated.count > 0 then
+
+  for each strOSname in DictOSconsolidated
+    Write_Spreadsheet_line strOSname & "|" & DictOSconsolidated.item(strOSname)
+  next
+end if
+
+intRowCounter = 1
+  Move_next_Workbook_Worksheet( "OS Version")
+  Write_Spreadsheet_line "OS Versions|Count"
+if DictOSWorkversion.count > 0 then
+
+  for each strOSname in DictOSWorkversion
+    Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSWorkversion.item(strOSname)
+  next
+end if
+if DictOSServversion.count > 0 then
+  for each strOSname in DictOSServversion
+    Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSServversion.item(strOSname)
   next
 end if
 intRowCounter = 1
-if dictOutdated.count > 0 then
-  Move_next_Workbook_Worksheet("Outdated")
-  Write_Spreadsheet_line strVulnType & strProduct & strVulnDetail & "|Version Number"
-  for each strCompName in dictOutdated 
-    Write_Spreadsheet_line strCompName & "|" & dictOutdated.item(strCompName)
+  Move_next_Workbook_Worksheet( "Workstation OS")
+  Write_Spreadsheet_line "Workstation OS|Count"
+if DictOSWorkversion.count > 0 then
+  for each strOSname in DictOSWorkversion
+    Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSWorkversion.item(strOSname)
   next
 end if
 intRowCounter = 1
-Move_next_Workbook_Worksheet("Up to Date")
-Write_Spreadsheet_line strPatched & strProduct & strPatchDetail & "|Version Number"
-for each strCompName in DictUpdated
-  Write_Spreadsheet_line strCompName & "|" & DictUpdated.item(strCompName)
-next
+  Move_next_Workbook_Worksheet( "Server OS")
+  Write_Spreadsheet_line "Windows Server|Count"
+if DictOSServversion.count > 0 then
+  for each strOSname in DictOSServversion
+    Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSServversion.item(strOSname)
+  next
+end if
 
-Move_next_Workbook_Worksheet("Support Chart")
-Write_Spreadsheet_line strProduct & strChatText & "|" & "Count"
-if dictUnsupported.count > 0 then Write_Spreadsheet_line "Unsupported|" &  dictUnsupported.count
-if dictOutdated.count > 0 then Write_Spreadsheet_line "Outdated|" &  dictOutdated.count
-Write_Spreadsheet_line "Updated|" &  DictUpdated.count
-
-Move_next_Workbook_Worksheet("Version Chart")
-Write_Spreadsheet_line  strProduct & "Versions" & "|" & "Count"
-for each strVersionNumber in DictVersion
-  Write_Spreadsheet_line strVersionNumber & "|" &  DictVersion.item(strVersionNumber)
-next
-
-
+Function ShortenOSname(strOSname)
+Dim strReturnShort
+strReturnShort = strOSname
+strReturnShort = replace(strReturnShort, "Windows Server ", "")
+strReturnShort = replace(strReturnShort, "Windows ", "")
+strReturnShort = replace(strReturnShort, "Server ", "")
+strReturnShort = replace(strReturnShort, ",", "")
+strReturnShort = replace(strReturnShort, "Service Pack ", "SP")
+strReturnShort = replace(strReturnShort, "Standard", "STD")
+strReturnShort = replace(strReturnShort, "Professional", "Pro")
+strReturnShort = replace(strReturnShort, "Datacenter", "DTC")
+strReturnShort = replace(strReturnShort, "Enterprise Edition", "EE")
+strReturnShort = replace(strReturnShort, "Enterprise", "EE")
+strReturnShort = replace(strReturnShort, "Edition", "")
+ShortenOSname = strReturnShort
+end function
 Sub UpdateVersionDict(strVersionNumber)
 if instr(strVersionNumber, " ") then 
   arrayVN = split(strVersionNumber, " ")

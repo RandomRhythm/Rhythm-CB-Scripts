@@ -1,5 +1,5 @@
-#CB Sensor Dump
-###This script will dump sensor information via the CB Response (Carbon Black) API.
+# CB Sensor Dump
+### This script will dump sensor information via the CB Response (Carbon Black) API.
 
 Dumps data to the following columns:
 * Computer

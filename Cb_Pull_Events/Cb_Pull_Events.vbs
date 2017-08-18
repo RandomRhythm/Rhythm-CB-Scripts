@@ -206,7 +206,7 @@ do while boolexit = False
       wscript.quit (997)
     end if
     if intParseCount >= clng(intResultCount) then
-      wscript intResultCount & " items retrieved"
+      wscript.echo intResultCount & " items retrieved"
       wscript.quit
     end if
     intAnswer = msgbox (intParseCount & " items have been pulled down. Do you want to pull down more? There are a total of " & intResultCount & " items to retrieve",vbYesNo, "Cb Scripts")

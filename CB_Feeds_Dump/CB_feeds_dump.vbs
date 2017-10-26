@@ -1,4 +1,4 @@
-﻿'CB Feed Dump v3.8 'YARA FEED
+'CB Feed Dump v3.9 'YARA column has header now and logs to file with standard naming convention. Handle duplicate aditional queries. Add start time, user name, and duration to process spreadsheet.
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -86,6 +86,7 @@ Dim boolEnableYARA
 Dim boolEnableCbInspection
 Dim boolMS17010Check
 Dim yaraFeedID
+Dim tmpYaraUID
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim dictYARA: Set dictYARA = CreateObject("Scripting.Dictionary")
 Dim intParseCount: intParseCount = 10
@@ -140,7 +141,7 @@ boolAdditionalQueries = True
 boolEnableYARA = True
 boolEnableCbInspection = True
 boolMS17010Check = True
-strStaticFPversion = "26.0.0.137"
+strStaticFPversion = "27.0.0.130"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End script settings section
 
@@ -280,7 +281,7 @@ if bool3155533Check = True then DictFeedInfo.Add "vbscript.dll", "vbscript.dll"
 if boolMS17010Check = true then DictFeedInfo.Add "srv.sys", "srv.sys"
 if boolAdditionalQueries = True then 
   for each strAquery in DictAdditionalQueries
-    DictFeedInfo.Add DictAdditionalQueries.item(strAquery), strAquery
+    if DictFeedInfo.exists(DictAdditionalQueries.item(strAquery)) = False then DictFeedInfo.Add DictAdditionalQueries.item(strAquery), strAquery
   next
 end if  
   
@@ -583,7 +584,38 @@ if instr(strCBresponseText, "md5") > 0 then
 
   end if
   strCBparent_name = getdata(strCBresponseText, Chr(34), "parent_name" & Chr(34) & ": " & Chr(34))
-  strCBHostname = getdata(strCBresponseText, ",", "hostname" & Chr(34) & ": ")
+  strCBStartTime = getdata(strCBresponseText, Chr(34), "start" & Chr(34) & ": " & Chr(34))
+  strCBUserName = getdata(strCBresponseText, Chr(34), "username" & Chr(34) & ": " & Chr(34))
+  strCbEndTime = getdata(strCBresponseText, Chr(34), "last_server_update" & Chr(34) & ": " & Chr(34))
+  strCbDuration = ""
+  if len(strCBStartTime) > 7 then
+    strtmpStart = replace(strCBStartTime, "T", " ")
+    if instrrev(strtmpStart, ".") > 0 then
+        strtmpStart = left(strtmpStart, instrrev(strtmpStart, ".") - 1)
+    else
+      strtmpStart = left(strtmpStart, len(strtmpStart) - 1)
+    end if
+  end if
+  if len(strCbEndTime) > 7 then
+    strtmpEnd = replace(strCbEndTime, "T", " ")
+    if instrrev(strtmpEnd, ".") > 0 then
+        strtmpEnd = left(strtmpEnd, instrrev(strtmpEnd, ".") - 1)
+    else
+      strtmpEnd = left(strtmpEnd, len(strtmpEnd) - 1)
+    end if
+    if isdate(strtmpStart) = false or isdate(strtmpEnd) = false then
+      msgbox "invalid date:" & strCBStartTime &"|" & strtmpStart & "|" & strCbEndTime & "|" & strtmpEnd
+    end if
+    'msgbox isdate(strtmpEnd)
+    strCbDuration = datediff("n",strtmpStart,strtmpEnd)
+    if strCbDuration = 0 then
+      strCbDuration = datediff("n",strtmpStart,strtmpEnd) & " sec"
+    else
+      strCbDuration = strCbDuration & " min"
+    end if
+  end if
+  
+  strCBHostname = getdata(strCBresponseText, Chr(34), "hostname" & Chr(34) & ": " & Chr(34))
   if strCBHostname = "" then
     strTmpCBHostname = getdata(strCBresponseText, "]", "endpoint" & Chr(34) & ": [" & vblf & "        " & chr(34))
     if instr(strTmpCBHostname, "|") > 0 then
@@ -726,6 +758,7 @@ if StrCBMD5 <> "" then
   strCBInfoLink = AddPipe(strCBInfoLink)
   strCBAllianceScore = AddPipe(strCBAllianceScore)
   strCBparent_name = AddPipe(strCBparent_name)
+  strCBStartTime = AddPipe(strCBStartTime)
   strCBcmdline = AddPipe(strCBcmdline)
   strTORIPaddresses = AddPipe(strTORIPaddresses)
   strCBID = AddPipe(strCBID)
@@ -733,19 +766,21 @@ if StrCBMD5 <> "" then
   strCBVersion = AddPipe(strCBVersion)
   strCBis64 = AddPipe(strCBis64)
   strCBVuln = AddPipe(strCBVuln)
+  strCbUserName = AddPipe(strCbUserName)
+  strCbDuration = AddPipe(strCbDuration)
   if boolHeaderWritten = False then
       'strSSrow = "MD5,Path," & "Publisher," & "Company," & "Product," & "CB Prevalence," & "Logical Size,Host Name,Info Link,Alliance Score,Parent Name,Command Line,TOR IP,ID GUID,Child Count,Version,64-bit,Vuln"
-      if left(lcase(strQueryFeed), 15) = "/api/v1/binary?" then
-		strYaraLine = ""
-		if (boolEnableYARA = True or boolAddYARAtoReports = True) then strYaraLine = ",YARA"
+    if left(lcase(strQueryFeed), 15) = "/api/v1/binary?" then
+      strYaraLine = ""
+      if (boolEnableYARA = True or boolAddYARAtoReports = True) then strYaraLine = ",YARA"
        'not using Parent Name,Command Line,TOR IP,ID GUID,Child Count
-       strSSrow = "MD5,Path," & "Publisher," & "Company," & "Product," & "CB Prevalence," & "Logical Size,Host Name,Info Link,Alliance Score,Version,64-bit,Vuln"
-      else 'process
-        
-         'not using Publisher	Company	Product	CB Prevalence	Logical Size Version,64-bit,Vuln
-        strSSrow = "MD5,Path," & "Host Name,Info Link,Alliance Score,Parent Name,Command Line,TOR IP,ID GUID,Child Count"
-      end if
-      logdata strHashOutPath, strSSrow, False
+       strSSrow = "MD5,Path," & "Publisher," & "Company," & "Product," & "CB Prevalence," & "Logical Size,Host Name,Info Link,Alliance Score,Version,64-bit,Vuln" & strYaraLine
+    else 'process
+      
+       'not using Publisher	Company	Product	CB Prevalence	Logical Size Version,64-bit,Vuln
+      strSSrow = "MD5,Path," & "Host Name,Info Link,Alliance Score,Parent Name,Command Line,TOR IP,ID GUID,Child Count,Start Time,User Name,Duration"
+    end if
+    logdata strHashOutPath, strSSrow, False
 	  if boolLogIP = True then logdata left(strHashOutPath, len(strHashOutPath) -4) & "_IP.txt", strSSrow, False
 	  
       boolHeaderWritten = True
@@ -776,7 +811,7 @@ if StrCBMD5 <> "" then
     strSSrow = StrCBMD5 & strCBfilePath & strCBdigSig & strCBcompanyName & strCBproductName & strCBprevalence & strCBFileSize & strCBHostname & strCBInfoLink & strCBAllianceScore & strCBVersion & strCBis64 & strCBVuln & strYaraLine
   else
     'not using Publisher	Company	Product	CB Prevalence	Logical Size Version,64-bit,Vuln
-    strSSrow = StrCBMD5 & strCBfilePath & strCBHostname & strCBInfoLink & strCBAllianceScore & strCBparent_name & strCBcmdline & strTORIPaddresses & strCBID & strCBChildCount
+    strSSrow = StrCBMD5 & strCBfilePath & strCBHostname & strCBInfoLink & strCBAllianceScore & strCBparent_name & strCBcmdline & strTORIPaddresses & strCBID & strCBChildCount & strCBStartTime & strCBUserName & strCbDuration
   end if
   strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
   logdata strHashOutPath, strTmpSSlout, False
@@ -919,7 +954,7 @@ Function encrypt(StrText, key) 'Rafael Paran? - https://gallery.technet.microsof
   encrypt = Newstr 
 End Function  
   
-Function Decrypt(StrText,key) 'Rafael Paraná - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
+Function Decrypt(StrText,key) 'Rafael Paran� - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
   Dim lenKey, KeyPos, LenStr, x, Newstr 
    
   Newstr = "" 
@@ -1358,7 +1393,8 @@ do while boolexit = False
           end if
           strRowOut = strCBid & "|" & strTitle & "|" & strItem
           strRowOut = chr(34) & replace(strRowOut,"|",chr(34) & "," & Chr(34)) & chr(34)
-          logdata CurrentDirectory & "\Feed_" & strUniquefName & ".csv",strRowOut , false
+          if tmpYaraUID = "" then tmpYaraUID = udate(now)
+          logdata CurrentDirectory & "\" & strUniquefName & "_" & tmpYaraUID & ".csv",strRowOut , false
         end if
 		next
 	end if

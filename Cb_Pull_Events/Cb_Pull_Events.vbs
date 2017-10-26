@@ -1,4 +1,4 @@
-'Cb Pull Events v1.2 
+'Cb Pull Events v1.3.1 - Add username and process name output. Add boolean to not output/parse sections 
 'Pulls event data from the Cb Response API and dumps to CSV. 
 
 'additional queries can be run via aq.txt in the current directory.
@@ -36,14 +36,31 @@ Dim boolModHeader: boolModHeader = False
 Dim boolChildHeader: boolChildHeader = False
 Dim boolFileHeader: boolFileHeader = False
 Dim boolCrossHeader: boolCrossHeader = False
+Dim boolNetworkEnable
+Dim boolRegEnable
+Dim boolModEnable
+Dim boolChildEnable
+Dim boolFileEnable
+Dim boolCrossEnable
 Dim dictRegAction: Set dictRegAction = CreateObject("Scripting.Dictionary")
 Dim dictFileAction: Set dictFileAction = CreateObject("Scripting.Dictionary")
 Dim dictUID: Set dictUID = CreateObject("Scripting.Dictionary")
-
+Dim boolDebug: boolDebug = false
+Dim boolReportUserName
+Dim pullAllSections
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug"
 
 'Optional config section
+boolNetworkEnable = True
+boolRegEnable = True
+boolModEnable = True
+boolChildEnable = True
+boolFileEnable = True
+boolCrossEnable = True
+pullAllSections = True 'set to true to grab everything
+boolReportUserName = True 'Include associated user name
+boolReportProcessName = True 'Include associated process name
 strCbQuery = "" 'Cb Response query to run. Can be passed as an argument to the script.
 'end config section
 
@@ -164,7 +181,7 @@ do while boolexit = False
 	
 		binTempResponse = objHTTP.responseBody
 		  StrTmpResponse = RSBinaryToString(binTempResponse)
-		'logdata CurrentDirectory & "\Cb_QueryResults.log", StrTmpResponse,False 
+		if boolDebug = true then logdata CurrentDirectory & "\Cb_QueryResults.log", StrTmpResponse,False 
 
 		if instr(StrTmpResponse, vblf & "    {") > 0 then
 		  strArrayCBresponse = split(StrTmpResponse, vblf & "    {")
@@ -246,7 +263,8 @@ if len(CBresponseText) > 0 then
 binTempResponse = objHTTP.responseBody
   StrTmpResponse = RSBinaryToString(binTempResponse)
   if instr(StrTmpResponse, "Unhandled exception.") > 0 then exit function 
-  'logdata CurrentDirectory & "\CB_Download.txt", StrTmpResponse,False 
+  'debug line
+  if boolDebug = true then logdata CurrentDirectory & "\CBs_Download.txt", StrTmpResponse,False 
   'msgbox StrTmpResponse
   if instr(StrTmpResponse, ">The requested URL was not found on the server.<") = 0 then
   
@@ -289,7 +307,7 @@ CBresponseText = objHTTP.responseBody
 if len(CBresponseText) > 0 then
 binTempResponse = objHTTP.responseBody
   StrTmpResponse = RSBinaryToString(binTempResponse)
-  'logdata CurrentDirectory & "\CB_EDownload.txt", StrTmpResponse,False 
+  if boolDebug = true then logdata CurrentDirectory & "\CB_EDownload.txt", StrTmpResponse,False 
   if instr(StrTmpResponse, "Unhandled exception.") > 0 then exit function 
 
   'msgbox StrTmpResponse
@@ -304,6 +322,17 @@ binTempResponse = objHTTP.responseBody
     strTmp_ExePath = getdata(StrTmpResponse,",", chr(34) & "path" & CHr(34) & ": " )
     strTmp_segment_id = getdata(StrTmpResponse,",", "segment_id" & CHr(34) & ": " )
     sensor_id = getdata(StrTmpResponse,",", "sensor_id" & CHr(34) & ": " )
+    if boolReportUserName = True then 
+      username = getdata(StrTmpResponse,Chr(34), "username" & CHr(34) & ": " & Chr(34))
+      username = "," & Chr(34) & username & Chr(34) 
+      userNheader = "|User Name"
+    end if
+    if boolReportProcessName = True then
+      processname = getdata(StrTmpResponse,Chr(34), "process_name" & CHr(34) & ": " & Chr(34))
+      processname = "," & Chr(34) & processname & Chr(34) 
+      processNheader = "|Process Name"
+      
+    end if
     strTmp_host_type = getdata(StrTmpResponse, Chr(34), "host_type" & CHr(34) & ": " & Chr(34))
     strTmp_group = getdata(StrTmpResponse, Chr(34), "group" & CHr(34) & ": " & Chr(34))
     strTmp_fork_children_count = getdata(StrTmpResponse,",", "fork_children_count" & CHr(34) & ": " )
@@ -319,128 +348,143 @@ binTempResponse = objHTTP.responseBody
     process_pid = getdata(StrTmpResponse,",", "process_pid" & CHr(34) & ": " )
     
     
-    
-    if boolNetworkHeader = False then
-      outrow = "Date Time|IP Address|Remote Port|Protocol|Domain|Outbound|Sensor ID"
-      logdata CurrentDirectory & "\IP_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
-      boolNetworkHeader = True
+
+    if boolNetworkEnable = True then
+      if boolNetworkHeader = False then
+        outrow = "Date Time|IP Address|Remote Port|Protocol|Domain|Outbound|Sensor ID" & userNheader & processNheader
+        logdata CurrentDirectory & "\IP_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+        boolNetworkHeader = True
+      end if
+      strTmpText = getdata(StrTmpResponse,"]", "netconn_complete" & CHr(34) & ": [") 
+      NetConnarrayEvents = split(strTmpText, ", ")
+      for each EventEntry in NetConnarrayEvents
+        if instr(EventEntry, "|") > 0 then 
+          ArrayEE = split(replace(EventEntry,chr(34), ""), "|")
+          if ubound(arrayEE) > 4 then
+           strWriteLine = Chr(34) & arrayEE(0) & Chr(34) & "," & Chr(34) & IPDecToDotQuad(arrayEE(1)) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & arrayEE(3) & Chr(34) & "," & Chr(34) & arrayEE(4) & Chr(34) & "," & Chr(34) & arrayEE(5) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname 
+          logdata CurrentDirectory & "\IP_out_" & strUnique & ".csv",strWriteLine, false
+          end if
+        end if
+      next
     end if
-    strTmpText = getdata(StrTmpResponse,"]", "netconn_complete" & CHr(34) & ": [")
-    NetConnarrayEvents = split(strTmpText, ", ")
-    for each EventEntry in NetConnarrayEvents
-      if instr(EventEntry, "|") > 0 then 
-        ArrayEE = split(replace(EventEntry,chr(34), ""), "|")
-        if ubound(arrayEE) > 4 then
-         strWriteLine = Chr(34) & arrayEE(0) & Chr(34) & "," & Chr(34) & IPDecToDotQuad(arrayEE(1)) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & arrayEE(3) & Chr(34) & "," & Chr(34) & arrayEE(4) & Chr(34) & "," & Chr(34) & arrayEE(5) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) 
-        logdata CurrentDirectory & "\IP_out_" & strUnique & ".csv",strWriteLine, false
-        end if
-      end if
-    next
     
-    if boolRegHeader = False then
+    if boolRegEnable = True then 
+      if boolRegHeader = False then
 
-      outrow = "Action|Date Time|Registry Key|Sensor ID"
-      logdata CurrentDirectory & "\Reg_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
-      boolRegHeader = True
+        outrow = "Action|Date Time|Registry Key|Sensor ID" & userNheader & processNheader
+        logdata CurrentDirectory & "\Reg_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+        boolRegHeader = True
+      end if
+       strTmpText = getdata(StrTmpResponse,"]", "regmod_complete" & CHr(34) & ": [")
+      CbarrayEvents = split(strTmpText, ", ")
+      for each EventEntry in CbarrayEvents
+        if instr(EventEntry, "|") > 0 then 
+          tmpEvent = replace(EventEntry,chr(34), "")
+          ArrayEE = split(tmpEvent, "|")
+          if ubound(arrayEE) > 4 then
+            strAction = ""
+            if dictRegAction.exists(arrayEE(0)) then strAction =  dictRegAction.item(arrayEE(0))
+           strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
+           
+          logdata CurrentDirectory & "\Reg_out_" & strUnique & ".csv",strWriteLine, false
+          end if
+        end if
+      next
     end if
-     strTmpText = getdata(StrTmpResponse,"]", "regmod_complete" & CHr(34) & ": [")
-    CbarrayEvents = split(strTmpText, ", ")
-    for each EventEntry in CbarrayEvents
-      if instr(EventEntry, "|") > 0 then 
-        tmpEvent = replace(EventEntry,chr(34), "")
-        ArrayEE = split(tmpEvent, "|")
-        if ubound(arrayEE) > 4 then
-          strAction = ""
-          if dictRegAction.exists(arrayEE(0)) then strAction =  dictRegAction.item(arrayEE(0))
-         strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) 
-         
-        logdata CurrentDirectory & "\Reg_out_" & strUnique & ".csv",strWriteLine, false
-        end if
+
+
+
+    if boolModEnable = True then
+      if boolModHeader = False then
+
+        outrow = "Date Time|MD5|File Path|Sensor ID" & userNheader & processNheader
+        logdata CurrentDirectory & "\Mod_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+        boolModHeader = True
       end if
-    next
-
-
-    if boolModHeader = False then
-
-      outrow = "Date Time|MD5|File Path|Sensor ID"
-      logdata CurrentDirectory & "\Mod_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
-      boolModHeader = True
+       strTmpText = getdata(StrTmpResponse,"]", "modload_complete" & CHr(34) & ": [")
+      CbarrayEvents = split(strTmpText, ", ")
+      for each EventEntry in CbarrayEvents
+        if instr(EventEntry, "|") > 0 then 
+          tmpEvent = replace(EventEntry,chr(34), "")
+          ArrayEE = split(tmpEvent, "|")
+          if ubound(arrayEE) > 1 then
+           strWriteLine = chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
+           
+          logdata CurrentDirectory & "\Mod_out_" & strUnique & ".csv",strWriteLine, false
+          end if
+        end if
+      next
     end if
-     strTmpText = getdata(StrTmpResponse,"]", "modload_complete" & CHr(34) & ": [")
-    CbarrayEvents = split(strTmpText, ", ")
-    for each EventEntry in CbarrayEvents
-      if instr(EventEntry, "|") > 0 then 
-        tmpEvent = replace(EventEntry,chr(34), "")
-        ArrayEE = split(tmpEvent, "|")
-        if ubound(arrayEE) > 1 then
-         strWriteLine = chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) 
-         
-        logdata CurrentDirectory & "\Mod_out_" & strUnique & ".csv",strWriteLine, false
-        end if
-      end if
-    next
     
-    if boolChildHeader = False then
+    if boolChildEnable = True then 
+      if boolChildHeader = False then
 
-      outrow = "Date Time|Unique ID|MD5|File Path|PID|Not Suppressed|Parent PID|Unique ID|Sensor ID"
-      logdata CurrentDirectory & "\Child_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
-      boolChildHeader = True
-    end if    
-    strTmpText = getdata(StrTmpResponse,"]", "childproc_complete" & CHr(34) & ": [")
-    CbarrayEvents = split(strTmpText, ", ")
-    for each EventEntry in CbarrayEvents
-      if instr(EventEntry, "|") > 0 then 
-        tmpEvent = replace(EventEntry,chr(34), "")
-        ArrayEE = split(tmpEvent, "|")
-        if ubound(arrayEE) > 4 then
-         strWriteLine = replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strIDPath & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) 
-         
-        logdata CurrentDirectory & "\Child_out_" & strUnique & ".csv",strWriteLine, false
+        outrow = "Date Time|Unique ID|MD5|File Path|PID|Not Suppressed|Parent PID|Unique ID|Sensor ID" & userNheader & processNheader
+        logdata CurrentDirectory & "\Child_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+        boolChildHeader = True
+      end if    
+      strTmpText = getdata(StrTmpResponse,"]", "childproc_complete" & CHr(34) & ": [")
+      CbarrayEvents = split(strTmpText, ", ")
+      for each EventEntry in CbarrayEvents
+        if instr(EventEntry, "|") > 0 then 
+          tmpEvent = replace(EventEntry,chr(34), "")
+          ArrayEE = split(tmpEvent, "|")
+          if ubound(arrayEE) > 4 then
+           strWriteLine = replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strIDPath & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
+           
+          logdata CurrentDirectory & "\Child_out_" & strUnique & ".csv",strWriteLine, false
+          end if
         end if
-      end if
-    next
-    if boolFileHeader = False then
+      next
+    end if
 
-      outrow = "Action|Date Time|File Path|Last Write MD5|File Type|Tamper Attempt|Sensor ID"
-      logdata CurrentDirectory & "\File_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
-      boolFileHeader = True
-    end if       
-    strTmpText = getdata(StrTmpResponse,chr(34) & "], ", "filemod_complete" & CHr(34) & ": [")
-    CbarrayEvents = split(strTmpText, ", ")
-    for each EventEntry in CbarrayEvents
-      if instr(EventEntry, "|") > 0 then 
-        tmpEvent = replace(EventEntry,chr(34), "")
-        ArrayEE = split(tmpEvent, "|")
-        if ubound(arrayEE) > 1 then
-          strAction = ""
-          if dictRegAction.exists(arrayEE(0)) then strAction =  dictFileAction.item(arrayEE(0))
-         strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34)  & "," & Chr(34) & arrayEE(3) & Chr(34)  & "," & Chr(34) & arrayEE(4) & Chr(34)  & "," & Chr(34) & arrayEE(5) & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) 
-         
-        logdata CurrentDirectory & "\File_out_" & strUnique & ".csv",strWriteLine, false
+
+
+    if boolFileEnable = True then 
+      if boolFileHeader = False then
+
+        outrow = "Action|Date Time|File Path|Last Write MD5|File Type|Tamper Attempt|Sensor ID" & userNheader & processNheader
+        logdata CurrentDirectory & "\File_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+        boolFileHeader = True
+      end if       
+      strTmpText = getdata(StrTmpResponse,chr(34) & "], ", "filemod_complete" & CHr(34) & ": [")
+      CbarrayEvents = split(strTmpText, ", ")
+      for each EventEntry in CbarrayEvents
+        if instr(EventEntry, "|") > 0 then 
+          tmpEvent = replace(EventEntry,chr(34), "")
+          ArrayEE = split(tmpEvent, "|")
+          if ubound(arrayEE) > 1 then
+            strAction = ""
+            if dictRegAction.exists(arrayEE(0)) then strAction =  dictFileAction.item(arrayEE(0))
+           strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34)  & "," & Chr(34) & arrayEE(3) & Chr(34)  & "," & Chr(34) & arrayEE(4) & Chr(34)  & "," & Chr(34) & arrayEE(5) & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) & username & processname
+           
+          logdata CurrentDirectory & "\File_out_" & strUnique & ".csv",strWriteLine, false
+          end if
         end if
-      end if
-    next
+      next
+    end if
     
-    if boolCrossHeader = False then
+    if boolCrossEnable = True then 
+      if boolCrossHeader = False then
 
-      outrow = "Action|Date Time|Target Unique ID|Target MD5|Target Path|Open Type|Access Requested|Tamper|Inbound Open|PID|Process Path|Unique ID|Sensor ID"
-      logdata CurrentDirectory & "\Cross_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
-      boolCrossHeader = True
-    end if    
-    strTmpText = getdata(StrTmpResponse,"]", "crossproc_complete" & CHr(34) & ": [")
-    CbarrayEvents = split(strTmpText, ", ")
-    for each EventEntry in CbarrayEvents
-      if instr(EventEntry, "|") > 0 then 
-        tmpEvent = replace(EventEntry,chr(34), "")
-        ArrayEE = split(tmpEvent, "|")
-        if ubound(arrayEE) > 1 then
-         strWriteLine = chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strTmp_ExePath & Chr(34) & "," & Chr(34) & strIDPath & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) 
-         
-        logdata CurrentDirectory & "\Cross_out_" & strUnique & ".csv",strWriteLine, false
+        outrow = "Action|Date Time|Target Unique ID|Target MD5|Target Path|Open Type|Access Requested|Tamper|Inbound Open|PID|Process Path|Unique ID|Sensor ID" & userNheader & processNheader
+        logdata CurrentDirectory & "\Cross_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+        boolCrossHeader = True
+      end if    
+      strTmpText = getdata(StrTmpResponse,"]", "crossproc_complete" & CHr(34) & ": [")
+      CbarrayEvents = split(strTmpText, ", ")
+      for each EventEntry in CbarrayEvents
+        if instr(EventEntry, "|") > 0 then 
+          tmpEvent = replace(EventEntry,chr(34), "")
+          ArrayEE = split(tmpEvent, "|")
+          if ubound(arrayEE) > 1 then
+           strWriteLine = chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strTmp_ExePath & Chr(34) & "," & Chr(34) & strIDPath & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) & username & processname
+           
+          logdata CurrentDirectory & "\Cross_out_" & strUnique & ".csv",strWriteLine, false
+          end if
         end if
-      end if
-    next
-
+      next
+    end if
     
     strTmpText = getdata(StrTmpResponse,"]", "exec_events" & CHr(34) & ": [")
     arrayEvents = split(strTmpText, ", ")
@@ -686,8 +730,4 @@ End Function
 function UDate(oldDate)
     UDate = DateDiff("s", "01/01/1970 00:00:00", oldDate)
 end function
-
-
-
-
 

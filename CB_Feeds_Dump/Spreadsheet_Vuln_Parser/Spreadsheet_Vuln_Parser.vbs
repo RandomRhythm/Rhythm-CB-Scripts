@@ -1,6 +1,6 @@
 'Spreadsheet Vuln Parser for CB_feeds_dump csv output
 'requires Microsoft Excel
-'v1.1 Support for reporting on MS17-010 KB4013389
+'v1.2
 
 'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
 'All rights reserved.
@@ -93,38 +93,38 @@ strTmpvalue = lcase(strTmpvalue)
 if instr(strTmpvalue, "iexplore.exe") > 0  or instr(strTmpvalue, "internet explorer") then
   strProduct = "Internet Explorer"
   strVulnType = "Outdated " 
-  strPatched = "Up to date "
-  strVulnDetail = " version"
-  strPatchDetail = " version"
+  strPatched = "Up to Date "
+  strVulnDetail = " Version"
+  strPatchDetail = " Version"
   strChatText = " Version Support"
   boolJustMajorVersion = True
 elseif instr(strTmpvalue, "macromed") > 0  or instr(strTmpvalue, "flash") then
   strProduct = "Flash Player"
   strVulnType = "Outdated " 
-  strPatched = "Up to date "
-  strVulnDetail = " version"
-  strPatchDetail = " version"
+  strPatched = "Up to Date "
+  strVulnDetail = " Version"
+  strPatchDetail = " Version"
   strChatText = " Version Support"
 elseif instr(strTmpvalue, "mshtml.dll") > 0 then
   strProduct = "MS15-065 KB3065822"  
   strVulnType = "Patch " 
   strPatched = "Patch "
-  strVulnDetail = " not applied"
-  strPatchDetail = " applied"
+  strVulnDetail = " not Applied"
+  strPatchDetail = " Applied"
   strChatText = " Patched"
 elseif instr(strTmpvalue, "netapi32.dll") > 0 then
   strProduct = "MS08-067"  
   strVulnType = "Patch " 
   strPatched = "Patch "
-  strVulnDetail = " not applied"
-  strPatchDetail = " applied"
+  strVulnDetail = " not Applied"
+  strPatchDetail = " Applied"
   strChatText = " Patched"
 elseif instr(strTmpvalue, "vbscript.dll") > 0 then
   strProduct = "MS16-051 KB3155533"  
   strVulnType = "Patch " 
   strPatched = "Patch "
-  strVulnDetail = " not applied"
-  strPatchDetail = " applied"
+  strVulnDetail = " not Applied"
+  strPatchDetail = " Applied"
   strChatText = " Patched"
 elseif instr(strTmpvalue, "silverlight") > 0 then
   strProduct = "Silverlight"  
@@ -138,7 +138,7 @@ elseif instr(strTmpvalue, "srv.sys") > 0 then
   strVulnType = "Vulnerable " 
   strPatched = ""
   strVulnDetail = ""
-  strPatchDetail = " update applied"
+  strPatchDetail = " Update Applied"
   strChatText = " Patched"
   else
   strProduct = inputbox("enter product name")
@@ -182,7 +182,7 @@ loop
 intRowCounter = 1
 if dictUnsupported.count > 0 then
   Move_next_Workbook_Worksheet( "Unsupported")
-  Write_Spreadsheet_line "Unsupported " & strProduct & " major version|Version Number"
+  Write_Spreadsheet_line "Unsupported " & strProduct & " Version|Version Number"
   for each strCompName in dictUnsupported
     Write_Spreadsheet_line strCompName & "|" & dictUnsupported.item(strCompName)
   next
@@ -209,7 +209,7 @@ if dictOutdated.count > 0 then Write_Spreadsheet_line "Outdated|" &  dictOutdate
 Write_Spreadsheet_line "Updated|" &  DictUpdated.count
 
 Move_next_Workbook_Worksheet("Version Chart")
-Write_Spreadsheet_line  strProduct & "Versions" & "|" & "Count"
+Write_Spreadsheet_line  strProduct & " Versions" & "|" & "Count"
 for each strVersionNumber in DictVersion
   Write_Spreadsheet_line strVersionNumber & "|" &  DictVersion.item(strVersionNumber)
 next

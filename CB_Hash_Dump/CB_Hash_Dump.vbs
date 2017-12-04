@@ -1,7 +1,7 @@
-'CB Hash Dump v2.3 - Dumps hashes from CB (Carbon Black) Response
+'CB Hash Dump v2.4 - Dumps hashes from CB (Carbon Black) Response
 'Dumps CSV "MD5|Path|Publisher|Company|Product|CB Prevalence|Logical Size|Score
 
-'This script will dump sensor information via the CB Response (Carbon Black) API
+'This script will write out hashes and some associated data via the CB Response (Carbon Black) API
 
 'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
 'All rights reserved.
@@ -34,6 +34,11 @@ Dim strEndDateQuery
 Dim strSRSTRustQuery
 Dim strHostFilter
 Dim boolOutputHosts
+Dim boolOutputDateAdded
+Dim boolOutputCopyright
+Dim boolOutputInternalName
+Dim boolOutputOrigFname
+Dim boolOutputFileDesc
 Const forwriting = 2
 Const ForAppending = 8
 Const ForReading = 1
@@ -48,6 +53,13 @@ strBoolIs_Executable = "True" 'set to "true" to query executables. Set to "false
 BoolExcludeSRSTRust = True 'Exclude trusted applications from the query
 strHostFilter = "" 'computer name to filter to. Use uppercase, is case sensitive 
 boolOutputHosts = True ' Set to True to output hostnames for each binary
+boolOutputDateAdded = True ' Set to True to output the date that the file was added to Cb Response
+boolOutputDateSigned = True ' Set to True to output the date the binary was signed
+boolOutputInternalName = True 'Seems uncommon for this to be populated
+boolOutputCopyright = True
+boolOutputComments = True
+boolOutputOrigFname = True 'Seems uncommon for this to be populated
+boolOutputFileDesc = True
 '---End Config section
 
 if strHostFilter <> "" then 
@@ -149,8 +161,19 @@ strTempAPIKey = ""
 
 
 if BoolUseCarbonBlack = True then
-  'write header row
-  strSSrow = "MD5|Path|" & "Publisher|" & "Company|" & "Product|" & "CB Prevalence|" & "Logical Size|Alliance Score"
+  ssInternalName = ""
+  ssCopyright = ""
+  ssComment = ""
+
+  if boolOutputOrigFname = True then ssOrigFname = "|Original File Name"
+  if boolOutputInternalName = True then ssInternalName = "|Internal Name"
+  IF boolOutputCopyright = True then ssCopyright = "|Copyright"
+  If boolOutputFileDesc = True then ssFileDesc = "|File Description"
+  If boolOutputComments = True then ssComment = "|Comments"
+  'build header row
+  strSSrow = "MD5|Path|Publisher|Company|Product" & ssInternalName & ssOrigFname & ssCopyright & ssFileDesc & ssComment & "|CB Prevalence" & "|Logical Size|Alliance Score"
+  if boolOutputDateAdded = True then strSSrow = strSSrow & "|Date Time Added"
+  if boolOutputDateSigned = True then strSSrow = strSSrow & "|Date Time Signed"
   if boolOutputHosts = True then strSSrow = strSSrow & "|Computers"
   strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
   logdata strSSfilePath, strTmpSSlout, False
@@ -222,8 +245,11 @@ else
           if instr(strCBresponseText, "digsig_publisher") then 
             strCBdigSig = getdata(strCBresponseText, chr(34), "digsig_publisher" & Chr(34) & ": " & Chr(34))
             strCBdigSig = replace(strCBdigSig,chr(10),"")
+			strCBdigIssue = getdata(strCBresponseText, chr(34), "digsig_issuer" & Chr(34) & ": " & Chr(34))
           else
             'not signed 
+			strCBdigSig = ""
+			strCBdigIssue = ""
           end if
           if instr(strCBresponseText, "signed" & Chr(34) & ": " & Chr(34) & "Signed") = 0 and instr(strCBresponseText, "signed" & Chr(34) & ": " & Chr(34) & "Unsigned") = 0 then
             'problem with sig
@@ -262,6 +288,27 @@ else
           strCBFileSize = getdata(strCBresponseText, ",", "orig_mod_len" & Chr(34) & ": ")
           strtmpCB_Fpath = getfilepath(strCBfilePath)
           strCBVTScore = getdata(strCBresponseText, ",", "alliance_score_virustotal" & Chr(34) & ": ")
+		  if boolOutputDateAdded = True then
+			strDateTimeAdded = getdata(strCBresponseText, chr(34), "server_added_timestamp" & Chr(34) & ": " & Chr(34))
+		  end if
+		  if boolOutputDateSigned = True then
+			strDateTimeSigned = getdata(strCBresponseText, chr(34), "digsig_sign_time" & Chr(34) & ": " & Chr(34))
+		  end if
+		  if boolOutputInternalName = True then
+			strInternalName = getdata(strCBresponseText, chr(34), "strInternalName" & Chr(34) & ": " & Chr(34))
+		  end if
+		  if boolOutputCopyright = True then
+			strcopyright = getdata(strCBresponseText, chr(34), "legal_copyright" & Chr(34) & ": " & Chr(34))
+		  end if
+		  if boolOutputComments = True then 
+			strComments = getdata(strCBresponseText, chr(34), "comments" & Chr(34) & ": " & Chr(34))
+		  end if
+		  if boolOutputOrigFname = True then 
+			strOrigFname = getdata(strCBresponseText, chr(34), "original_filename" & Chr(34) & ": " & Chr(34))
+		  end if		  
+		if boolOutputFileDesc = True then 
+			strFileDesc = getdata(strCBresponseText, chr(34), "file_desc" & Chr(34) & ": " & Chr(34))
+		  end if
           'RecordPathVendorStat strtmpCB_Fpath 'record path vendor statistics
         end if
       end if
@@ -274,12 +321,16 @@ else
       strCBFileSize = AddPipe(strCBFileSize)  
       strCBprevalence = AddPipe(strCBprevalence)
       strCBVTScore = AddPipe(strCBVTScore)
-      if boolOutputHosts = True then
-        strCBHostname = AddPipe(strCBHostname)
-      else
-        strCBHostname = ""
-      end if
-      strSSrow = StrCBMD5 & strCBfilePath & strCBdigSig & strCBcompanyName & strCBproductName & strCBprevalence & strCBFileSize & strCBVTScore & strCBHostname
+      strCBHostname = boolAddPipe(strCBHostname, boolOutputHosts)
+      strDateTimeAdded = boolAddPipe(strDateTimeAdded, boolOutputDateAdded)
+      strDateTimeSigned = boolAddPipe(strDateTimeSigned, boolOutputDateSigned)
+      strInternalName = boolAddPipe(strInternalName, boolOutputInternalName)
+      strcopyright = boolAddPipe(strcopyright, boolOutputCopyright)
+	  strComments = boolAddPipe(strComments, boolOutputComments)
+	  strOrigFname  = boolAddPipe(strOrigFname, boolOutputOrigFname)
+	  strFileDesc  = boolAddPipe(strFileDesc, boolOutputFileDesc)
+	  
+      strSSrow = StrCBMD5 & strCBfilePath & strCBdigSig & strCBcompanyName & strCBproductName & strOrigFname & strInternalName & strcopyright & strFileDesc & strComments & strCBprevalence & strCBFileSize & strCBVTScore & strDateTimeAdded & strDateTimeSigned & strCBHostname
       strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
       logdata strSSfilePath, strTmpSSlout, False
     end if
@@ -294,6 +345,15 @@ else
   next
 end if
 set objHTTP = nothing
+end function
+
+Function boolAddPipe(strPipeless, BooleanAddPipe)
+if BooleanAddPipe = True then
+	strReturnPiped = AddPipe(strPipeless)
+else
+	strReturnPiped = strPipeless
+end if
+boolAddPipe = strReturnPiped
 end function
 
 Function GetData(contents, ByVal EndOfStringChar, ByVal MatchString)

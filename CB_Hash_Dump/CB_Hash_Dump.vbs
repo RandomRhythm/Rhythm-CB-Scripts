@@ -295,7 +295,7 @@ else
 			strDateTimeSigned = getdata(strCBresponseText, chr(34), "digsig_sign_time" & Chr(34) & ": " & Chr(34))
 		  end if
 		  if boolOutputInternalName = True then
-			strInternalName = getdata(strCBresponseText, chr(34), "strInternalName" & Chr(34) & ": " & Chr(34))
+			strInternalName = getdata(strCBresponseText, chr(34), "internal_name" & Chr(34) & ": " & Chr(34))
 		  end if
 		  if boolOutputCopyright = True then
 			strcopyright = getdata(strCBresponseText, chr(34), "legal_copyright" & Chr(34) & ": " & Chr(34))

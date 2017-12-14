@@ -1,4 +1,4 @@
-'Cb Pull Events v1.3.1 - Add username and process name output. Add boolean to not output/parse sections 
+'Cb Pull Events v1.3.2 - IPv6 support
 'Pulls event data from the Cb Response API and dumps to CSV. 
 
 'additional queries can be run via aq.txt in the current directory.
@@ -659,6 +659,10 @@ Set fsoLogData = Nothing
 End Function
 
 Function IPDecToDotQuad(intDecIP)
+if IsIPv6(intDecIP) = True then 
+	IPDecToDotQuad = intDecIP
+	exit function
+end if
 tmpOct = ""
 y = 0
 for x = 1 to 32 
@@ -731,3 +735,35 @@ function UDate(oldDate)
     UDate = DateDiff("s", "01/01/1970 00:00:00", oldDate)
 end function
 
+
+Function IsIPv6(TestString)
+
+    Dim sTemp
+    Dim iLen
+    Dim iCtr
+    Dim sChar
+    
+    if instr(TestString, ":") = 0 then 
+		IsIPv6 = false
+		exit function
+	end if
+    
+    sTemp = TestString
+    iLen = Len(sTemp)
+    If iLen > 0 Then
+        For iCtr = 1 To iLen
+            sChar = Mid(sTemp, iCtr, 1)
+            if isnumeric(sChar) or "a"= lcase(sChar) or "b"= lcase(sChar) or "c"= lcase(sChar) or "d"= lcase(sChar) or "e"= lcase(sChar) or "f"= lcase(sChar) or ":" = sChar then
+              'allowed characters for hash (hex)
+            else
+              IsIPv6 = False
+              exit function
+            end if
+        Next
+    
+    IsIPv6 = True
+    else
+      IsIPv6 = False
+    End If
+    
+End Function

@@ -1,4 +1,4 @@
-'CB Feed Dump v3.9 'YARA column has header now and logs to file with standard naming convention. Handle duplicate aditional queries. Add start time, user name, and duration to process spreadsheet.
+'CB Feed Dump v4.0 'YARA output file has header row now.
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -1390,10 +1390,14 @@ do while boolexit = False
         if strTitle <> "" then
           if instr(strTitle, "Matched yara rules: ") and ishash(strItem) then
             dictYARA.add strItem, replace(right(strTitle,len(strTitle) -20), ",", "^")
+            strTitle = right(strTitle, len(strTitle)-20)
           end if
           strRowOut = strCBid & "|" & strTitle & "|" & strItem
           strRowOut = chr(34) & replace(strRowOut,"|",chr(34) & "," & Chr(34)) & chr(34)
-          if tmpYaraUID = "" then tmpYaraUID = udate(now)
+          if tmpYaraUID = "" then 
+            tmpYaraUID = udate(now)
+            logdata CurrentDirectory & "\" & strUniquefName & "_" & tmpYaraUID & ".csv","CB ID, YARA Rules, MD5" , false
+          end if
           logdata CurrentDirectory & "\" & strUniquefName & "_" & tmpYaraUID & ".csv",strRowOut , false
         end if
 		next

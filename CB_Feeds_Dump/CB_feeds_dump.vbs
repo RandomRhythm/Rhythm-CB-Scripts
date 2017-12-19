@@ -805,6 +805,8 @@ if StrCBMD5 <> "" then
 	if boolAddYARAtoReports = True then
 		if dictYARA.exists(StrCBMD5) then
 			strYaraLine = "|" & dictYARA.item(StrCBMD5)
+		else
+			strYaraLine = "|" 
 		end if
 	end if
     'not using Parent Name,Command Line,TOR IP,ID GUID,Child Count
@@ -924,10 +926,10 @@ dim strPipeAdded
 
 if len(strpipeless) > 0 then
   if left(strpipeless, 1) <> "|" then 
-    strPipeAdded = "|" & strpipeless
+    strPipeAdded = "|" & replace(strpipeless, "|", ",")
 
   else
-    strPipeAdded = strpipeless
+    strPipeAdded = "|" & replace(right(strpipeless, len(strpipeless) -1), "|", ",")
   end if  
 else
   strPipeAdded = "|"
@@ -935,6 +937,7 @@ end if
 
 AddPipe = strPipeAdded 
 end function
+
 
 
 Function encrypt(StrText, key) 'Rafael Paran? - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
@@ -1416,13 +1419,11 @@ do while boolexit = False
 		end if
 	else
 		boolexit = True
-		msgbox "Error 1"
-		msgbox intResultCount
+		msgbox "Error running query: " & strQuery
 		exit function
 	end if
 loop
 End function
-
 
 
 Function RSBinaryToString(xBinary)

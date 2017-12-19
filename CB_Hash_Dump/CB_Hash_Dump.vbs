@@ -1,4 +1,4 @@
-'CB Hash Dump v2.4 - Dumps hashes from CB (Carbon Black) Response
+'CB Hash Dump v2.5 - Dumps hashes from CB (Carbon Black) Response
 'Dumps CSV "MD5|Path|Publisher|Company|Product|CB Prevalence|Logical Size|Score
 
 'This script will write out hashes and some associated data via the CB Response (Carbon Black) API
@@ -39,6 +39,13 @@ Dim boolOutputCopyright
 Dim boolOutputInternalName
 Dim boolOutputOrigFname
 Dim boolOutputFileDesc
+Dim boolEnableYARA
+Dim yaraFeedID
+Dim tmpYaraUID
+Dim ExpandYARA
+Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
+Dim dictYARA: Set dictYARA = CreateObject("Scripting.Dictionary")
+Dim dictYARoutput: Set dictYARoutput = CreateObject("Scripting.Dictionary")
 Const forwriting = 2
 Const ForAppending = 8
 Const ForReading = 1
@@ -48,7 +55,7 @@ Const ForReading = 1
 BoolDebugTrace = False 'Leave this to false unless asked to collect debug logs.
 IntDayStartQuery = "*" 'time to go back for start date of query. Set to "*" to query all binaries. Set to "-7" for the last week.
 strTimeMeasurement = "d" '"h" for hours "d" for days
-IntDayEndQuery = "-1" 'days to go back for end date of query. Set to "*" for no end date. Set to "-1" to stop at yesterday.
+IntDayEndQuery = "*" 'days to go back for end date of query. Set to "*" for no end date. Set to "-1" to stop at yesterday.
 strBoolIs_Executable = "True" 'set to "true" to query executables. Set to "false" to query resources (DLLs).
 BoolExcludeSRSTRust = True 'Exclude trusted applications from the query
 strHostFilter = "" 'computer name to filter to. Use uppercase, is case sensitive 
@@ -60,6 +67,8 @@ boolOutputCopyright = True
 boolOutputComments = True
 boolOutputOrigFname = True 'Seems uncommon for this to be populated
 boolOutputFileDesc = True
+boolEnableYARA = True'include yara
+expandYARA = False 'Adds a column for each rule. Set to false to put all YARA data in one column
 '---End Config section
 
 if strHostFilter <> "" then 
@@ -160,11 +169,26 @@ end if
 strTempAPIKey = ""
 
 
+intTotalQueries = 50
+'get feed info
+DumbCbFeed 0, False, intTotalQueries, "/api/v1/feed"
+'process yara
+if boolEnableYARA = True then 
+	wscript.sleep 10 
+  if dictYARA.count  = 0 then
+		CbFeedQuery "feed_id:" & yaraFeedID, "YARA"
+		if dictYARA.count  = 0  then 
+			'wscript.echo "Nothing returned from YARA feed so disabling it."
+			boolEnableYARA = False
+		end if
+	end if
+end if	
+
 if BoolUseCarbonBlack = True then
   ssInternalName = ""
   ssCopyright = ""
   ssComment = ""
-
+  ssYARA = ""
   if boolOutputOrigFname = True then ssOrigFname = "|Original File Name"
   if boolOutputInternalName = True then ssInternalName = "|Internal Name"
   IF boolOutputCopyright = True then ssCopyright = "|Copyright"
@@ -175,6 +199,13 @@ if BoolUseCarbonBlack = True then
   if boolOutputDateAdded = True then strSSrow = strSSrow & "|Date Time Added"
   if boolOutputDateSigned = True then strSSrow = strSSrow & "|Date Time Signed"
   if boolOutputHosts = True then strSSrow = strSSrow & "|Computers"
+  If boolEnableYARA = True then 
+	if expandYARA = False then
+		strSSrow = strSSrow & "|YARA"
+	else
+		strSSrow = strSSrow & "|" & YARAheaderrow
+	end if
+	end if
   strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
   logdata strSSfilePath, strTmpSSlout, False
   intTotalQueries = 10
@@ -313,6 +344,20 @@ else
         end if
       end if
     end if
+		
+	strYaraLine = ""
+	if boolEnableYARA = True then
+		if expandYARA = False then 
+			if dictYARA.exists(StrCBMD5) then
+				strYaraLine = "|" & dictYARA.item(StrCBMD5)
+			else
+				strYaraLine = "|" 
+			end if
+		else
+			strYaraLine = YARAEntryrow(StrCBMD5)
+		end if
+	end if
+	
     if StrCBMD5 <> "" then
       strCBfilePath = AddPipe(strCBfilePath) 'CB File Path
       strCBdigSig = AddPipe(strCBdigSig) 'CB Digital Sig
@@ -330,8 +375,8 @@ else
 	  strOrigFname  = boolAddPipe(strOrigFname, boolOutputOrigFname)
 	  strFileDesc  = boolAddPipe(strFileDesc, boolOutputFileDesc)
 	  
-      strSSrow = StrCBMD5 & strCBfilePath & strCBdigSig & strCBcompanyName & strCBproductName & strOrigFname & strInternalName & strcopyright & strFileDesc & strComments & strCBprevalence & strCBFileSize & strCBVTScore & strDateTimeAdded & strDateTimeSigned & strCBHostname
-      strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
+      strSSrow = StrCBMD5 & strCBfilePath & strCBdigSig & strCBcompanyName & strCBproductName & strOrigFname & strInternalName & strcopyright & strFileDesc & strComments & strCBprevalence & strCBFileSize & strCBVTScore & strDateTimeAdded & strDateTimeSigned & strCBHostname & strYaraLine
+	  strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
       logdata strSSfilePath, strTmpSSlout, False
     end if
     strCBfilePath = ""
@@ -462,10 +507,10 @@ dim strPipeAdded
 
 if len(strpipeless) > 0 then
   if left(strpipeless, 1) <> "|" then 
-    strPipeAdded = "|" & strpipeless
+    strPipeAdded = "|" & replace(strpipeless, "|", ",")
 
   else
-    strPipeAdded = strpipeless
+    strPipeAdded = "|" & replace(right(strpipeless, len(strpipeless) -1), "|", ",")
   end if  
 else
   strPipeAdded = "|"
@@ -538,3 +583,252 @@ FormatDate = datepart("yyyy",strFDate) & "-" & strTmpMonth & "-" & strTmpDay & "
 
 end function
 
+
+
+Function CbFeedQuery(strQuery, strUniquefName)
+Dim intParseCount: intParseCount = 10
+Set objHTTP = CreateObject("WinHttp.WinHttpRequest.5.1")
+strAppendQuery = ""
+boolexit = False 
+do while boolexit = False 
+	strAVEurl = StrBaseCBURL & "/api/v1/threat_report?q=" & strQuery & strAppendQuery
+	objHTTP.open "GET", strAVEurl, False
+	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+
+	on error resume next
+	  objHTTP.send 
+	  if err.number <> 0 then
+		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+		exit function 
+	  end if
+	on error goto 0 
+	CBresponseText = objHTTP.responseBody
+	if len(CBresponseText) > 0 then
+	
+		binTempResponse = objHTTP.responseBody
+		  StrTmpResponse = RSBinaryToString(binTempResponse)
+		logdata CurrentDirectory & "\Cb_TQueryResults.log", StrTmpResponse,False 
+
+		if instr(StrTmpResponse, vblf & "    {") > 0 then
+		  strArrayCBresponse = split(StrTmpResponse, vblf & "    {")
+		else
+		  strArrayCBresponse = split(StrTmpResponse, vblf & "  {")
+		end if
+		for each strCBResponseText in strArrayCBresponse
+			 strTmpIOC = getdata(strCBResponseText, "]", "[")
+
+			 strItem = getdata(strTmpIOC, chr(34) ,chr(34))
+				strCBid = getdata(strCBResponseText, chr(34), chr(34) & "id" & Chr(34) & ": " & Chr(34))
+        strTitle = getdata(strCBResponseText, chr(34), "title" & Chr(34) & ": " & Chr(34))
+
+        if strTitle <> "" then
+          if instr(strTitle, "Matched yara rules: ") and ishash(strItem) then
+			strTitle = replace(right(strTitle,len(strTitle) -20), ",", "^")
+            dictYARA.add strItem, strTitle
+          end if
+			if instr(strTitle, "^") = 0 then
+				queryYARAdict strTitle, strItem
+			else
+				arrayRuleNames = split(strTitle, "^")
+				for each yaraRname in arrayRuleNames
+					queryYARAdict yaraRname, strItem
+				next
+			end if
+          strRowOut = strCBid & "|" & strTitle & "|" & strItem
+          strRowOut = chr(34) & replace(strRowOut,"|",chr(34) & "," & Chr(34)) & chr(34)
+          if tmpYaraUID = "" then tmpYaraUID = udate(now)
+          logdata CurrentDirectory & "\" & strUniquefName & "_" & tmpYaraUID & ".csv",strRowOut , false
+        end if
+		next
+	end if
+  intResultCount = getdata(StrTmpResponse, ",", "total_results" & Chr(34) & ": ")
+	if isnumeric(intResultCount) then
+
+    intAnswer = vbno 'msgbox (intParseCount & " items have been pulled down. Do you want to pull down more? There are a total of " & intResultCount & " items to retrieve",vbYesNo, "Cb Scripts")
+		if intAnswer = vbno and intParseCount < clng(intResultCount) then
+			
+			strAppendQuery = "&start=" & intParseCount & "&rows=" & 1000
+			intParseCount = intParseCount + 1000
+		else
+			boolexit = True
+			exit function
+		end if
+	else
+		boolexit = True
+		msgbox "YARA query error"
+		exit function
+	end if
+loop
+End function
+
+
+Function DumbCbFeed(intCBcount,BoolProcessData, intCBrows, strURLQuery)
+
+Set objHTTP = CreateObject("MSXML2.ServerXMLHTTP")
+Dim strAVEurl
+Dim strReturnURL
+dim strAssocWith
+Dim strCBresponseText
+Dim strtmpCB_Fpath
+Dim StrTmpFeedIP
+Dim boolProcessChildren: boolProcessChildren = False
+strAVEurl = StrBaseCBURL & strURLQuery
+if BoolProcessData = True and instr(strAVEurl, "?") > 0 then
+  strAVEurl = strAVEurl & "&start=" & intCBcount & "&rows=" & intCBrows
+end if
+if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", "Query URL=" & strAVEurl & vbcrlf & vbcrlf,BoolEchoLog 
+objHTTP.open "GET", strAVEurl, False
+
+objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+  
+
+on error resume next
+  objHTTP.send 
+  if err.number <> 0 then
+    logdata CurrentDirectory & "\CBF_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+    exit function 
+  end if
+on error goto 0  
+'creates a lot of data. Don't uncomment next line unless your going to disable it again
+if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
+strCBresponseText = objHTTP.responseText
+if instr(objHTTP.responseText, "401 Unauthorized") then
+  Msgbox "Carbon Black did not like the API key supplied"
+  wscript.quit(997)
+end if
+if instr(strCBresponseText, vblf & "    {") > 0 then
+  strArrayCBresponse = split(strCBresponseText, vblf & "    {")
+else
+  strArrayCBresponse = split(strCBresponseText, vblf & "  {")
+end if
+for each strCBResponseText in strArrayCBresponse
+
+  if len(strCBresponseText) > 0 then
+    'logdata strDebugPath & "cbresponse.log", strCBresponseText, True
+    if instr(strCBresponseText, "Sample not found by hash ") > 0 then
+      'hash not found
+    else
+      if instr(strCBresponseText, "total_results" & Chr(34) & ": ") > 0 then
+        DumbCbFeed = getdata(strCBresponseText, ",", "total_results" & Chr(34) & ": ")
+      elseif instr(strCBresponseText, "provider_url" & Chr(34) & ": ") > 0 and instr(strCBresponseText, "id" & Chr(34) & ": ") > 0 then
+        strTmpFeedID = getdata(strCBresponseText, ",", "id" & Chr(34) & ": ")
+        strTmpFeedName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
+		if strTmpFeedName = "yara" then yaraFeedID = strTmpFeedID
+
+      end if
+    end if
+  end if
+
+next
+set objHTTP = nothing
+end function
+
+
+Function IsHash(TestString)
+
+    Dim sTemp
+    Dim iLen
+    Dim iCtr
+    Dim sChar
+    
+    'returns true if all characters in a string are alphabetical
+    '   or numeric
+    'returns false otherwise or for empty string
+    
+    sTemp = TestString
+    iLen = Len(sTemp)
+    If iLen > 0 Then
+        For iCtr = 1 To iLen
+            sChar = Mid(sTemp, iCtr, 1)
+            if isnumeric(sChar) or "a"= lcase(sChar) or "b"= lcase(sChar) or "c"= lcase(sChar) or "d"= lcase(sChar) or "e"= lcase(sChar) or "f"= lcase(sChar)  then
+              'allowed characters for hash (hex)
+            else
+              IsHash = False
+              exit function
+            end if
+        Next
+    
+    IsHash = True
+    else
+      IsHash = False
+    End If
+    
+End Function
+
+Function RSBinaryToString(xBinary)
+  'Antonin Foller, http://www.motobit.com
+  'RSBinaryToString converts binary data (VT_UI1 | VT_ARRAY Or MultiByte string)
+  'to a string (BSTR) using ADO recordset
+
+  Dim Binary
+  'MultiByte data must be converted To VT_UI1 | VT_ARRAY first.
+  If vartype(xBinary)=8 Then Binary = MultiByteToBinary(xBinary) Else Binary = xBinary
+  
+  Dim RS, LBinary
+  Const adLongVarChar = 201
+  Set RS = CreateObject("ADODB.Recordset")
+  LBinary = LenB(Binary)
+  
+  If LBinary>0 Then
+    RS.Fields.Append "mBinary", adLongVarChar, LBinary
+    RS.Open
+    RS.AddNew
+      RS("mBinary").AppendChunk Binary 
+    RS.Update
+    RSBinaryToString = RS("mBinary")
+  Else
+    RSBinaryToString = ""
+  End If
+End Function
+
+Function queryYARAdict(strRuleName, strCbHash)
+'returns true if exists in DB otherwise returns false and adds to DB
+if dictYARoutput.exists(strRuleName) = False then
+  Set dictYARoutput.item(strRuleName) = CreateObject("Scripting.Dictionary")
+  dictYARoutput.item(strRuleName).item(strCbHash) = ""
+  queryYARAdict = False
+elseif dictYARoutput.item(strRuleName).exists(strCbHash) then
+  queryYARAdict = True
+else
+    dictYARoutput.item(strRuleName).item(strCbHash) = ""
+  queryYARAdict = False
+end if
+
+end function
+
+Function YARAheaderrow()
+strTmpReturnHead = ""
+
+for each dictName in dictYARoutput
+  if strTmpReturnHead = "" then
+    strTmpReturnHead = dictName
+  else
+    strTmpReturnHead = strTmpReturnHead & "|" & dictName
+  end if
+next
+YARAheaderrow = strTmpReturnHead
+end function
+
+Function YARAEntryrow(strCbHash)
+strTmpReturnHead = ""
+
+for each dictName in dictYARoutput
+    if dictYARoutput.item(dictName).exists(strCbHash) = True then
+      strTmpReturnHead = AppendValuedList(strTmpReturnHead,dictName,"|")
+    else
+      strTmpReturnHead = strTmpReturnHead & "|" 
+    end if
+
+next
+YARAEntryrow = strTmpReturnHead
+end function
+
+Function AppendValuedList(strAggregate,strAppend,strSeparator)
+    if strAggregate = "" then
+      strAggregate = strSeparator & strAppend
+    else
+      strAggregate = strAggregate & strSeparator & strAppend
+    end if
+AppendValuedList = strAggregate
+
+end Function

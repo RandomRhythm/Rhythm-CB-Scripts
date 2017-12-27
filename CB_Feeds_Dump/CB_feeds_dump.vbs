@@ -1,4 +1,4 @@
-'CB Feed Dump v4.0 'YARA output file has header row now.
+'CB Feed Dump v4.1 'alliance feed filters to just integer output.
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -603,7 +603,7 @@ if instr(strCBresponseText, "md5") > 0 then
     else
       strtmpEnd = left(strtmpEnd, len(strtmpEnd) - 1)
     end if
-    if isdate(strtmpStart) = false or isdate(strtmpEnd) = false then
+    if (isdate(strtmpStart) = false and strtmpStart <> "") or isdate(strtmpEnd) = false then
       msgbox "invalid date:" & strCBStartTime &"|" & strtmpStart & "|" & strCbEndTime & "|" & strtmpEnd
     end if
     'msgbox isdate(strtmpEnd)
@@ -639,7 +639,12 @@ if instr(strCBresponseText, "md5") > 0 then
   end if
   CBhostName = replace(CBhostName, chr(34), "")
   strCBAllianceScore = getdata(strCBresponseText, ",", Chr(34) & "alliance_score_")
-  strCBAllianceScore = right(strCBAllianceScore, len(strCBAllianceScore) - instr(strCBAllianceScore, " "))
+  'set alliance score to integer only
+	for intLen = 1 to len(strCBAllianceScore)
+		if isnumeric(mid(strCBAllianceScore,intLen, 1)) = false and mid(strCBAllianceScore,intLen, 1) <> "-" then
+			strCBAllianceScore = left(strCBAllianceScore, intLen -1)
+		end if
+	next
   strCBInfoLink = getdata(strCBresponseText, ",", "alliance_link_nvd" & Chr(34) & ": ")
   if strCBInfoLink = "" then
     strCBInfoLink = getdata(strCBresponseText, ",", "alliance_link_srstrust" & Chr(34) & ": ")

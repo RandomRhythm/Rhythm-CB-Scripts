@@ -1,4 +1,4 @@
-'CB Feed Dump v4.1 'alliance feed filters to just integer output.
+'CB Feed Dump v4.2 'clear child dictionary.
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -90,6 +90,7 @@ Dim tmpYaraUID
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim dictYARA: Set dictYARA = CreateObject("Scripting.Dictionary")
 Dim intParseCount: intParseCount = 10
+Dim BoolDebugTrace
 
 'debug
 BoolDebugTrace = False
@@ -403,6 +404,7 @@ for each strCBFeedID in DictFeedInfo
           DumpCarBlack 0, True, 10000, strQueryFeed
         next        
         DictAdhocQuery.RemoveAll
+        DictChildQuery.RemoveAll
         if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", "End child processes" & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
       end if
       
@@ -522,7 +524,7 @@ for each strCBResponseText in strArrayCBresponse
       end if
     end if
   end if
-
+	
 next
 set objHTTP = nothing
 end function

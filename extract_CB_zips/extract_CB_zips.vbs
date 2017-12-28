@@ -1,4 +1,4 @@
-'Extract CB Zips (works with CB_File_Downloader) v 1.2 (handle folder/file name conflict)
+'Extract CB Zips (works with CB_File_Downloader) v 1.3 (prompt for folder path if not provided. )
 'parameter is the folder path containing the zip files to extract
 
 'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
@@ -31,28 +31,33 @@ Set objShell = WScript.CreateObject( "WScript.Shell" )
 BoolSilent = True
 
 strFDname = "filedata"
+CurrentDirectory = GetFilePath(wscript.ScriptFullName)
+
 on error resume next
-CurrentDirectory = WScript.Arguments(0)
+ProcessDirectory = WScript.Arguments(0)
 if err.number <> 0 then 
   wscript.echo "Error getting arguments. Must pass the path to the folder containing zip files to extract as parameter."
-  wscript.quit
+  ProcessDirectory = fnShellBrowseForFolderVB
 end if  
 on error goto 0
-Set f = objFSO.GetFolder(CurrentDirectory)
+
+if objFSO.FileExists("C:\Program Files\7-Zip\7z.exe") then
+  str7zPath = "C:\Program Files\7-Zip\7z.exe"
+elseif objFSO.FileExists("c:\Program Files (x86)\7-Zip\7z.exe") then
+  str7zPath = "c:\Program Files (x86)\7-Zip\7z.exe"
+else
+  msgbox "7z not installed: File does not exist - " & chr(34) &  "C:\Program Files\7-Zip\7z.exe" & chr(34) & vbcrlf & "script will now exit"
+  wscript.quit(888)
+end if
+
+Set f = objFSO.GetFolder(ProcessDirectory)
 Set fc = f.files
 For Each f1 in fc
   if lcase(right(f1.name, 4)) = ".zip" then
-    if objFSO.FileExists("C:\Program Files\7-Zip\7z.exe") then
-      str7zPath = "C:\Program Files\7-Zip\7z.exe"
-    elseif objFSO.FileExists("c:\Program Files (x86)\7-Zip\7z.exe") then
-      str7zPath = "c:\Program Files (x86)\7-Zip\7z.exe"
-    else
-      msgbox "7z not installed: File does not exist - " & chr(34) &  "C:\Program Files\7-Zip\7z.exe" & chr(34) & vbcrlf & "script will now exit"
-      wscript.quit(888)
-    end if
-    if objFSO.FileExists(CurrentDirectory & "\" & f1.name) then
+
+    if objFSO.FileExists(ProcessDirectory & "\" & f1.name) then
       if instr(f1.name, ".") then
-        objShell.Run chr(34) & str7zPath & Chr(34) & " x -y -o" & Chr(34) & CurrentDirectory & Chr(34) & " " & Chr(34) & CurrentDirectory & "\" & f1.name & Chr(34)
+        objShell.Run chr(34) & str7zPath & Chr(34) & " x -y -o" & Chr(34) & CurrentDirectory & Chr(34) & " " & Chr(34) & ProcessDirectory & "\" & f1.name & Chr(34)
         wscript.sleep 700
         intExistLoop = 0
         'wait for file to be created
@@ -67,11 +72,11 @@ For Each f1 in fc
         loop
         wscript.Sleep 800
         if objFSO.FileExists(CurrentDirectory & "\filedata") = False then 
-          if BoolSilent = False then msgbox "failed extraction: " & CurrentDirectory & "\" & f1.name
-          logdata CurrentDirectory & "\extract.log", "failed extraction: " & CurrentDirectory & "\" & f1.name, False
+          if BoolSilent = False then msgbox "failed extraction: " & ProcessDirectory & "\" & f1.name
+          logdata CurrentDirectory & "\extract.log", "failed extraction: " & ProcessDirectory & "\" & f1.name, False
           if BoolSilent = False then msgbox CurrentDirectory & "\" & ReturnFnameNoExt(f1.name)
         else
-            logdata CurrentDirectory & "\extract.log", "Successful extraction: " & CurrentDirectory & "\" & f1.name, False
+            logdata CurrentDirectory & "\extract.log", "Successful extraction: " & ProcessDirectory & "\" & f1.name, False
             if objFSO.FolderExists(CurrentDirectory & "\" & ReturnFnameNoExt(f1.name)) = True then
               StrAddmodifier = "_extracted"
             else

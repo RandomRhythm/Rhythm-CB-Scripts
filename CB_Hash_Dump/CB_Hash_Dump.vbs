@@ -1,4 +1,4 @@
-'CB Hash Dump v2.5 - Dumps hashes from CB (Carbon Black) Response
+'CB Hash Dump v2.6 - Dumps hashes from CB (Carbon Black) Response
 'Dumps CSV "MD5|Path|Publisher|Company|Product|CB Prevalence|Logical Size|Score
 
 'This script will write out hashes and some associated data via the CB Response (Carbon Black) API
@@ -58,7 +58,8 @@ strTimeMeasurement = "d" '"h" for hours "d" for days
 IntDayEndQuery = "*" 'days to go back for end date of query. Set to "*" for no end date. Set to "-1" to stop at yesterday.
 strBoolIs_Executable = "True" 'set to "true" to query executables. Set to "false" to query resources (DLLs).
 BoolExcludeSRSTRust = True 'Exclude trusted applications from the query
-strHostFilter = "" 'computer name to filter to. Use uppercase, is case sensitive 
+strSensorID = "" 'sensor_id
+strHostFilter = "" 'computer name to filter to. Use uppercase, is case sensitive. If does not work try using sensor_id instead
 boolOutputHosts = True ' Set to True to output hostnames for each binary
 boolOutputDateAdded = True ' Set to True to output the date that the file was added to Cb Response
 boolOutputDateSigned = True ' Set to True to output the date the binary was signed
@@ -74,6 +75,10 @@ expandYARA = False 'Adds a column for each rule. Set to false to put all YARA da
 if strHostFilter <> "" then 
   msgbox "filtering to host " & strHostFilter
   strHostFilter = " AND hostname:" & strHostFilter
+end if
+if strSensorID <> "" then 
+  msgbox "filtering to sensor ID " & strSensorID
+  strHostFilter = " AND sensor_id:" & strSensorID
 end if
 
 if isnumeric(IntDayStartQuery) then

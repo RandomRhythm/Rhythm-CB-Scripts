@@ -1,10 +1,6 @@
 'Cb Pull Events v1.3.2 - IPv6 support
 'Pulls event data from the Cb Response API and dumps to CSV. 
-
-'additional queries can be run via aq.txt in the current directory.
-'name|query
-'Example:
-'knowndll|/api/v1/binary?q=observed_filename:known.dll&digsig_result:Unsigned
+'Pass the query as a parameter to the script.
 
 'More information on querying the CB Response API https://github.com/carbonblack/cbapi/tree/master/client_apis
 
@@ -161,6 +157,7 @@ CbQuery strCbQuery
 Set objShellComplete = WScript.CreateObject("WScript.Shell") 
 
 Function CbQuery(strQuery)
+Dim intAnswer: intAnswer = ""
 Dim intParseCount: intParseCount = 10
 Set objHTTP = CreateObject("WinHttp.WinHttpRequest.5.1")
 strAppendQuery = ""
@@ -226,9 +223,9 @@ do while boolexit = False
       wscript.echo intResultCount & " items retrieved"
       wscript.quit
     end if
-    intAnswer = msgbox (intParseCount & " items have been pulled down. Do you want to pull down more? There are a total of " & intResultCount & " items to retrieve",vbYesNo, "Cb Scripts")
-		if intAnswer = vbYes and intParseCount < clng(intResultCount) then
-			
+    if intAnswer = "" then intAnswer = msgbox (intParseCount & " items have been pulled down. Do you want to pull the rest down? There are a total of " & intResultCount & " items to retrieve. Selecting no will pull down 1000 more",vbYesNoCancel, "Cb Scripts")
+		if intAnswer <> vbCancel and intParseCount < clng(intResultCount) then
+			if intAnswer = vbNo then intAnswer = ""
 			strAppendQuery = "&start=" & intParseCount & "&rows=" & 1000
 			intParseCount = intParseCount + 1000
 		else
@@ -453,12 +450,14 @@ binTempResponse = objHTTP.responseBody
         if instr(EventEntry, "|") > 0 then 
           tmpEvent = replace(EventEntry,chr(34), "")
           ArrayEE = split(tmpEvent, "|")
-          if ubound(arrayEE) > 1 then
+          if ubound(arrayEE) > 4 then
             strAction = ""
             if dictRegAction.exists(arrayEE(0)) then strAction =  dictFileAction.item(arrayEE(0))
-           strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34)  & "," & Chr(34) & arrayEE(3) & Chr(34)  & "," & Chr(34) & arrayEE(4) & Chr(34)  & "," & Chr(34) & arrayEE(5) & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) & username & processname
+			strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34)  & "," & Chr(34) & arrayEE(3) & Chr(34)  & "," & Chr(34) & arrayEE(4) & Chr(34)  & "," & Chr(34) & arrayEE(5) & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) & username & processname
            
-          logdata CurrentDirectory & "\File_out_" & strUnique & ".csv",strWriteLine, false
+			logdata CurrentDirectory & "\File_out_" & strUnique & ".csv",strWriteLine, false
+		  else
+			logdata CurrentDirectory & "\CB_Pull_Error.log", Date & " " & Time & " FileMod error splitting the value into an array size greater than four: " & tmpEvent,False 
           end if
         end if
       next

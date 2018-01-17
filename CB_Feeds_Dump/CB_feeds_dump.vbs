@@ -1,4 +1,4 @@
-'CB Feed Dump v4.2 'clear child dictionary.
+'CB Feed Dump v4.3 'Added check for CVE-2017-11826
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -8,7 +8,7 @@
 
 'More information on querying the CB Response API https://github.com/carbonblack/cbapi/tree/master/client_apis
 
-'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
 'All rights reserved.
 
 'This program is free software: you can redistribute it and/or modify
@@ -91,6 +91,7 @@ Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim dictYARA: Set dictYARA = CreateObject("Scripting.Dictionary")
 Dim intParseCount: intParseCount = 10
 Dim BoolDebugTrace
+Dim boolCVE_2017_11826
 
 'debug
 BoolDebugTrace = False
@@ -142,7 +143,8 @@ boolAdditionalQueries = True
 boolEnableYARA = True
 boolEnableCbInspection = True
 boolMS17010Check = True
-strStaticFPversion = "27.0.0.130"
+boolCVE_2017_11826 = True
+strStaticFPversion = "27.0.0.187"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End script settings section
 
@@ -202,16 +204,21 @@ end if
 
 if boolAdditionalQueries = True then
   'load additional queries
-  if objFSO.fileexists(CurrentDirectory &"\aq.txt") then
-    Set objFile = objFSO.OpenTextFile(CurrentDirectory &"\aq.txt")
+  if objFSO.fileexists(strAdditionalQueryPath) then
+    Set objFile = objFSO.OpenTextFile(strAdditionalQueryPath)
     Do While Not objFile.AtEndOfStream
       if not objFile.AtEndOfStream then 'read file
           On Error Resume Next
           strData = objFile.ReadLine 
           if instr(strData, "|") then
             strTmpArrayAQ = split(strData, "|")
-            if DictAdditionalQueries.exists(lcase(strTmpArrayAQ(0))) = False then _
-            DictAdditionalQueries.add lcase(strTmpArrayAQ(0)), strTmpArrayAQ(1)
+            if DictAdditionalQueries.exists(lcase(strTmpArrayAQ(0))) = False then 
+				if instr(strTmpArrayAQ(1), "?") > 0 and instr(strTmpArrayAQ(1), "/") then
+					DictAdditionalQueries.add lcase(strTmpArrayAQ(0)), strTmpArrayAQ(1)
+				else
+					msgbox "invalid additional query: " &  strData
+				end if
+			end if
           end if
           on error goto 0
       end if
@@ -278,8 +285,9 @@ if boolEnableFlashCheck = True then DictFeedInfo.Add "Flash Player", "Flash Play
 if boolEnableMshtmlCheck = True then DictFeedInfo.Add "mshtml.dll", "mshtml.dll"
 if boolEnableSilverlightCheck = True then DictFeedInfo.Add "silverlight", "silverlight"
 if boolEnableIexploreCheck = True then DictFeedInfo.Add "iexplore.exe", "iexplore.exe"
-if bool3155533Check = True then DictFeedInfo.Add "vbscript.dll", "vbscript.dll"
-if boolMS17010Check = true then DictFeedInfo.Add "srv.sys", "srv.sys"
+if bool3155533Check = True then DictFeedInfo.Add "MS16-051", "vbscript.dll"
+if boolMS17010Check = true then DictFeedInfo.Add "MS17-070", "srv.sys"
+if boolCVE_2017_11826 = True then DictFeedInfo.Add "Microsoft Word", "winword.exe"
 if boolAdditionalQueries = True then 
   for each strAquery in DictAdditionalQueries
     if DictFeedInfo.exists(DictAdditionalQueries.item(strAquery)) = False then DictFeedInfo.Add DictAdditionalQueries.item(strAquery), strAquery
@@ -353,13 +361,13 @@ for each strCBFeedID in DictFeedInfo
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "silverlight.configuration.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation"
     Case "iexplore.exe"
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "iexplore.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation"
-    Case "vbscript.dll"
+    Case "MS16-051"
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "vbscript.dll" & chr(34) & "& digsig_publisher:Microsoft Corporation"
-	Case "srv.sys"
+	Case "MS17-070"
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "srv.sys" & chr(34) & "& digsig_publisher:Microsoft Corporation"
-
+	Case "winword.exe"
+	  strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "winword.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation"
     Case else
-      'strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "screenconnect" & chr(34) '& "& digsig_publisher:Microsoft Corporation"
       if DictAdditionalQueries.exists(strCBFeedName) then 
         strQueryFeed = strCBFeedID
       end if
@@ -738,6 +746,9 @@ if StrCBMD5 <> "" then
        strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
   end if  
   if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "srv.sys" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
+	strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
+  end if
+  if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "winword.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
 	strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
   end if
   'monitor for IP addresses in command lines
@@ -1231,7 +1242,7 @@ elseif lcase(strVulnPath) = "c:\windows\system32\drivers\srv.sys" then
 	if instr(StrVulnVersion, "6.1.7601.") > 0 then
 		  StrVersionCompare = "6.1.7601.23689" '6.1.7601.23689 Win7/Server2008R2 x64/ia-64/x86
     elseif instr(StrVulnVersion, "6.1.7600.") > 0 then
-		ParseVulns = "Windows missing patch released under MS17-010 KB4013389"
+		ParseVulns = "Windows missing patch released under MS17-010 KB4013389" 'no SP1 for Windows 7
 		exit function
 	elseif instr(StrVulnVersion, "6.0.6002.19") > 0 then
 		StrVersionCompare = "6.0.6002.19743"  '6.0.6002.19743 vista/2008 x64
@@ -1252,6 +1263,23 @@ elseif lcase(strVulnPath) = "c:\windows\system32\drivers\srv.sys" then
     else
       ParseVulns = "Windows missing patch released under MS17-010 KB4013389"
     end if
+elseif (instr(lcase(strVulnPath), ":\program files (x86)\microsoft office\office") > 0 or instr(lcase(strVulnPath), ":\program files\microsoft office\office") > 0) and instr(lcase(strVulnPath), "\winword.exe") > 0 then
+	if instr(StrVulnVersion, "12.0.") > 0 then
+		StrVersionCompare = "12.0.6779.5000" 
+	elseif instr(StrVulnVersion, "14.0.") > 0 then
+		StrVersionCompare = "14.0.7189.5001" 
+	elseif instr(StrVulnVersion, "15.0.") > 0 then
+		StrVersionCompare = "15.0.4971.1002" 
+	elseif instr(StrVulnVersion, "14.0.") > 0 then
+		StrVersionCompare = "16.0.4600.1002" 
+	end if
+	if FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, StrVersionCompare) then
+      ParseVulns = "Windows has been patched for CVE-2017-11826"
+    else
+      ParseVulns = "Windows missing patch released for CVE-2017-11826"
+    end if		
+
+
 
 
 end if

@@ -1,8 +1,8 @@
 'Spreadsheet Vuln Parser for CB_feeds_dump csv output
 'requires Microsoft Excel
-'v1.2
+'v1.3
 
-'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
 'All rights reserved.
 
 'This program is free software: you can redistribute it and/or modify
@@ -23,8 +23,10 @@ Const ForAppending = 8
 Const ForReading = 1
 Dim intTabCounter
 Dim boolJustMajorVersion : boolJustMajorVersion = False
-'set inital values
+Dim unsupportedTotal: unsupportedTotal = 0
+Dim outdatedTotal: outdatedTotal = 0
 
+'set inital values
 intTabCounter = 1
 intWriteRowCounter = 1
 
@@ -151,26 +153,27 @@ Do Until objExcel.Cells(intRowCounter,1).Value = "" 'loop till you hit null valu
   strTmpVersionNumber = objExcel.Cells(intRowCounter,int_version_location).Value
   for each strCompName in arrayComNames
     if strCompName <> "" then
+		strTmpCompName = ucase(strCompName)
       
 
         if strTmpVulnInfo = "unsupported " & strProduct & " major version detected" or _ 
         instr(strTmpVulnInfo," not receive publicly released security updates") > 0 then
-          if dictUnsupported.exists(strCompName) = false then 
-            dictUnsupported.add strCompName, strTmpVersionNumber
+          if dictUnsupported.exists(strTmpCompName) = false then 
+            dictUnsupported.add strTmpCompName, strTmpVersionNumber
             UpdateVersionDict strTmpVersionNumber
           end if 
         end if
         if strTmpVulnInfo = "outdated " & strProduct & " version detected" or instr(strTmpVulnInfo, "not applied") > 0 or _
         instr(strTmpVulnInfo, "missing patch") or instr(strTmpVulnInfo, "Silverlight flaw") then
-          if dictOutdated.exists(strCompName) = false then 
-            dictOutdated.add strCompName, strTmpVersionNumber
+          if dictOutdated.exists(strTmpCompName) = false then 
+            dictOutdated.add strTmpCompName, strTmpVersionNumber
             UpdateVersionDict strTmpVersionNumber
           end if
         elseif strTmpVulnInfo = "up to date " & strProduct & " detected" or strTmpVulnInfo = "IE on a supported version" or _
         instr(strTmpVulnInfo, " applied") > 0 or instr(strTmpVulnInfo, " patched with") > 0 or _
 		instr(strTmpVulnInfo, " patched for ")		then
-          if DictUpdated.exists(strCompName) = false then 
-            DictUpdated.add strCompName, strTmpVersionNumber         
+          if DictUpdated.exists(strTmpCompName) = false then 
+            DictUpdated.add strTmpCompName, strTmpVersionNumber         
             UpdateVersionDict strTmpVersionNumber
           end if
          end if 
@@ -184,7 +187,10 @@ if dictUnsupported.count > 0 then
   Move_next_Workbook_Worksheet( "Unsupported")
   Write_Spreadsheet_line "Unsupported " & strProduct & " Version|Version Number"
   for each strCompName in dictUnsupported
-    Write_Spreadsheet_line strCompName & "|" & dictUnsupported.item(strCompName)
+	if DictUpdated.exists(strCompName) = False then
+		Write_Spreadsheet_line strCompName & "|" & dictUnsupported.item(strCompName)
+		unsupportedTotal = unsupportedTotal + 1
+	end if
   next
 end if
 intRowCounter = 1
@@ -192,7 +198,10 @@ if dictOutdated.count > 0 then
   Move_next_Workbook_Worksheet("Outdated")
   Write_Spreadsheet_line strVulnType & strProduct & strVulnDetail & "|Version Number"
   for each strCompName in dictOutdated 
-    Write_Spreadsheet_line strCompName & "|" & dictOutdated.item(strCompName)
+	if DictUpdated.exists(strCompName) = False then
+		Write_Spreadsheet_line strCompName & "|" & dictOutdated.item(strCompName)
+		outdatedTotal = outdatedTotal + 1
+	end if
   next
 end if
 intRowCounter = 1
@@ -204,8 +213,8 @@ next
 
 Move_next_Workbook_Worksheet("Support Chart")
 Write_Spreadsheet_line strProduct & strChatText & "|" & "Count"
-if dictUnsupported.count > 0 then Write_Spreadsheet_line "Unsupported|" &  dictUnsupported.count
-if dictOutdated.count > 0 then Write_Spreadsheet_line "Outdated|" &  dictOutdated.count
+if dictUnsupported.count > 0 then Write_Spreadsheet_line "Unsupported|" &  unsupportedTotal
+if dictOutdated.count > 0 then Write_Spreadsheet_line "Outdated|" &  outdatedTotal
 Write_Spreadsheet_line "Updated|" &  DictUpdated.count
 
 Move_next_Workbook_Worksheet("Version Chart")

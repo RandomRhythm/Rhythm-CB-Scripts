@@ -1270,7 +1270,7 @@ elseif (instr(lcase(strVulnPath), ":\program files (x86)\microsoft office\office
 		StrVersionCompare = "14.0.7189.5001" 
 	elseif instr(StrVulnVersion, "15.0.") > 0 then
 		StrVersionCompare = "15.0.4971.1002" 
-	elseif instr(StrVulnVersion, "14.0.") > 0 then
+	elseif instr(StrVulnVersion, "16.0.") > 0 then
 		StrVersionCompare = "16.0.4600.1002" 
 	end if
 	if FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, StrVersionCompare) then

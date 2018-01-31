@@ -1,4 +1,4 @@
-'CB Feed Dump v4.3 'Added check for CVE-2017-11826
+'CB Feed Dump v4.4 'Improve accuracy of unsupported IE.
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -1206,12 +1206,20 @@ instr(lcase(strVulnPath), "\silverlight.configuration.exe") > 0 and instr(lcase(
       ParseVulns = "Silverlight flaw, identified as CVE-2016-0034, patched under MS16-006 critical bulletin is missing"
     end if
 elseif instr(lcase(strVulnPath), "\internet explorer\iexplore.exe") > 0 and instr(lcase(strVulnPath), "\program files") > 0 then
-StrVersionCompare = "11"
-    if FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, StrVersionCompare) then
-      ParseVulns = "IE on a supported version"
-    else
-      ParseVulns = "Internet Explorer (IE) is at a version that may not receive publicly released security updates. IE version 11 is the only version still receiving updates for Windows 7/Windows Server 2008 R2 and most newer operating systems."
-    end if
+	StrVersionCompare = "11"
+	
+	if instr(lcase(StrTmpVulnVersion), "vista") > 0 or instr(lcase(StrTmpVulnVersion), "longhorn") > 0 then 'either Vista and server 2008
+		StrVersionCompare = "9"
+	elseif instr(lcase(StrTmpVulnVersion), "win8") > 0 then 'either server 2012 or Windows 8
+		StrVersionCompare = "10"
+	end if
+	
+	if FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, StrVersionCompare) then
+		ParseVulns = "IE on a supported version"
+
+	else
+		ParseVulns = "Internet Explorer (IE) is at a version that may not receive publicly released security updates. IE version 11 is the only version still receiving updates for Windows 7/Windows Server 2008 R2 and most newer operating systems."
+	end if
 elseif instr(lcase(strVulnPath), "\vbscript.dll") > 0 and instr(lcase(strVulnPath), "\windows") > 0 and instr(lcase(strVulnPath), "\winsxs\") = 0 then
     'Internet Explorer 9 on all supported x86-based versions of Windows Vista and Windows Server 2008
     if instr(StrVulnVersion, "5.8.7601.1") > 0 then

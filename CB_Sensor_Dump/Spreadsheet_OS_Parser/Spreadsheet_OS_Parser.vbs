@@ -80,11 +80,11 @@ Do Until objExcel.Cells(1,mycolumncounter).Value = ""
   
   mycolumncounter = mycolumncounter +1
 loop
-If BoolSMTPAlert = True then
-  int_scrIPAddressLocation = intSMTPTOLocation
 
-elseif BoolHostFilter = True then
-  int_scrIPAddressLocation = intshostLocation
+if int_vuln_location = "" then
+	msgbox "Error! Unable to identify the Operating System column"
+	objExcel.quit
+	wscript.quit(2)
 end if
 
 intRowCounter = 2

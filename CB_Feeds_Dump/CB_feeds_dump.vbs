@@ -1263,7 +1263,10 @@ elseif lcase(strVulnPath) = "c:\windows\system32\drivers\srv.sys" then
     else
       ParseVulns = "Windows missing patch released under MS17-010 KB4013389"
     end if
-elseif (instr(lcase(strVulnPath), ":\program files (x86)\microsoft office\office") > 0 or instr(lcase(strVulnPath), ":\program files\microsoft office\office") > 0) and instr(lcase(strVulnPath), "\winword.exe") > 0 then
+elseif  ((instr(lcase(strVulnPath),":\program files (x86)\microsoft office") > 0 and instr(lcase(strVulnPath), "\office") > 0) or _
+(instr(lcase(strVulnPath),":\program files\microsoft office") > 0 and instr(lcase(strVulnPath), "\office") > 0) or _
+(instr(lcase(strVulnPath),":\program files\windowsapps\microsoft.office.desktop.word_") > 0 and instr(lcase(strVulnPath), "\office") > 0)) and _
+instr(lcase(strVulnPath), "\winword.exe") > 0 and instr(lcase(strVulnPath), "\microsoft office\\updates\\download\") = 0 then
 	if instr(StrVulnVersion, "12.0.") > 0 then
 		StrVersionCompare = "12.0.6779.5000" 
 	elseif instr(StrVulnVersion, "14.0.") > 0 then

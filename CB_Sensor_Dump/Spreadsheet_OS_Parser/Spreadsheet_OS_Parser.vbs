@@ -2,7 +2,7 @@
 'requires Microsoft Excel
 'v1.4 
 
-'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
 'All rights reserved.
 
 'This program is free software: you can redistribute it and/or modify
@@ -192,6 +192,7 @@ strReturnShort = replace(strReturnShort, "Datacenter", "DTC")
 strReturnShort = replace(strReturnShort, "Enterprise Edition", "EE")
 strReturnShort = replace(strReturnShort, "Enterprise", "EE")
 strReturnShort = replace(strReturnShort, "Edition", "")
+strReturnShort = replace(strReturnShort, "without", "w/o")
 ShortenOSname = strReturnShort
 end function
 Sub UpdateVersionDict(strVersionNumber)

@@ -144,7 +144,7 @@ boolEnableYARA = True
 boolEnableCbInspection = True
 boolMS17010Check = True
 boolCVE_2017_11826 = True
-strStaticFPversion = "28.0.0.126"
+strStaticFPversion = "28.0.0.137"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End script settings section
 

@@ -1,4 +1,4 @@
-'CB Hash Dump v2.6 - Dumps hashes from CB (Carbon Black) Response
+'CB Hash Dump v2.7 - Dumps hashes from CB (Carbon Black) Response
 'Dumps CSV "MD5|Path|Publisher|Company|Product|CB Prevalence|Logical Size|Score
 
 'This script will write out hashes and some associated data via the CB Response (Carbon Black) API
@@ -60,6 +60,7 @@ strBoolIs_Executable = "True" 'set to "true" to query executables. Set to "false
 BoolExcludeSRSTRust = True 'Exclude trusted applications from the query
 strSensorID = "" 'sensor_id
 strHostFilter = "" 'computer name to filter to. Use uppercase, is case sensitive. If does not work try using sensor_id instead
+strqueryitem = "" 'feed or other query item to filter off of example:"alliance_score_srsthreat:* "
 boolOutputHosts = True ' Set to True to output hostnames for each binary
 boolOutputDateAdded = True ' Set to True to output the date that the file was added to Cb Response
 boolOutputDateSigned = True ' Set to True to output the date the binary was signed
@@ -79,6 +80,9 @@ end if
 if strSensorID <> "" then 
   msgbox "filtering to sensor ID " & strSensorID
   strHostFilter = " AND sensor_id:" & strSensorID
+end if
+if strqueryitem <> "" then
+  strHostFilter = strHostFilter & " AND " & strqueryitem
 end if
 
 if isnumeric(IntDayStartQuery) then

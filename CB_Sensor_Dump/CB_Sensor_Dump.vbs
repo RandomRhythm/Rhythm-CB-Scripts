@@ -1,7 +1,7 @@
-'CB Sensor Dump v1.9
+'CB Sensor Dump v2.0
 'This script will dump sensor information via the CB Response (Carbon Black) API
 
-'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
 'All rights reserved.
 
 'This program is free software: you can redistribute it and/or modify
@@ -125,7 +125,7 @@ else
 end if
 
 if BoolUseCarbonBlack = True then
-  strTmpLogLine = chr(34) & "Computer|Operating System|Date Registered|Stored Bytes|Status|Health|Group ID|Last Checkin|Event Log Bytes|Days Reporting In|Computer Name" & Chr(34)
+  strTmpLogLine = chr(34) & "Computer|Operating System|Date Registered|Stored Bytes|Status|Health|Group ID|Last Checkin|Event Log Bytes|Days Reporting In|Computer Name|ID" & Chr(34)
   strTmpLogLine = replace(strTmpLogLine, "|", chr(34) & "," & chr(34))
   LogData strSSfilePath, strTmpLogLine, false
 
@@ -185,7 +185,8 @@ for each strCBResponseText in strArrayCBresponse
         strTmpName = getdata(strCBresponseText, chr(34), "computer_dns_name" & Chr(34) & ": " & chr(34))
         strTmpOS = getdata(strCBresponseText, chr(34), "os_environment_display_string" & Chr(34) & ": " & chr(34) )
        ' msgbox strTmpOS
-        strTmpregistered = getdata(strCBresponseText, chr(34), "registration_time" & Chr(34) & ": "& chr(34) )
+        strID = getdata(strCBresponseText, ",", chr(34) & "id" & Chr(34) & ": " )
+		strTmpregistered = getdata(strCBresponseText, chr(34), "registration_time" & Chr(34) & ": "& chr(34) )
         strStoredBytes = getdata(strCBresponseText, chr(34), "num_storefiles_bytes" & Chr(34) & ": "& chr(34) )
         strStatusBytes = getdata(strCBresponseText, chr(34), "status" & Chr(34) & ": "& chr(34) )
         strHealth = getdata(strCBresponseText, chr(34), "sensor_health_message" & Chr(34) & ": "& chr(34) )
@@ -194,7 +195,7 @@ for each strCBResponseText in strArrayCBresponse
         strTmpEvtBytes = getdata(strCBresponseText, chr(34), "num_eventlog_bytes" & Chr(34) & ": "& chr(34) )
         strCompName = getdata(strCBresponseText, chr(34), "computer_name" & Chr(34) & ": "& chr(34) )
         strDaysonline = datediff("d", left(strTmpregistered, instr(strTmpregistered, ".") -1),left(strTmpLastCheckIn, instr(strTmpLastCheckIn, ".") -1))
-        LogData strSSfilePath, chr(34) & strTmpName & chr(34) & "," & chr(34) & strTmpOS & chr(34) & "," & chr(34) & strTmpregistered & chr(34) & "," & chr(34) & strStoredBytes & chr(34) & "," & chr(34) & strStatusBytes & chr(34) & "," & chr(34) & strHealth & chr(34) & "," & chr(34) & strGroup & chr(34)& "," & chr(34) & strTmpLastCheckIn & chr(34) & "," & chr(34) & strTmpEvtBytes & chr(34) & "," & chr(34) & strDaysonline & chr(34) & "," & chr(34) & strCompName & chr(34), False
+        LogData strSSfilePath, chr(34) & strTmpName & chr(34) & "," & chr(34) & strTmpOS & chr(34) & "," & chr(34) & strTmpregistered & chr(34) & "," & chr(34) & strStoredBytes & chr(34) & "," & chr(34) & strStatusBytes & chr(34) & "," & chr(34) & strHealth & chr(34) & "," & chr(34) & strGroup & chr(34)& "," & chr(34) & strTmpLastCheckIn & chr(34) & "," & chr(34) & strTmpEvtBytes & chr(34) & "," & chr(34) & strDaysonline & chr(34) & "," & chr(34) & strCompName & chr(34) & "," & chr(34) & strID & chr(34), False
       end if
     end if
   end if

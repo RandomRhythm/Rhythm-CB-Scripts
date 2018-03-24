@@ -1,4 +1,4 @@
-'CB Feed Dump v4.4 'Improve accuracy of unsupported IE.
+'CB Feed Dump v4.5 'Add boolean for querying parent and child. Added sleep delay between queries. Added modifier for number of pages per HTTP request. Added HTTP timeout
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -92,6 +92,11 @@ Dim dictYARA: Set dictYARA = CreateObject("Scripting.Dictionary")
 Dim intParseCount: intParseCount = 10
 Dim BoolDebugTrace
 Dim boolCVE_2017_11826
+Dim intSleepDelay
+Dim intPagesToPull
+Dim intReceiveTimeout
+Dim boolQueryChild
+DIm boolQueryParent
 
 'debug
 BoolDebugTrace = False
@@ -105,10 +110,16 @@ IntDayStartQuery = "*" 'days to go back for start date of query. Set to "*" to q
 IntDayEndQuery = "*" 'days to go back for end date of query. Set to * for no end date
 strTimeMeasurement = "d" '"h" for hours "d" for days
 strHostFilter = "" 'computer name to filter to. Typically uppercase and is case sensitive.
+intSleepDelay = 100 'delay between queries
+intPagesToPull = 10000 'Number of alerts to retrieve at a time
+intReceiveTimeout = 120 'number of seconds for timeout
+boolQueryChild = False 'Query child processes of alerts in feeds
+boolQueryParent = False 'Query parent processes of alerts in feeds
 '---End Query Config Section
 
 
 '---Script Settings
+boolEnableYARA = True
 boolAddYARAtoReports = True 'Combines binary reports to include the YARA rules column
 boolEnableabusech = True
 boolEnablealienvault = True
@@ -140,11 +151,10 @@ BoolEnableCbCommunityCheck = True
 BoolEnableBit9EarlyAccessCheck = True
 bool3155533Check = True
 boolAdditionalQueries = True
-boolEnableYARA = True
 boolEnableCbInspection = True
 boolMS17010Check = True
 boolCVE_2017_11826 = True
-strStaticFPversion = "28.0.0.137"
+strStaticFPversion = "29.0.0.113"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End script settings section
 
@@ -386,8 +396,7 @@ for each strCBFeedID in DictFeedInfo
     intTotalQueries = 10
     intTotalQueries = DumpCarBlack(0, False, intTotalQueries, strQueryFeed)
     logdata CurrentDirectory & "\CB_Feeds.log", date & " " & time & ": " & "Total number of items being retrieved for feed " & DictFeedInfo.item(strCBFeedID) & ": " & intTotalQueries ,boolEchoInfo
-    'DumpCarBlack 0, True, intTotalQueries
-    'DumpCarBlack 0, True, 10
+
     boolHeaderWritten = False
     if clng(intTotalQueries) > 0 then
       intCBcount = 0
@@ -395,22 +404,28 @@ for each strCBFeedID in DictFeedInfo
       strUniquefName = DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
       strHashOutPath = CurrentDirectory & "\CBmd5_" & strUniquefName
       do while intCBcount < clng(intTotalQueries)
-        DumpCarBlack intCBcount, True, 10000, strQueryFeed & strStartDateQuery & strEndDateQuery & strHostFilter 
-        intCBcount = intCBcount +10000
+        DumpCarBlack intCBcount, True, intPagesToPull, strQueryFeed & strStartDateQuery & strEndDateQuery & strHostFilter 
+        intCBcount = intCBcount + intPagesToPull
+		
       loop
       if DictAdhocQuery.count > 0 then
         if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", "Child processes " & DictAdhocQuery.count & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
-        for each strChildQuery in DictAdhocQuery
-          strQueryFeed = "/api/v1/process/" & strChildQuery & strStartDateQuery & strEndDateQuery 
-          if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", "Parent Query=" & strQueryFeed & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
-          DumpCarBlack 0, False, 10000, strQueryFeed
-        next
-        
-        for each strChildQuery in DictChildQuery
-          strQueryFeed = "/api/v1/process/" & strChildQuery & strStartDateQuery & strEndDateQuery
-          if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", "Child Query=" & strQueryFeed & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
-          DumpCarBlack 0, True, 10000, strQueryFeed
-        next        
+
+        if boolQueryChild = True then
+			for each strChildQuery in DictAdhocQuery
+			  strQueryFeed = "/api/v1/process/" & strChildQuery & strStartDateQuery & strEndDateQuery 
+			  if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", "Parent Query=" & strQueryFeed & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
+			  DumpCarBlack 0, False, intPagesToPull, strQueryFeed
+			next
+		end if
+
+        if boolQueryParent = True then
+			for each strChildQuery in DictChildQuery
+			  strQueryFeed = "/api/v1/process/" & strChildQuery & strStartDateQuery & strEndDateQuery
+			  if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", "Child Query=" & strQueryFeed & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
+			  DumpCarBlack 0, True, intPagesToPull, strQueryFeed
+			next        
+		end if
         DictAdhocQuery.RemoveAll
         DictChildQuery.RemoveAll
         if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", "End child processes" & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
@@ -448,7 +463,7 @@ next
 
 'msgbox DumpCarBlack("EDD800F2A7F82E43392CEF00391109BE")
 Function DumpCarBlack(intCBcount,BoolProcessData, intCBrows, strURLQuery)
-
+wscript.sleep intSleepDelay
 Set objHTTP = CreateObject("MSXML2.ServerXMLHTTP")
 Dim strAVEurl
 Dim strReturnURL
@@ -464,15 +479,30 @@ if BoolProcessData = True and instr(strAVEurl, "?") > 0 then
   strAVEurl = strAVEurl & "&start=" & intCBcount & "&rows=" & intCBrows
 end if
 if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", "Query URL=" & strAVEurl & vbcrlf & vbcrlf,BoolEchoLog 
-objHTTP.open "GET", strAVEurl, False
+objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
+objHTTP.open "GET", strAVEurl, True
 
 objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
   
 
 on error resume next
-  objHTTP.send 
+  objHTTP.send
+  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
+        'success!
+    Else 'wait timeout exceeded
+        logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed due to timeout", False
+        exit function  
+    End If 
+	if objHTTP.status = 500 or objHTTP.status = 501 then
+		'failed query
+		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP status " & objHTTP.status & " - " & strAVEurl,False 
+		exit function
+	if objHTTP.status <> 200 then
+		msgbox "Cb feeds dump non-200 status code returned:" & objHTTP.status
+	end if
   if err.number <> 0 then
-    logdata CurrentDirectory & "\CBF_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+    logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+    logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " HTTP status code - " & objHTTP.status,False 
     exit function 
   end if
 on error goto 0  
@@ -515,7 +545,7 @@ for each strCBResponseText in strArrayCBresponse
           if BoolDebugTrace = True then logdata strDebugPath & "\CarBlackchild" & "" & ".txt", "strCBSegID=" & strCBSegID,BoolEchoLog 
           if BoolDebugTrace = True then logdata strDebugPath & "\CarBlackchild" & "" & ".txt", "strCBID=" & strCBID,BoolEchoLog 
 
-          if strCBSegID <> "" and strCBID <> "" then
+          if strCBSegID <> "" and strCBID <> "" and (boolQueryChild = True or boolQueryParent = True) then
             if DictChildQuery.exists(strCBID & "/" & strCBSegID) = False then
               DictChildQuery.add strCBID & "/" & strCBSegID, ""
             end if
@@ -1404,14 +1434,24 @@ Function CbFeedQuery(strQuery, strUniquefName)
 Dim intParseCount: intParseCount = 10
 Set objHTTP = CreateObject("WinHttp.WinHttpRequest.5.1")
 strAppendQuery = ""
-boolexit = False 
+boolexit = False
+if strQuery = "feed_id:" then
+  exit function'nothing to query
+end if 
 do while boolexit = False 
 	strAVEurl = StrBaseCBURL & "/api/v1/threat_report?q=" & strQuery & strAppendQuery
 	objHTTP.open "GET", strAVEurl, False
 	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
 
 	on error resume next
-	  objHTTP.send 
+	  objHTTP.send
+	  if objHTTP.status = 500 then
+			'No data from Cb Response
+			exit function
+
+	  elseif objHTTP.status <> 200 then
+			msgbox "CbFeedQuery non-200 status code returned:" & objHTTP.status
+	  end if	  
 	  if err.number <> 0 then
 		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
 		exit function 

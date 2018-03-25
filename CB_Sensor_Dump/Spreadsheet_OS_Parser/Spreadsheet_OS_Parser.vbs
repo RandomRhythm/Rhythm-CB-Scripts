@@ -1,6 +1,6 @@
 'Spreadsheet OS Parser for CB_Sensor_Dump csv output
 'requires Microsoft Excel
-'v1.4 
+'v1.5 - CentOS identification 
 
 'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
 'All rights reserved.
@@ -91,7 +91,7 @@ intRowCounter = 2
 
 Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null value (end of rows)
   strTmpVulnInfo = objExcel.Cells(intRowCounter,int_vuln_location).Value
-  if instr(strTmpVulnInfo, "Server") then
+  if instr(strTmpVulnInfo, "Server") > 0 or instr(strTmpVulnInfo, "Linux CentOS") > 0 then
     if DictOSServversion.exists(strTmpVulnInfo) = False then
       DictOSServversion.add strTmpVulnInfo, 1
     else
@@ -105,7 +105,7 @@ Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null valu
     end if
   end if
   if instr(strTmpVulnInfo, "OSX") then
-    strConsolidated = "Mac OSX"
+    strConsolidated = "Mac OS X"
   elseif instr(strTmpVulnInfo, "2003") then
     strConsolidated = "Windows 2003"
   elseif instr(strTmpVulnInfo, "2008") then
@@ -126,7 +126,9 @@ Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null valu
     strConsolidated = "Windows 8.1"
   elseif instr(strTmpVulnInfo, "10") then
     strConsolidated = "Windows 10"
- end if
+  elseif instr(strTmpVulnInfo, "Linux CentOS") then
+    strConsolidated = "Linux CentOS"
+end if
   if DictOSconsolidated.exists(strConsolidated) = False then
     DictOSconsolidated.add strConsolidated, 1
   else

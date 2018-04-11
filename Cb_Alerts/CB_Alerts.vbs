@@ -42,6 +42,7 @@ Dim intSleepDelay
 Dim intPagesToPull
 Dim intSizeLimit
 Dim intReceiveTimeout
+
 '---Config Section
 BoolDebugTrace = False
 boolEchoInfo = False 

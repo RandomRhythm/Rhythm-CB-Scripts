@@ -1,4 +1,4 @@
-'CB Sensor Dump v2.0
+'CB Sensor Dump v2.1 - Include group name in output
 'This script will dump sensor information via the CB Response (Carbon Black) API
 
 'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
@@ -28,6 +28,7 @@ Dim IntDaysQuery
 Dim strStartDateQuery
 Dim strEndDateQuery
 Dim DictIPAddresses: set DictIPAddresses = CreateObject("Scripting.Dictionary")
+Dim DictGroupID: set DictGroupID = CreateObject("Scripting.Dictionary")
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 '---Config Section
@@ -125,7 +126,9 @@ else
 end if
 
 if BoolUseCarbonBlack = True then
-  strTmpLogLine = chr(34) & "Computer|Operating System|Date Registered|Stored Bytes|Status|Health|Group ID|Last Checkin|Event Log Bytes|Days Reporting In|Computer Name|ID" & Chr(34)
+  populateSensorID
+  wscript.sleep 10
+  strTmpLogLine = chr(34) & "Computer|Operating System|Date Registered|Stored Bytes|Status|Health|Group ID|Group Name|Last Checkin|Event Log Bytes|Days Reporting In|Computer Name|ID" & Chr(34)
   strTmpLogLine = replace(strTmpLogLine, "|", chr(34) & "," & chr(34))
   LogData strSSfilePath, strTmpLogLine, false
 
@@ -136,6 +139,52 @@ if BoolUseCarbonBlack = True then
 end if
 
 
+
+Sub populateSensorID()
+
+Set objHTTP = CreateObject("MSXML2.ServerXMLHTTP")
+Dim strAVEurl
+Dim strReturnURL
+dim strAssocWith
+Dim strCBresponseText
+Dim strtmpCB_Fpath
+
+strAVEurl = StrBaseCBURL & "/api/v2/group"
+
+objHTTP.open "GET", strAVEurl, False
+
+objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+
+on error resume next
+  objHTTP.send 
+  if err.number <> 0 then
+    logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Sensor Dump Carbon Black lookup failed with HTTP error. - " & err.description,False 
+    exit sub 
+  end if
+on error goto 0  
+'creates a lot of data. Don't enable debug logging on next line unless your going to disable it again
+if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "_Sensor" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
+strCBresponseText = objHTTP.responseText
+if instr(strCBresponseText, "401 Unauthorized") then
+  Msgbox "Carbon Black did not like the API key supplied"
+  wscript.quit(997)
+end if
+if instr(strCBresponseText, "400 Bad Request") then
+  msgbox "Server did not like the query. Try using " & chr(34) & "*" & CHr(34) & " for the start and end dates" & vbcrlf & strAVEurl
+  wscript.quit(996)
+end if
+strArrayCBresponse = split(strCBresponseText, chr(34) & "collect_storefiles"  & Chr(34))
+
+For each cbGroup in strArrayCBresponse
+
+	strGroupID = getdata(cbGroup, ",", chr(34) & "id" & chr(34) & ": ")
+	strGroupName = getdata(cbGroup, chr(34), chr(34) & "name" & chr(34) & ": " & chr(34))
+	if strGroupID <> "" and strGroupName <> ""  then
+    DictGroupID.add strGroupID, strGroupName
+  end if
+next
+
+end Sub
 
 Function DumpCarBlack()
 
@@ -195,7 +244,7 @@ for each strCBResponseText in strArrayCBresponse
         strTmpEvtBytes = getdata(strCBresponseText, chr(34), "num_eventlog_bytes" & Chr(34) & ": "& chr(34) )
         strCompName = getdata(strCBresponseText, chr(34), "computer_name" & Chr(34) & ": "& chr(34) )
         strDaysonline = datediff("d", left(strTmpregistered, instr(strTmpregistered, ".") -1),left(strTmpLastCheckIn, instr(strTmpLastCheckIn, ".") -1))
-        LogData strSSfilePath, chr(34) & strTmpName & chr(34) & "," & chr(34) & strTmpOS & chr(34) & "," & chr(34) & strTmpregistered & chr(34) & "," & chr(34) & strStoredBytes & chr(34) & "," & chr(34) & strStatusBytes & chr(34) & "," & chr(34) & strHealth & chr(34) & "," & chr(34) & strGroup & chr(34)& "," & chr(34) & strTmpLastCheckIn & chr(34) & "," & chr(34) & strTmpEvtBytes & chr(34) & "," & chr(34) & strDaysonline & chr(34) & "," & chr(34) & strCompName & chr(34) & "," & chr(34) & strID & chr(34), False
+        LogData strSSfilePath, chr(34) & strTmpName & chr(34) & "," & chr(34) & strTmpOS & chr(34) & "," & chr(34) & strTmpregistered & chr(34) & "," & chr(34) & strStoredBytes & chr(34) & "," & chr(34) & strStatusBytes & chr(34) & "," & chr(34) & strHealth & chr(34) & "," & chr(34) & strGroup & chr(34) & "," & chr(34) & DictGroupID.item(strGroup) & chr(34) & "," & chr(34) & strTmpLastCheckIn & chr(34) & "," & chr(34) & strTmpEvtBytes & chr(34) & "," & chr(34) & strDaysonline & chr(34) & "," & chr(34) & strCompName & chr(34) & "," & chr(34) & strID & chr(34), False
       end if
     end if
   end if

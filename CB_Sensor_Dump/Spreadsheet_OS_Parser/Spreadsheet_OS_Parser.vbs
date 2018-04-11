@@ -1,6 +1,6 @@
 'Spreadsheet OS Parser for CB_Sensor_Dump csv output
 'requires Microsoft Excel
-'v1.5 - CentOS identification 
+'v1.7 - Improved OS reporting.
 
 'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
 'All rights reserved.
@@ -52,6 +52,10 @@ objFSO.createfolder(strCachePath)
 
 Dim DictOSWorkversion: Set DictOSWorkversion = CreateObject("Scripting.Dictionary")'
 Dim DictOSServversion: Set DictOSServversion = CreateObject("Scripting.Dictionary")
+Dim DictOSWorkversionMac: Set DictOSWorkversionMac = CreateObject("Scripting.Dictionary")'
+Dim DictOSWorkversionWindows: Set DictOSWorkversionWindows = CreateObject("Scripting.Dictionary")'
+Dim DictOSServversionWindows: Set DictOSServversionWindows = CreateObject("Scripting.Dictionary")
+Dim DictOSServversionLinux: Set DictOSServversionLinux = CreateObject("Scripting.Dictionary")
 Dim DictOSconsolidated: Set DictOSconsolidated = CreateObject("Scripting.Dictionary")
 Set objExcel = CreateObject("Excel.Application")
 OpenFilePath1 = OpenFilePath1
@@ -92,20 +96,39 @@ intRowCounter = 2
 Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null value (end of rows)
   strTmpVulnInfo = objExcel.Cells(intRowCounter,int_vuln_location).Value
   if instr(strTmpVulnInfo, "Server") > 0 or instr(strTmpVulnInfo, "Linux CentOS") > 0 then
-    if DictOSServversion.exists(strTmpVulnInfo) = False then
-      DictOSServversion.add strTmpVulnInfo, 1
+    if DictOSServversion.exists(strTmpVulnInfo) = False then 
+		DictOSServversion.add strTmpVulnInfo, 1
+		if Instr(strTmpVulnInfo, "Windows") > 0 and DictOSServversionWindows.exists(strTmpVulnInfo) = False then _
+		  DictOSServversionWindows.add strTmpVulnInfo, 1
+		if instr(strTmpVulnInfo, "Linux") > 0 and DictOSServversionLinux.exists(ShortenOSname(strTmpVulnInfo)) = False then _
+		  DictOSServversionLinux.add ShortenOSname(strTmpVulnInfo), 1
+	  
     else
       DictOSServversion.item(strTmpVulnInfo) = DictOSServversion.item(strTmpVulnInfo) + 1
+	  if Instr(strTmpVulnInfo, "Windows") > 0  then _
+      DictOSServversionWindows.item(strTmpVulnInfo) = DictOSServversionWindows.item(strTmpVulnInfo) + 1
+	  if Instr(strTmpVulnInfo, "Linux") > 0  then _
+      DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) = DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) + 1	 	  
     end if  
   else 
     if DictOSWorkversion.exists(strTmpVulnInfo) = False then
-      DictOSWorkversion.add strTmpVulnInfo, 1
+		DictOSWorkversion.add strTmpVulnInfo, 1
+		if Instr(strTmpVulnInfo, "Mac") > 0 and DictOSWorkversionMac.exists(strTmpVulnInfo) = False then _
+		  DictOSWorkversionMac.add strTmpVulnInfo, 1
+		if instr(strTmpVulnInfo, "Windows") > 0 and DictOSWorkversionWindows.exists(strTmpVulnInfo) = False then _
+		  DictOSWorkversionWindows.add strTmpVulnInfo, 1
     else
       DictOSWorkversion.item(strTmpVulnInfo) = DictOSWorkversion.item(strTmpVulnInfo) + 1
+	  if Instr(strTmpVulnInfo, "Mac") > 0  then _
+      DictOSWorkversionMac.item(strTmpVulnInfo) = DictOSWorkversionMac.item(strTmpVulnInfo) + 1
+	  if Instr(strTmpVulnInfo, "Windows") > 0  then _
+      DictOSWorkversionWindows.item(strTmpVulnInfo) = DictOSWorkversionWindows.item(strTmpVulnInfo) + 1	  
     end if
   end if
   if instr(strTmpVulnInfo, "OSX") then
     strConsolidated = "Mac OS X"
+  elseif instr(strTmpVulnInfo, "Linux") > 0 and instr(strTmpVulnInfo, "release") > 0 and instr(strTmpVulnInfo, ".") > 0 then
+    strConsolidated = ShortenOSname(strTmpVulnInfo)
   elseif instr(strTmpVulnInfo, "2003") then
     strConsolidated = "Windows 2003"
   elseif instr(strTmpVulnInfo, "2008") then
@@ -114,20 +137,22 @@ Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null valu
     strConsolidated = "Windows 2012"
   elseif instr(strTmpVulnInfo, "2016") then
     strConsolidated = "Windows 2016"
-  elseif instr(strTmpVulnInfo, "XP") then
+  elseif instr(strTmpVulnInfo, "Windows XP") then
     strConsolidated = "Windows XP"
   elseif instr(strTmpVulnInfo, "Vista") then
     strConsolidated = "Windows Vista"
-  elseif instr(strTmpVulnInfo, "7") then
+  elseif instr(strTmpVulnInfo, "Windows 7") then
     strConsolidated = "Windows 7"
-  elseif instr(strTmpVulnInfo, "8") then
-    strConsolidated = "Windows 8"
-  elseif instr(strTmpVulnInfo, "8.1") then
+  elseif instr(strTmpVulnInfo, "Windows 8.1") then
     strConsolidated = "Windows 8.1"
-  elseif instr(strTmpVulnInfo, "10") then
-    strConsolidated = "Windows 10"
-  elseif instr(strTmpVulnInfo, "Linux CentOS") then
-    strConsolidated = "Linux CentOS"
+  elseif instr(strTmpVulnInfo, "Windows 8") then
+    strConsolidated = "Windows 8"
+  elseif instr(strTmpVulnInfo, "Windows 10") then
+    if instr(strTmpVulnInfo, "Server") then
+		strConsolidated = "Windows 2016"
+	else
+		strConsolidated = "Windows 10"
+	end if
 end if
   if DictOSconsolidated.exists(strConsolidated) = False then
     DictOSconsolidated.add strConsolidated, 1
@@ -171,18 +196,62 @@ if DictOSWorkversion.count > 0 then
     Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSWorkversion.item(strOSname)
   next
 end if
+
+intRowCounter = 1
+  Move_next_Workbook_Worksheet( "Mac OS")
+  Write_Spreadsheet_line "Mac OS|Count"
+if DictOSWorkversionMac.count > 0 then
+  for each strOSname in DictOSWorkversionMac
+    Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSWorkversionMac.item(strOSname)
+  next
+end if
+
+intRowCounter = 1
+  Move_next_Workbook_Worksheet( "Windows Workstation OS")
+  Write_Spreadsheet_line "Windows Workstation OS|Count"
+if DictOSWorkversionWindows.count > 0 then
+  for each strOSname in DictOSWorkversionWindows
+    Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSWorkversionWindows.item(strOSname)
+  next
+end if
+
 intRowCounter = 1
   Move_next_Workbook_Worksheet( "Server OS")
-  Write_Spreadsheet_line "Windows Server|Count"
+  Write_Spreadsheet_line "Server OS|Count"
 if DictOSServversion.count > 0 then
   for each strOSname in DictOSServversion
     Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSServversion.item(strOSname)
   next
 end if
 
+intRowCounter = 1
+  Move_next_Workbook_Worksheet( "Windows Server OS")
+  Write_Spreadsheet_line "Windows Server|Count"
+if DictOSServversionWindows.count > 0 then
+  for each strOSname in DictOSServversionWindows
+    Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSServversionWindows.item(strOSname)
+  next
+end if
+
+
+intRowCounter = 1
+  Move_next_Workbook_Worksheet( "Linux OS")
+  Write_Spreadsheet_line "Linux Server|Count"
+if DictOSServversionLinux.count > 0 then
+  for each strOSname in DictOSServversionLinux
+    Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSServversionLinux.item(strOSname)
+  next
+end if
+
+
 Function ShortenOSname(strOSname)
 Dim strReturnShort
 strReturnShort = strOSname
+if instr(strReturnShort, "Linux") > 0 and instr(strReturnShort, "release") > 0 and instr(strReturnShort, ".") > 0 then
+    strReturnShort = Left(strReturnShort, instr(strReturnShort, ".") + 1)
+	strReturnShort = replace(strReturnShort, "release","")
+	strReturnShort = replace(strReturnShort, "Red Hat Enterprise Linux Server","RHEL")
+end if
 strReturnShort = replace(strReturnShort, "Windows Server ", "")
 strReturnShort = replace(strReturnShort, "Windows ", "")
 strReturnShort = replace(strReturnShort, "Server ", "")
@@ -190,13 +259,21 @@ strReturnShort = replace(strReturnShort, ",", "")
 strReturnShort = replace(strReturnShort, "Service Pack ", "SP")
 strReturnShort = replace(strReturnShort, "Standard", "STD")
 strReturnShort = replace(strReturnShort, "Professional", "Pro")
-strReturnShort = replace(strReturnShort, "Datacenter", "DTC")
+strReturnShort = replace(strReturnShort, "Datacenter", "DCE")
 strReturnShort = replace(strReturnShort, "Enterprise Edition", "EE")
 strReturnShort = replace(strReturnShort, "Enterprise", "EE")
 strReturnShort = replace(strReturnShort, "Edition", "")
 strReturnShort = replace(strReturnShort, "without", "w/o")
+strReturnShort = replace(strReturnShort, "10 EE", "2016 EE")
+strReturnShort = replace(strReturnShort, "10 DCE", "2016 DCE")
+strReturnShort = replace(strReturnShort, "Microsoft ", "")
+strReturnShort = replace(strReturnShort, "(Evaluation)", "(Eval)")
+if instr(strReturnShort, "Linux") > 0 and (instr(strReturnShort, "CentOS") > 0 or instr(strReturnShort, "RHEL") > 0) then
+    strReturnShort = replace(strReturnShort, "Linux ","")
+end if
 ShortenOSname = strReturnShort
 end function
+
 Sub UpdateVersionDict(strVersionNumber)
 if instr(strVersionNumber, " ") then 
   arrayVN = split(strVersionNumber, " ")

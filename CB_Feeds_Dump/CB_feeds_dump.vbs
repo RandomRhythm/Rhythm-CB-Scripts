@@ -68,7 +68,6 @@ dim boolEnableThreatConnect
 dim boolEnabletor
 dim boolEnableVirusTotal
 Dim strFlashVersion
-Dim strCachePath
 Dim boolEnableNetAPI32Check
 Dim boolEnableFlashCheck
 Dim boolEnableMshtmlCheck
@@ -178,7 +177,6 @@ end if
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug"
 strSSfilePath = CurrentDirectory & "\CBIP_" & udate(now) & ".csv"
-strCachePath = CurrentDirectory & "\cache"
 
 strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" 'encryption key. Change if you want but can only decrypt with same key
 Set objFSO = CreateObject("Scripting.FileSystemObject")
@@ -187,8 +185,7 @@ if objFSO.folderexists(CurrentDirectory & "\Debug") = False then _
 objFSO.createfolder(CurrentDirectory & "\Debug")
 if objFSO.folderexists(strDebugPath) = False then _
 objFSO.createfolder(strDebugPath)
-if objFSO.folderexists(strCachePath) = False then _
-objFSO.createfolder(strCachePath)
+
 
 ' Store the arguments in a variable:
  Set objArgs = Wscript.Arguments

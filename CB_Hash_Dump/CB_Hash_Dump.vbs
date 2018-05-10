@@ -111,6 +111,8 @@ end if
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug\"
 strSSfilePath = CurrentDirectory & "\CB_" & udate(now) & ".csv"
+if objFSO.folderexists(CurrentDirectory & "\Debug") = False then _
+objFSO.createfolder(CurrentDirectory & "\Debug")
 
 strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" 'encryption key. Change if you want but can only decrypt with same key
 Set objFSO = CreateObject("Scripting.FileSystemObject")

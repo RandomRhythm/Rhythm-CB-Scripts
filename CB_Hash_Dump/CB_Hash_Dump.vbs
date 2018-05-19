@@ -1,10 +1,9 @@
-'CB Hash Dump v2.7 - Dumps hashes from CB (Carbon Black) Response
+'CB Hash Dump v2.8 - Dumps hashes from CB (Carbon Black) Response
 'Dumps CSV "MD5|Path|Publisher|Company|Product|CB Prevalence|Logical Size|Score
 
 'This script will write out hashes and some associated data via the CB Response (Carbon Black) API
 
-'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
-'All rights reserved.
+'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -46,6 +45,8 @@ Dim ExpandYARA
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim dictYARA: Set dictYARA = CreateObject("Scripting.Dictionary")
 Dim dictYARoutput: Set dictYARoutput = CreateObject("Scripting.Dictionary")
+Dim boolUseSocketTools
+Dim strLicenseKey
 Const forwriting = 2
 Const ForAppending = 8
 Const ForReading = 1
@@ -71,6 +72,8 @@ boolOutputOrigFname = True 'Seems uncommon for this to be populated
 boolOutputFileDesc = True
 boolEnableYARA = True'include yara
 expandYARA = False 'Adds a column for each rule. Set to false to put all YARA data in one column
+boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
+strLicenseKey = "" 'Lincense key is required to use SocketTools 
 '---End Config section
 
 if strHostFilter <> "" then 
@@ -111,8 +114,6 @@ end if
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug\"
 strSSfilePath = CurrentDirectory & "\CB_" & udate(now) & ".csv"
-if objFSO.folderexists(CurrentDirectory & "\Debug") = False then _
-objFSO.createfolder(CurrentDirectory & "\Debug")
 
 strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" 'encryption key. Change if you want but can only decrypt with same key
 Set objFSO = CreateObject("Scripting.FileSystemObject")
@@ -176,6 +177,21 @@ else
 end if
 
 
+if boolUseSocketTools = True then
+on error resume next
+  Set objST_Http = WScript.CreateObject("SocketTools.HttpClient.9")
+  if err.number <> 0 then
+on error goto 0
+    msgbox "Problem loading SocketTools HTTP Client. Script will now exit. Try registering the control or disabling SocketTools"
+    wscript.quit
+  end if
+  nError = objST_Http.Initialize(strLicenseKey) 
+  If nError <> 0 Then
+      WScript.Echo "Unable to initialize SocketTools component"
+      WScript.Quit(1)
+  End If
+end if
+
 
 strTempAPIKey = ""
 
@@ -192,8 +208,11 @@ if boolEnableYARA = True then
 			'wscript.echo "Nothing returned from YARA feed so disabling it."
 			boolEnableYARA = False
 		end if
+
 	end if
 end if	
+
+
 
 if BoolUseCarbonBlack = True then
   ssInternalName = ""
@@ -244,23 +263,27 @@ Dim strtmpCB_Fpath
 
 'msgbox StrBaseCBURL & "/api/v1/binary?q=is_executable_image:" & strBoolIs_Executable & strSRSTRustQuery & strStartDateQuery & strEndDateQuery & "&start=" & intCBcount & "&rows=" & intCBrows
 strAVEurl = StrBaseCBURL & "/api/v1/binary?q=is_executable_image:" & strBoolIs_Executable & strSRSTRustQuery & strHostFilter & strStartDateQuery & strEndDateQuery & "&start=" & intCBcount & "&rows=" & intCBrows
+if boolUseSocketTools = False then
+  objHTTP.open "GET", strAVEurl, False
+  objHTTP.SetOption 2, 13056
+  objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+    
 
-objHTTP.open "GET", strAVEurl, False
-objHTTP.SetOption 2, 13056
-objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+  on error resume next
+    objHTTP.send 
+    if err.number <> 0 then
+      logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+      exit function 
+    end if
+  on error goto 0  
+  'creates a lot of data. DOn't uncomment next line unless your going to disable it again
+  if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
+  strCBresponseText = objHTTP.responseText
+else
+  strCBresponseText = SocketTools_HTTP(strAVEurl)
   
-
-on error resume next
-  objHTTP.send 
-  if err.number <> 0 then
-    logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
-    exit function 
-  end if
-on error goto 0  
-'creates a lot of data. DOn't uncomment next line unless your going to disable it again
-if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
-strCBresponseText = objHTTP.responseText
-if instr(objHTTP.responseText, "401 Unauthorized") then
+end if
+if instr(strCBresponseText, "401 Unauthorized") then
   Msgbox "Carbon Black did not like the API key supplied"
   wscript.quit(997)
 end if
@@ -603,17 +626,22 @@ strAppendQuery = ""
 boolexit = False 
 do while boolexit = False 
 	strAVEurl = StrBaseCBURL & "/api/v1/threat_report?q=" & strQuery & strAppendQuery
-	objHTTP.open "GET", strAVEurl, False
-	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+	if boolUseSocketTools = False then
+		objHTTP.open "GET", strAVEurl, False
+		objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
 
-	on error resume next
-	  objHTTP.send 
-	  if err.number <> 0 then
-		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
-		exit function 
-	  end if
-	on error goto 0 
-	CBresponseText = objHTTP.responseBody
+		on error resume next
+		  objHTTP.send 
+		  if err.number <> 0 then
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+			exit function 
+		  end if
+		on error goto 0 
+		
+		CBresponseText = objHTTP.responseBody
+	else
+		strCBresponseText = SocketTools_HTTP(strAVEurl)
+	end if
 	if len(CBresponseText) > 0 then
 	
 		binTempResponse = objHTTP.responseBody
@@ -688,22 +716,28 @@ if BoolProcessData = True and instr(strAVEurl, "?") > 0 then
   strAVEurl = strAVEurl & "&start=" & intCBcount & "&rows=" & intCBrows
 end if
 if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", "Query URL=" & strAVEurl & vbcrlf & vbcrlf,BoolEchoLog 
-objHTTP.open "GET", strAVEurl, False
 
-objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+if boolUseSocketTools = False then
+  objHTTP.open "GET", strAVEurl, False
+
+  objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+    
+
+  on error resume next
+    objHTTP.send 
+    if err.number <> 0 then
+      logdata CurrentDirectory & "\CBF_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+      exit function 
+    end if
+  on error goto 0  
+  'creates a lot of data. Don't uncomment next line unless your going to disable it again
+  if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
+  strCBresponseText = objHTTP.responseText
+else
+  strCBresponseText = SocketTools_HTTP(strAVEurl)
   
-
-on error resume next
-  objHTTP.send 
-  if err.number <> 0 then
-    logdata CurrentDirectory & "\CBF_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
-    exit function 
-  end if
-on error goto 0  
-'creates a lot of data. Don't uncomment next line unless your going to disable it again
-if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
-strCBresponseText = objHTTP.responseText
-if instr(objHTTP.responseText, "401 Unauthorized") then
+end if
+if instr(strCBresponseText, "401 Unauthorized") then
   Msgbox "Carbon Black did not like the API key supplied"
   wscript.quit(997)
 end if
@@ -843,3 +877,92 @@ Function AppendValuedList(strAggregate,strAppend,strSeparator)
 AppendValuedList = strAggregate
 
 end Function
+
+
+
+
+Function SocketTools_HTTP(strRemoteURL)
+' SocketTools 9.3 ActiveX Edition
+' Copyright 2018 Catalyst Development Corporation
+' All rights reserved
+'
+' This file is licensed to you pursuant to the terms of the
+' product license agreement included with the original software,
+' and is protected by copyright law and international treaties.
+' Unauthorized reproduction or distribution may result in severe
+' criminal penalties.
+'
+
+'
+' Retrieve the specified page from a web server and write the
+' contents to standard output. The parameter should specify the
+' URL of the page to display
+
+
+Const httpTransferDefault = 0
+Const httpTransferConvert = 1
+
+Dim objArgs
+Dim objHttp
+Dim strBuffer
+Dim nLength
+Dim nArg, nError
+
+
+'
+' Create an instance of the control
+'
+Set objHttp = WScript.CreateObject("SocketTools.HttpClient.9")
+
+'
+' Initialize the object using the specified runtime license key;
+' if the key is not specified, the development license will be used
+'
+strLicenseKey = "" ' Should be set to the runtime license key
+nError = objHttp.Initialize(strLicenseKey) 
+If nError <> 0 Then
+    WScript.Echo "Unable to initialize SocketTools component"
+    WScript.Quit(1)
+End If
+
+objHttp.HeaderField = "X-Auth-Token"
+objHttp.HeaderValue = strCarBlackAPIKey 
+    
+' Setup error handling since the component will throw an error
+' if an invalid URL is specified
+
+On Error Resume Next: Err.Clear
+objHttp.URL = strRemoteURL
+
+' Check the Err object to see if an error has occurred, and
+' if so, let the user know that the URL is invalid
+
+If Err.Number <> 0 Then
+    WScript.echo "The specified URL is invalid"
+    WScript.Quit(1)
+End If
+
+' Reset error handling and connect to the server using the
+' default property values that were updated when the URL
+' property was set (ie: HostName, RemotePort, UserName, etc.)
+On Error GoTo 0
+nError = objHttp.Connect()
+
+If nError <> 0 Then
+    WScript.echo "Error connecting to " & strRemoteURL & ". " & objHttp.LastError & ": " & objHttp.LastErrorString
+    WScript.Quit(1)
+End If
+objHttp.timeout = 90
+' Download the file to the local system
+nError = objHttp.GetData(objHttp.Resource, strBuffer, nLength, httpTransferConvert)
+
+If nError = 0 Then
+    SocketTools_HTTP = strBuffer
+Else
+    WScript.echo "Error " & objHttp.LastError & ": " & objHttp.LastErrorString
+	SocketTools_HTTP = objHttp.ResultString
+End If
+
+objHttp.Disconnect
+objHttp.Uninitialize
+end function

@@ -50,6 +50,9 @@ Dim intSleepDelay
 Dim intPagesToPull
 Dim intReceiveTimeout
 Dim intAnswer: intAnswer = ""
+Dim boolUseSocketTools
+Dim strLicenseKey
+
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug"
 
@@ -67,6 +70,8 @@ strCbQuery = "" 'Cb Response query to run. Can be passed as an argument to the s
 intSleepDelay = 1000 'delay between queries
 intPagesToPull = 1000 'Number of alerts to retrieve at a time
 intReceiveTimeout = 120 'number of seconds for timeout
+boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
+strLicenseKey = "" 'Lincense key is required to use SocketTools 
 'end config section
 
 strUnique = udate(now)
@@ -212,26 +217,36 @@ strAppendQuery = ""
 boolexit = False 
 do while boolexit = False 
 	strAVEurl = StrBaseCBURL & "/api/v1/process?q=" & strQuery & strAppendQuery
-	objHTTP.open "GET", strAVEurl, False
-	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
-	on error resume next
-	  objHTTP.send 
-	  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
-        'success!
-	  Else 'wait timeout exceeded
-        logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to timeout", False
-        exit function  
-      End If 
-	  if err.number <> 0 then
-		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed with HTTP error. - " & err.description,False 
-		exit function 
-	  end if
-	on error goto 0 
-	CBresponseText = objHTTP.responseBody
+	if boolUseSocketTools = False then
+		objHTTP.open "GET", strAVEurl, False
+		objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+		on error resume next
+		  objHTTP.send 
+		  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
+			'success!
+		  Else 'wait timeout exceeded
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to timeout", False
+			exit function  
+		  End If 
+		  if err.number <> 0 then
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed with HTTP error. - " & err.description,False 
+			exit function 
+		  end if
+		on error goto 0 
+		CBresponseText = objHTTP.responseBody
+	else
+	  StrTmpResponse = SocketTools_HTTP(strAVEurl)
+	  CBresponseText = StrTmpResponse
+	end if
+
 	if len(CBresponseText) > 0 then
 	
-		binTempResponse = objHTTP.responseBody
+		binTempResponse = CBresponseText
+
+		if boolUseSocketTools = False then
 		  StrTmpResponse = RSBinaryToString(binTempResponse)
+
+		end if
 		if boolDebug = true then logdata CurrentDirectory & "\Cb_QueryResults.log", StrTmpResponse,False 
 
 		if instr(StrTmpResponse, vblf & "    {") > 0 then
@@ -268,6 +283,7 @@ do while boolexit = False
 		next
 	end if
 	intResultCount = getdata(StrTmpResponse, ",", "total_results" & Chr(34) & ": ")
+
 	if isnumeric(intResultCount) then
     if intResultCount = 0 then
       wscript.echo "Zero items were retrieved. Please double check your query and try again: " & chr(34) & strCbQuery & chr(34)
@@ -299,21 +315,28 @@ End function
 Function SegCheck(strIDPath)
 Set objHTTP = CreateObject("WinHttp.WinHttpRequest.5.1")
 strAVEurl = StrBaseCBURL & "/api/v1/process/" & strIDPath & "/segment"
-objHTTP.open "GET", strAVEurl, False
-objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+if boolUseSocketTools = False then
+	objHTTP.open "GET", strAVEurl, False
+	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
 
-on error resume next
-  objHTTP.send 
-  if err.number <> 0 then
-    logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
-    exit function 
-  end if
-on error goto 0 
-CBresponseText = objHTTP.responseBody
+	on error resume next
+	  objHTTP.send 
+	  if err.number <> 0 then
+		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+		exit function 
+	  end if
+	on error goto 0 
+	CBresponseText = objHTTP.responseBody
+else
+	  StrTmpResponse = SocketTools_HTTP(strAVEurl)
+	  CBresponseText = StrTmpResponse
+end if
 
 if len(CBresponseText) > 0 then
-binTempResponse = objHTTP.responseBody
-  StrTmpResponse = RSBinaryToString(binTempResponse)
+	if boolUseSocketTools = False then
+		binTempResponse = objHTTP.responseBody
+		StrTmpResponse = RSBinaryToString(binTempResponse)
+	end if
   if instr(StrTmpResponse, "Unhandled exception.") > 0 then exit function 
   'debug line
   if boolDebug = true then logdata CurrentDirectory & "\CBs_Download.txt", StrTmpResponse,False 
@@ -344,26 +367,33 @@ Dim CBresponseText
 Dim binTempResponse
 Dim StrTmpResponse
 strAVEurl = StrBaseCBURL & "/api/v1/process/" & strIDPath & "/event" 
-objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
-objHTTP.open "GET", strAVEurl, False
-objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
-logdata CurrentDirectory & "\CB_Download.log", strAVEurl,False 
-on error resume next
-  objHTTP.send 
-  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
-	'success!
-  Else 'wait timeout exceeded
-	logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to timeout", False
-	wscript.sleep intSleepDelay
-  End If 
-  if err.number <> 0 then
-	  logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed with HTTP error. - " & err.description,False 
-	  if err.message = "The operation timed out" then
+if boolUseSocketTools = False then
+	objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
+	objHTTP.open "GET", strAVEurl, False
+	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+	logdata CurrentDirectory & "\CB_Download.log", strAVEurl,False 
+	on error resume next
+	  objHTTP.send 
+	  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
+		'success!
+	  Else 'wait timeout exceeded
+		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to timeout", False
 		wscript.sleep intSleepDelay
+	  End If 
+	  if err.number <> 0 then
+		  logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed with HTTP error. - " & err.description,False 
+		  if err.message = "The operation timed out" then
+			wscript.sleep intSleepDelay
+		  end if
 	  end if
-  end if
-err.clear
-CBresponseText = objHTTP.responseBody
+	err.clear
+	CBresponseText = objHTTP.responseBody
+else
+	  StrTmpResponse = SocketTools_HTTP(strAVEurl)
+	  CBresponseText = StrTmpResponse
+end if
+
+
 if err.number <> 0 then 
 	if err.message = "The data necessary to complete this operation is not yet available." then
 		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " " & err.number & " " & err.message, False
@@ -377,9 +407,10 @@ if len(CBresponseText) = 0 then
   wscript.sleep 5
   exit function
 end if
-
-binTempResponse = objHTTP.responseBody
-StrTmpResponse = RSBinaryToString(binTempResponse)
+if boolUseSocketTools = False then
+	binTempResponse = objHTTP.responseBody
+	StrTmpResponse = RSBinaryToString(binTempResponse)
+end if
 if boolDebug = true then logdata CurrentDirectory & "\CB_EDownload.txt", StrTmpResponse,False 
 if instr(StrTmpResponse, "Unhandled exception.") > 0 then exit function 
 
@@ -846,3 +877,90 @@ Function IsIPv6(TestString)
     End If
     
 End Function
+
+
+Function SocketTools_HTTP(strRemoteURL)
+' SocketTools 9.3 ActiveX Edition
+' Copyright 2018 Catalyst Development Corporation
+' All rights reserved
+'
+' This file is licensed to you pursuant to the terms of the
+' product license agreement included with the original software,
+' and is protected by copyright law and international treaties.
+' Unauthorized reproduction or distribution may result in severe
+' criminal penalties.
+'
+
+'
+' Retrieve the specified page from a web server and write the
+' contents to standard output. The parameter should specify the
+' URL of the page to display
+
+
+Const httpTransferDefault = 0
+Const httpTransferConvert = 1
+
+Dim objArgs
+Dim objHttp
+Dim strBuffer
+Dim nLength
+Dim nArg, nError
+
+
+'
+' Create an instance of the control
+'
+Set objHttp = WScript.CreateObject("SocketTools.HttpClient.9")
+
+'
+' Initialize the object using the specified runtime license key;
+' if the key is not specified, the development license will be used
+'
+strLicenseKey = "" ' Should be set to the runtime license key
+nError = objHttp.Initialize(strLicenseKey) 
+If nError <> 0 Then
+    WScript.Echo "Unable to initialize SocketTools component"
+    WScript.Quit(1)
+End If
+
+objHttp.HeaderField = "X-Auth-Token"
+objHttp.HeaderValue = strCarBlackAPIKey 
+    
+' Setup error handling since the component will throw an error
+' if an invalid URL is specified
+
+On Error Resume Next: Err.Clear
+objHttp.URL = strRemoteURL
+
+' Check the Err object to see if an error has occurred, and
+' if so, let the user know that the URL is invalid
+
+If Err.Number <> 0 Then
+    WScript.echo "The specified URL is invalid"
+    WScript.Quit(1)
+End If
+
+' Reset error handling and connect to the server using the
+' default property values that were updated when the URL
+' property was set (ie: HostName, RemotePort, UserName, etc.)
+On Error GoTo 0
+nError = objHttp.Connect()
+
+If nError <> 0 Then
+    WScript.echo "Error connecting to " & strRemoteURL & ". " & objHttp.LastError & ": " & objHttp.LastErrorString
+    WScript.Quit(1)
+End If
+objHttp.timeout = 90
+' Download the file to the local system
+nError = objHttp.GetData(objHttp.Resource, strBuffer, nLength, httpTransferConvert)
+
+If nError = 0 Then
+    SocketTools_HTTP = strBuffer
+Else
+    'WScript.echo "Error " & objHttp.LastError & ": " & objHttp.LastErrorString
+	SocketTools_HTTP = "Error " & objHttp.ResultString
+End If
+
+objHttp.Disconnect
+objHttp.Uninitialize
+end function

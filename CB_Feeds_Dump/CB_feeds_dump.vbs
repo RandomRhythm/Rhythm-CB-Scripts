@@ -1,4 +1,4 @@
-'CB Feed Dump v4.5 'Add boolean for querying parent and child. Added sleep delay between queries. Added modifier for number of pages per HTTP request. Added HTTP timeout
+'CB Feed Dump v4.6 'Add INI support. Add sensor ID filter. SocketTools support.
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -9,7 +9,6 @@
 'More information on querying the CB Response API https://github.com/carbonblack/cbapi/tree/master/client_apis
 
 'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
-'All rights reserved.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -96,6 +95,8 @@ Dim intPagesToPull
 Dim intReceiveTimeout
 Dim boolQueryChild
 DIm boolQueryParent
+Dim boolUseSocketTools
+Dim strLicenseKey
 
 'debug
 BoolDebugTrace = False
@@ -109,12 +110,16 @@ IntDayStartQuery = "*" 'days to go back for start date of query. Set to "*" to q
 IntDayEndQuery = "*" 'days to go back for end date of query. Set to * for no end date
 strTimeMeasurement = "d" '"h" for hours "d" for days
 strHostFilter = "" 'computer name to filter to. Typically uppercase and is case sensitive.
+strSensorID = "" 'sensor_id
 intSleepDelay = 100 'delay between queries
 intPagesToPull = 10000 'Number of alerts to retrieve at a time
 intReceiveTimeout = 120 'number of seconds for timeout
 boolQueryChild = False 'Query child processes of alerts in feeds
 boolQueryParent = False 'Query parent processes of alerts in feeds
+boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
+strLicenseKey = "" 'Lincense key is required to use SocketTools 
 '---End Query Config Section
+
 
 
 '---Script Settings
@@ -143,7 +148,7 @@ boolEnableFlashCheck = True
 boolEnableMshtmlCheck = True
 boolEnableSilverlightCheck = True
 boolEnableIexploreCheck = True
-boolEnableOptivCheck = True
+boolEnableOptivCheck = False
 boolEnableCbKnownIOCsCheck = True
 boolEnableCbFileAnalysisCheck = True
 BoolEnableCbCommunityCheck = True
@@ -157,10 +162,61 @@ strStaticFPversion = "29.0.0.113"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End script settings section
 
+'---Ini loading section
+IntDayStartQuery = ValueFromINI("CbFd.ini", "IntegerValues", "StartTime", IntDayStartQuery)
+IntDayEndQuery = ValueFromINI("CbFd.ini", "IntegerValues", "EndTime", IntDayEndQuery)
+strTimeMeasurement = ValueFromINI("CbFd.ini", "StringValues", "TimeMeasurement", strTimeMeasurement)
+intSleepDelay = ValueFromINI("CbFd.ini", "IntegerValues", "SleepDelay", intSleepDelay)
+intPagesToPull = ValueFromINI("CbFd.ini", "IntegerValues", "PagesToPull", intPagesToPull)
+intReceiveTimeout = ValueFromINI("CbFd.ini", "IntegerValues", "ReceiveTimeout", intReceiveTimeout)
+boolQueryChild = ValueFromINI("CbFd.ini", "BooleanValues", "QueryChild", boolQueryChild)
+boolQueryParent = ValueFromINI("CbFd.ini", "BooleanValues", "boolQueryParent", boolQueryChild)
+boolUseSocketTools = ValueFromINI("CbFd.ini", "BooleanValues", "UseSocketTools", boolUseSocketTools)
+boolEnableYARA = ValueFromINI("CbFd.ini", "BooleanValues", "YARA", boolEnableYARA)
+boolAddYARAtoReports = ValueFromINI("CbFd.ini", "BooleanValues", "AddYaraToReports", boolAddYARAtoReports)
+boolEnableabusech = ValueFromINI("CbFd.ini", "BooleanValues", "Abusech", boolEnableabusech)
+boolEnablealienvault = ValueFromINI("CbFd.ini", "BooleanValues", "AlienVault", boolEnablealienvault) 
+boolEnableBit9AdvancedThreats = ValueFromINI("CbFd.ini", "BooleanValues", "AdvancedThreats", boolEnableBit9AdvancedThreats)
+boolEnableBit9EndpointVisibility = ValueFromINI("CbFd.ini", "BooleanValues", "EndpointVisibility", boolEnableBit9EndpointVisibility)
+boolEnableBit9SuspiciousIndicators = ValueFromINI("CbFd.ini", "BooleanValues", "SuspiciousIndicators", boolEnableBit9SuspiciousIndicators)
+boolEnablecbbanning = ValueFromINI("CbFd.ini", "BooleanValues", "CbBanning", boolEnablecbbanning)
+boolEnablecbemet = ValueFromINI("CbFd.ini", "BooleanValues", "EMET", boolEnablecbemet)
+boolEnablecbtamper = ValueFromINI("CbFd.ini", "BooleanValues", "CbTamper", boolEnablecbtamper)
+boolEnablefbthreatexchange = ValueFromINI("CbFd.ini", "BooleanValues", "FbThreatExchange", boolEnablefbthreatexchange)
+boolEnableiconmatching = ValueFromINI("CbFd.ini", "BooleanValues", "IconMatching", boolEnableiconmatching)
+boolEnablemdl = ValueFromINI("CbFd.ini", "BooleanValues", "MDL", boolEnablemdl)
+boolEnableNVD = ValueFromINI("CbFd.ini", "BooleanValues", "NVD", boolEnableNVD)
+boolEnablesans = ValueFromINI("CbFd.ini", "BooleanValues", "SANS", boolEnablesans)
+boolEnableSRSThreat = ValueFromINI("CbFd.ini", "BooleanValues", "SRSThreat", boolEnableSRSThreat)
+boolEnableSRSTrust = ValueFromINI("CbFd.ini", "BooleanValues", "SRSTRust", boolEnableSRSTrust)
+boolEnableThreatConnect = ValueFromINI("CbFd.ini", "BooleanValues", "ThreatConnect", boolEnableThreatConnect)
+boolEnabletor = ValueFromINI("CbFd.ini", "BooleanValues", "tor", boolEnabletor)
+boolEnableNetAPI32Check = ValueFromINI("CbFd.ini", "BooleanValues", "MS08-067", boolEnableNetAPI32Check)
+boolEnableFlashCheck = ValueFromINI("CbFd.ini", "BooleanValues", "FlashPlayer", boolEnableFlashCheck)
+boolEnableMshtmlCheck = ValueFromINI("CbFd.ini", "BooleanValues", "MS15-065", boolEnableMshtmlCheck)
+boolEnableSilverlightCheck = ValueFromINI("CbFd.ini", "BooleanValues", "Silverlight", boolEnableSilverlightCheck)
+boolEnableIexploreCheck = ValueFromINI("CbFd.ini", "BooleanValues", "InternetExplorer", boolEnableIexploreCheck)
+boolEnableCbKnownIOCsCheck = ValueFromINI("CbFd.ini", "BooleanValues", "KnownIOCs", boolEnableCbKnownIOCsCheck)
+boolEnableCbFileAnalysisCheck = ValueFromINI("CbFd.ini", "BooleanValues", "CbFileAnalysis", boolEnableCbFileAnalysisCheck)
+BoolEnableCbCommunityCheck = ValueFromINI("CbFd.ini", "BooleanValues", "CbCommunity", BoolEnableCbCommunityCheck)
+BoolEnableBit9EarlyAccessCheck = ValueFromINI("CbFd.ini", "BooleanValues", "EarlyAccess", BoolEnableBit9EarlyAccessCheck)
+bool3155533Check = ValueFromINI("CbFd.ini", "BooleanValues", "MS16-051", bool3155533Check)
+boolAdditionalQueries = ValueFromINI("CbFd.ini", "BooleanValues", "AdditionalQueries", boolAdditionalQueries)
+boolEnableCbInspection = ValueFromINI("CbFd.ini", "BooleanValues", "CbInspect", boolEnableCbInspection)
+boolMS17010Check = ValueFromINI("CbFd.ini", "BooleanValues", "MS17-010", boolMS17010Check)
+boolCVE_2017_11826 = ValueFromINI("CbFd.ini", "BooleanValues", "CVE-2017-11826", boolCVE_2017_11826)
+strStaticFPversion = ValueFromINI("CbFd.ini", "StringValues", "FlashVersion", strStaticFPversion)
+'---End ini loading section
+
 if strHostFilter <> "" then 
   msgbox "filtering to host " & strHostFilter
   strHostFilter = " AND hostname:" & strHostFilter
 end if
+if strSensorID <> "" then 
+  msgbox "filtering to sensor ID " & strSensorID
+  strHostFilter = " AND sensor_id:" & strSensorID
+end if
+
 if isnumeric(IntDayStartQuery) then
   strStartDateQuery = DateAdd(strTimeMeasurement,IntDayStartQuery,now)
 
@@ -476,37 +532,43 @@ if BoolProcessData = True and instr(strAVEurl, "?") > 0 then
   strAVEurl = strAVEurl & "&start=" & intCBcount & "&rows=" & intCBrows
 end if
 if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", "Query URL=" & strAVEurl & vbcrlf & vbcrlf,BoolEchoLog 
-objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
-objHTTP.open "GET", strAVEurl, True
 
-objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
-  
+if boolUseSocketTools = False then
+	objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
+	objHTTP.open "GET", strAVEurl, True
 
-on error resume next
-  objHTTP.send
-  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
-        'success!
-    Else 'wait timeout exceeded
-        logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed due to timeout", False
-        exit function  
-    End If 
-	if objHTTP.status = 500 or objHTTP.status = 501 then
-		'failed query
-		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP status " & objHTTP.status & " - " & strAVEurl,False 
-		exit function
-	if objHTTP.status <> 200 then
-		msgbox "Cb feeds dump non-200 status code returned:" & objHTTP.status
-	end if
-  if err.number <> 0 then
-    logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
-    logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " HTTP status code - " & objHTTP.status,False 
-    exit function 
-  end if
-on error goto 0  
-'creates a lot of data. DOn't uncomment next line unless your going to disable it again
-if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
-strCBresponseText = objHTTP.responseText
-if instr(objHTTP.responseText, "401 Unauthorized") then
+	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+	  
+
+	on error resume next
+	  objHTTP.send
+	  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
+			'success!
+		Else 'wait timeout exceeded
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed due to timeout", False
+			exit function  
+		End If 
+		if objHTTP.status = 500 or objHTTP.status = 501 then
+			'failed query
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP status " & objHTTP.status & " - " & strAVEurl,False 
+			exit function
+		end if
+		if objHTTP.status <> 200 then
+			msgbox "Cb feeds dump non-200 status code returned:" & objHTTP.status
+		end if
+	  if err.number <> 0 then
+		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " HTTP status code - " & objHTTP.status,False 
+		exit function 
+	  end if
+	on error goto 0  
+	'creates a lot of data. DOn't uncomment next line unless your going to disable it again
+	if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
+	strCBresponseText = objHTTP.responseText
+else
+	strCBresponseText = SocketTools_HTTP(strAVEurl)
+end if	
+if instr(strCBresponseText, "401 Unauthorized") then
   Msgbox "Carbon Black did not like the API key supplied"
   wscript.quit(997)
 end if
@@ -1566,3 +1628,185 @@ Function IsHash(TestString)
     End If
     
 End Function
+
+Function ValueFromIni(strFpath, iniSection, iniKey, currentValue)
+returniniVal = ReadIni( strFpath, iniSection, iniKey)
+if returniniVal = " " then 
+	returniniVal = currentValue
+end if 
+if TypeName(returniniVal) = "String" then
+	returniniVal = stringToBool(returniniVal)'convert type to boolean if needed
+elseif TypeName(returniniVal) = "Integer" then
+	returniniVal = int(returniniVal)'convert type to int if needed
+end if
+ValueFromIni = returniniVal
+end function
+
+Function stringToBool(strBoolean)
+if lcase(strBoolean) = "true" then 
+	returnBoolean = True
+elseif lcase(strBoolean) = "false" then 
+	returnBoolean = False
+else
+	returnBoolean = strBoolean
+end if
+stringToBool = returnBoolean
+end function
+
+Function ReadIni( myFilePath, mySection, myKey ) 'http://www.robvanderwoude.com/vbstech_files_ini.php
+    ' This function returns a value read from an INI file
+    '
+    ' Arguments:
+    ' myFilePath  [string]  the (path and) file name of the INI file
+    ' mySection   [string]  the section in the INI file to be searched
+    ' myKey       [string]  the key whose value is to be returned
+    '
+    ' Returns:
+    ' the [string] value for the specified key in the specified section
+    '
+    ' CAVEAT:     Will return a space if key exists but value is blank
+    '
+    ' Written by Keith Lacelle
+    ' Modified by Denis St-Pierre and Rob van der Woude
+
+    Dim intEqualPos
+    Dim objFSO, objIniFile
+    Dim strFilePath, strKey, strLeftString, strLine, strSection
+
+    Set objFSO = CreateObject( "Scripting.FileSystemObject" )
+
+    ReadIni     = ""
+    strFilePath = Trim( myFilePath )
+    strSection  = Trim( mySection )
+    strKey      = Trim( myKey )
+
+    If objFSO.FileExists( strFilePath ) Then
+        Set objIniFile = objFSO.OpenTextFile( strFilePath, ForReading, False )
+        Do While objIniFile.AtEndOfStream = False
+            strLine = Trim( objIniFile.ReadLine )
+
+            ' Check if section is found in the current line
+            If LCase( strLine ) = "[" & LCase( strSection ) & "]" Then
+                strLine = Trim( objIniFile.ReadLine )
+
+                ' Parse lines until the next section is reached
+                Do While Left( strLine, 1 ) <> "["
+                    ' Find position of equal sign in the line
+                    intEqualPos = InStr( 1, strLine, "=", 1 )
+                    If intEqualPos > 0 Then
+                        strLeftString = Trim( Left( strLine, intEqualPos - 1 ) )
+                        ' Check if item is found in the current line
+                        If LCase( strLeftString ) = LCase( strKey ) Then
+                            ReadIni = Trim( Mid( strLine, intEqualPos + 1 ) )
+                            ' In case the item exists but value is blank
+                            If ReadIni = "" Then
+                                ReadIni = " "
+                            End If
+                            ' Abort loop when item is found
+                            Exit Do
+                        End If
+                    End If
+
+                    ' Abort if the end of the INI file is reached
+                    If objIniFile.AtEndOfStream Then Exit Do
+
+                    ' Continue with next line
+                    strLine = Trim( objIniFile.ReadLine )
+                Loop
+            Exit Do
+            End If
+        Loop
+        objIniFile.Close
+    Else
+        if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured settings instead"
+        Wscript.Quit 1
+    End If
+End Function
+
+
+
+Function SocketTools_HTTP(strRemoteURL)
+' SocketTools 9.3 ActiveX Edition
+' Copyright 2018 Catalyst Development Corporation
+' All rights reserved
+'
+' This file is licensed to you pursuant to the terms of the
+' product license agreement included with the original software,
+' and is protected by copyright law and international treaties.
+' Unauthorized reproduction or distribution may result in severe
+' criminal penalties.
+'
+
+'
+' Retrieve the specified page from a web server and write the
+' contents to standard output. The parameter should specify the
+' URL of the page to display
+
+
+Const httpTransferDefault = 0
+Const httpTransferConvert = 1
+
+Dim objArgs
+Dim objHttp
+Dim strBuffer
+Dim nLength
+Dim nArg, nError
+
+
+'
+' Create an instance of the control
+'
+Set objHttp = WScript.CreateObject("SocketTools.HttpClient.9")
+
+'
+' Initialize the object using the specified runtime license key;
+' if the key is not specified, the development license will be used
+'
+strLicenseKey = "" ' Should be set to the runtime license key
+nError = objHttp.Initialize(strLicenseKey) 
+If nError <> 0 Then
+    WScript.Echo "Unable to initialize SocketTools component"
+    WScript.Quit(1)
+End If
+
+objHttp.HeaderField = "X-Auth-Token"
+objHttp.HeaderValue = strCarBlackAPIKey 
+    
+' Setup error handling since the component will throw an error
+' if an invalid URL is specified
+
+On Error Resume Next: Err.Clear
+objHttp.URL = strRemoteURL
+
+' Check the Err object to see if an error has occurred, and
+' if so, let the user know that the URL is invalid
+
+If Err.Number <> 0 Then
+    WScript.echo "The specified URL is invalid"
+    WScript.Quit(1)
+End If
+
+' Reset error handling and connect to the server using the
+' default property values that were updated when the URL
+' property was set (ie: HostName, RemotePort, UserName, etc.)
+On Error GoTo 0
+nError = objHttp.Connect()
+
+If nError <> 0 Then
+    WScript.echo "Error connecting to " & strRemoteURL & ". " & objHttp.LastError & ": " & objHttp.LastErrorString
+    WScript.Quit(1)
+End If
+objHttp.timeout = 90
+' Download the file to the local system
+nError = objHttp.GetData(objHttp.Resource, strBuffer, nLength, httpTransferConvert)
+
+If nError = 0 Then
+    SocketTools_HTTP = strBuffer
+Else
+    WScript.echo "Error " & objHttp.LastError & ": " & objHttp.LastErrorString
+	SocketTools_HTTP = objHttp.ResultString
+End If
+
+objHttp.Disconnect
+objHttp.Uninitialize
+end function

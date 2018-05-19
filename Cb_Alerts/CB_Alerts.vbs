@@ -1,7 +1,6 @@
 'Cb Response Alert Dump
 
 'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
-'All rights reserved.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -35,13 +34,14 @@ Const ForReading = 1
 Dim DictIPAddresses: set DictIPAddresses = CreateObject("Scripting.Dictionary")'
 Dim DictFeedInfo: set DictFeedInfo = CreateObject("Scripting.Dictionary")'
 Dim DictFeedExclude: set DictFeedExclude = CreateObject("Scripting.Dictionary")'
-
 Dim boolHeaderWritten
 Dim boolEchoInfo
 Dim intSleepDelay
 Dim intPagesToPull
 Dim intSizeLimit
 Dim intReceiveTimeout
+Dim boolUseSocketTools
+Dim strLicenseKey
 
 '---Config Section
 BoolDebugTrace = False
@@ -57,6 +57,8 @@ intSleepDelay = 90000 'delay between queries
 intPagesToPull = 20 'Number of alerts to retrieve at a time
 intSizeLimit = 20000 'don't dump more than this number of pages per feed
 intReceiveTimeout = 120 'number of seconds for timeout
+boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
+strLicenseKey = "" 'Lincense key is required to use SocketTools 
 '---End Config section
 
 
@@ -194,30 +196,34 @@ Dim StrTmpFeedIP
 strAVEurl = StrBaseCBURL & strURLQuery 
 
 if BoolProcessData = True then strAVEurl = strAVEurl & "&start=" & intCBcount & "&rows=" & intCBrows
-'msgbox strAVEurl
-objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
-objHTTP.open "GET", strAVEurl, True
 
-objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
-  
+if boolUseSocketTools = False then
+	objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
+	objHTTP.open "GET", strAVEurl, True
 
-on error resume next
-  objHTTP.send
-  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
-        'success!
-    Else 'wait timeout exceeded
-        logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed due to timeout", False
-        exit function  
-    End If 
-  if err.number <> 0 then
-    logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
-    logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " HTTP status code - " & objHTTP.status,False 
-    exit function 
-  end if
-on error goto 0  
-'creates a lot of data. Don't uncomment next line unless your going to disable it again
-'if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
-strCBresponseText = objHTTP.responseText
+	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+	  
+
+	on error resume next
+	  objHTTP.send
+	  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
+			'success!
+		Else 'wait timeout exceeded
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed due to timeout", False
+			exit function  
+		End If 
+	  if err.number <> 0 then
+		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " HTTP status code - " & objHTTP.status,False 
+		exit function 
+	  end if
+	on error goto 0  
+	'creates a lot of data. Don't uncomment next line unless your going to disable it again
+	'if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
+	strCBresponseText = objHTTP.responseText
+else
+  strCBresponseText = SocketTools_HTTP(strAVEurl)
+end if
 
 if instr(strCBresponseText, "b Response Cloud is currently undergoing maintenance and will be back shortly") > 0 then
   wscript.sleep 240000 
@@ -561,3 +567,89 @@ FormatDate = datepart("yyyy",strFDate) & "-" & strTmpMonth & "-" & strTmpDay
 end function
 
 
+
+Function SocketTools_HTTP(strRemoteURL)
+' SocketTools 9.3 ActiveX Edition
+' Copyright 2018 Catalyst Development Corporation
+' All rights reserved
+'
+' This file is licensed to you pursuant to the terms of the
+' product license agreement included with the original software,
+' and is protected by copyright law and international treaties.
+' Unauthorized reproduction or distribution may result in severe
+' criminal penalties.
+'
+
+'
+' Retrieve the specified page from a web server and write the
+' contents to standard output. The parameter should specify the
+' URL of the page to display
+
+
+Const httpTransferDefault = 0
+Const httpTransferConvert = 1
+
+Dim objArgs
+Dim objHttp
+Dim strBuffer
+Dim nLength
+Dim nArg, nError
+
+
+'
+' Create an instance of the control
+'
+Set objHttp = WScript.CreateObject("SocketTools.HttpClient.9")
+
+'
+' Initialize the object using the specified runtime license key;
+' if the key is not specified, the development license will be used
+'
+strLicenseKey = "" ' Should be set to the runtime license key
+nError = objHttp.Initialize(strLicenseKey) 
+If nError <> 0 Then
+    WScript.Echo "Unable to initialize SocketTools component"
+    WScript.Quit(1)
+End If
+
+objHttp.HeaderField = "X-Auth-Token"
+objHttp.HeaderValue = strCarBlackAPIKey 
+    
+' Setup error handling since the component will throw an error
+' if an invalid URL is specified
+
+On Error Resume Next: Err.Clear
+objHttp.URL = strRemoteURL
+
+' Check the Err object to see if an error has occurred, and
+' if so, let the user know that the URL is invalid
+
+If Err.Number <> 0 Then
+    WScript.echo "The specified URL is invalid"
+    WScript.Quit(1)
+End If
+
+' Reset error handling and connect to the server using the
+' default property values that were updated when the URL
+' property was set (ie: HostName, RemotePort, UserName, etc.)
+On Error GoTo 0
+nError = objHttp.Connect()
+
+If nError <> 0 Then
+    WScript.echo "Error connecting to " & strRemoteURL & ". " & objHttp.LastError & ": " & objHttp.LastErrorString
+    WScript.Quit(1)
+End If
+objHttp.timeout = 90
+' Download the file to the local system
+nError = objHttp.GetData(objHttp.Resource, strBuffer, nLength, httpTransferConvert)
+
+If nError = 0 Then
+    SocketTools_HTTP = strBuffer
+Else
+    WScript.echo "Error " & objHttp.LastError & ": " & objHttp.LastErrorString
+	SocketTools_HTTP = objHttp.ResultString
+End If
+
+objHttp.Disconnect
+objHttp.Uninitialize
+end function

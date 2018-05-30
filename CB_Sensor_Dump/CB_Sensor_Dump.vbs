@@ -448,7 +448,7 @@ Set objHttp = WScript.CreateObject("SocketTools.HttpClient.9")
 ' Initialize the object using the specified runtime license key;
 ' if the key is not specified, the development license will be used
 '
-strLicenseKey = "" ' Should be set to the runtime license key
+
 nError = objHttp.Initialize(strLicenseKey) 
 If nError <> 0 Then
     WScript.Echo "Unable to initialize SocketTools component"

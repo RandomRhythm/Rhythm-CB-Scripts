@@ -118,6 +118,7 @@ boolQueryChild = False 'Query child processes of alerts in feeds
 boolQueryParent = False 'Query parent processes of alerts in feeds
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'Lincense key is required to use SocketTools 
+strIniPath="Cb_Feeds.ini"
 '---End Query Config Section
 
 
@@ -158,55 +159,60 @@ boolAdditionalQueries = True
 boolEnableCbInspection = True
 boolMS17010Check = True
 boolCVE_2017_11826 = True
-strStaticFPversion = "29.0.0.113"
+strIniPath = "Cb_Feeds.ini"
+strStaticFPversion = "29.0.0.171"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End script settings section
 
+if objFSO.FileExists(strIniPath) = True then
 '---Ini loading section
-IntDayStartQuery = ValueFromINI("CbFd.ini", "IntegerValues", "StartTime", IntDayStartQuery)
-IntDayEndQuery = ValueFromINI("CbFd.ini", "IntegerValues", "EndTime", IntDayEndQuery)
-strTimeMeasurement = ValueFromINI("CbFd.ini", "StringValues", "TimeMeasurement", strTimeMeasurement)
-intSleepDelay = ValueFromINI("CbFd.ini", "IntegerValues", "SleepDelay", intSleepDelay)
-intPagesToPull = ValueFromINI("CbFd.ini", "IntegerValues", "PagesToPull", intPagesToPull)
-intReceiveTimeout = ValueFromINI("CbFd.ini", "IntegerValues", "ReceiveTimeout", intReceiveTimeout)
-boolQueryChild = ValueFromINI("CbFd.ini", "BooleanValues", "QueryChild", boolQueryChild)
-boolQueryParent = ValueFromINI("CbFd.ini", "BooleanValues", "boolQueryParent", boolQueryChild)
-boolUseSocketTools = ValueFromINI("CbFd.ini", "BooleanValues", "UseSocketTools", boolUseSocketTools)
-boolEnableYARA = ValueFromINI("CbFd.ini", "BooleanValues", "YARA", boolEnableYARA)
-boolAddYARAtoReports = ValueFromINI("CbFd.ini", "BooleanValues", "AddYaraToReports", boolAddYARAtoReports)
-boolEnableabusech = ValueFromINI("CbFd.ini", "BooleanValues", "Abusech", boolEnableabusech)
-boolEnablealienvault = ValueFromINI("CbFd.ini", "BooleanValues", "AlienVault", boolEnablealienvault) 
-boolEnableBit9AdvancedThreats = ValueFromINI("CbFd.ini", "BooleanValues", "AdvancedThreats", boolEnableBit9AdvancedThreats)
-boolEnableBit9EndpointVisibility = ValueFromINI("CbFd.ini", "BooleanValues", "EndpointVisibility", boolEnableBit9EndpointVisibility)
-boolEnableBit9SuspiciousIndicators = ValueFromINI("CbFd.ini", "BooleanValues", "SuspiciousIndicators", boolEnableBit9SuspiciousIndicators)
-boolEnablecbbanning = ValueFromINI("CbFd.ini", "BooleanValues", "CbBanning", boolEnablecbbanning)
-boolEnablecbemet = ValueFromINI("CbFd.ini", "BooleanValues", "EMET", boolEnablecbemet)
-boolEnablecbtamper = ValueFromINI("CbFd.ini", "BooleanValues", "CbTamper", boolEnablecbtamper)
-boolEnablefbthreatexchange = ValueFromINI("CbFd.ini", "BooleanValues", "FbThreatExchange", boolEnablefbthreatexchange)
-boolEnableiconmatching = ValueFromINI("CbFd.ini", "BooleanValues", "IconMatching", boolEnableiconmatching)
-boolEnablemdl = ValueFromINI("CbFd.ini", "BooleanValues", "MDL", boolEnablemdl)
-boolEnableNVD = ValueFromINI("CbFd.ini", "BooleanValues", "NVD", boolEnableNVD)
-boolEnablesans = ValueFromINI("CbFd.ini", "BooleanValues", "SANS", boolEnablesans)
-boolEnableSRSThreat = ValueFromINI("CbFd.ini", "BooleanValues", "SRSThreat", boolEnableSRSThreat)
-boolEnableSRSTrust = ValueFromINI("CbFd.ini", "BooleanValues", "SRSTRust", boolEnableSRSTrust)
-boolEnableThreatConnect = ValueFromINI("CbFd.ini", "BooleanValues", "ThreatConnect", boolEnableThreatConnect)
-boolEnabletor = ValueFromINI("CbFd.ini", "BooleanValues", "tor", boolEnabletor)
-boolEnableNetAPI32Check = ValueFromINI("CbFd.ini", "BooleanValues", "MS08-067", boolEnableNetAPI32Check)
-boolEnableFlashCheck = ValueFromINI("CbFd.ini", "BooleanValues", "FlashPlayer", boolEnableFlashCheck)
-boolEnableMshtmlCheck = ValueFromINI("CbFd.ini", "BooleanValues", "MS15-065", boolEnableMshtmlCheck)
-boolEnableSilverlightCheck = ValueFromINI("CbFd.ini", "BooleanValues", "Silverlight", boolEnableSilverlightCheck)
-boolEnableIexploreCheck = ValueFromINI("CbFd.ini", "BooleanValues", "InternetExplorer", boolEnableIexploreCheck)
-boolEnableCbKnownIOCsCheck = ValueFromINI("CbFd.ini", "BooleanValues", "KnownIOCs", boolEnableCbKnownIOCsCheck)
-boolEnableCbFileAnalysisCheck = ValueFromINI("CbFd.ini", "BooleanValues", "CbFileAnalysis", boolEnableCbFileAnalysisCheck)
-BoolEnableCbCommunityCheck = ValueFromINI("CbFd.ini", "BooleanValues", "CbCommunity", BoolEnableCbCommunityCheck)
-BoolEnableBit9EarlyAccessCheck = ValueFromINI("CbFd.ini", "BooleanValues", "EarlyAccess", BoolEnableBit9EarlyAccessCheck)
-bool3155533Check = ValueFromINI("CbFd.ini", "BooleanValues", "MS16-051", bool3155533Check)
-boolAdditionalQueries = ValueFromINI("CbFd.ini", "BooleanValues", "AdditionalQueries", boolAdditionalQueries)
-boolEnableCbInspection = ValueFromINI("CbFd.ini", "BooleanValues", "CbInspect", boolEnableCbInspection)
-boolMS17010Check = ValueFromINI("CbFd.ini", "BooleanValues", "MS17-010", boolMS17010Check)
-boolCVE_2017_11826 = ValueFromINI("CbFd.ini", "BooleanValues", "CVE-2017-11826", boolCVE_2017_11826)
-strStaticFPversion = ValueFromINI("CbFd.ini", "StringValues", "FlashVersion", strStaticFPversion)
+IntDayStartQuery = ValueFromINI(strIniPath, "IntegerValues", "StartTime", IntDayStartQuery)
+IntDayEndQuery = ValueFromINI(strIniPath, "IntegerValues", "EndTime", IntDayEndQuery)
+strTimeMeasurement = ValueFromINI(strIniPath, "StringValues", "TimeMeasurement", strTimeMeasurement)
+intSleepDelay = ValueFromINI(strIniPath, "IntegerValues", "SleepDelay", intSleepDelay)
+intPagesToPull = ValueFromINI(strIniPath, "IntegerValues", "PagesToPull", intPagesToPull)
+intReceiveTimeout = ValueFromINI(strIniPath, "IntegerValues", "ReceiveTimeout", intReceiveTimeout)
+boolQueryChild = ValueFromINI(strIniPath, "BooleanValues", "QueryChild", boolQueryChild)
+boolQueryParent = ValueFromINI(strIniPath, "BooleanValues", "boolQueryParent", boolQueryChild)
+boolUseSocketTools = ValueFromINI(strIniPath, "BooleanValues", "UseSocketTools", boolUseSocketTools)
+boolEnableYARA = ValueFromINI(strIniPath, "BooleanValues", "YARA", boolEnableYARA)
+boolAddYARAtoReports = ValueFromINI(strIniPath, "BooleanValues", "AddYaraToReports", boolAddYARAtoReports)
+boolEnableabusech = ValueFromINI(strIniPath, "BooleanValues", "Abusech", boolEnableabusech)
+boolEnablealienvault = ValueFromINI(strIniPath, "BooleanValues", "AlienVault", boolEnablealienvault) 
+boolEnableBit9AdvancedThreats = ValueFromINI(strIniPath, "BooleanValues", "AdvancedThreats", boolEnableBit9AdvancedThreats)
+boolEnableBit9EndpointVisibility = ValueFromINI(strIniPath, "BooleanValues", "EndpointVisibility", boolEnableBit9EndpointVisibility)
+boolEnableBit9SuspiciousIndicators = ValueFromINI(strIniPath, "BooleanValues", "SuspiciousIndicators", boolEnableBit9SuspiciousIndicators)
+boolEnablecbbanning = ValueFromINI(strIniPath, "BooleanValues", "CbBanning", boolEnablecbbanning)
+boolEnablecbemet = ValueFromINI(strIniPath, "BooleanValues", "EMET", boolEnablecbemet)
+boolEnablecbtamper = ValueFromINI(strIniPath, "BooleanValues", "CbTamper", boolEnablecbtamper)
+boolEnablefbthreatexchange = ValueFromINI(strIniPath, "BooleanValues", "FbThreatExchange", boolEnablefbthreatexchange)
+boolEnableiconmatching = ValueFromINI(strIniPath, "BooleanValues", "IconMatching", boolEnableiconmatching)
+boolEnablemdl = ValueFromINI(strIniPath, "BooleanValues", "MDL", boolEnablemdl)
+boolEnableNVD = ValueFromINI(strIniPath, "BooleanValues", "NVD", boolEnableNVD)
+boolEnablesans = ValueFromINI(strIniPath, "BooleanValues", "SANS", boolEnablesans)
+boolEnableSRSThreat = ValueFromINI(strIniPath, "BooleanValues", "SRSThreat", boolEnableSRSThreat)
+boolEnableSRSTrust = ValueFromINI(strIniPath, "BooleanValues", "SRSTRust", boolEnableSRSTrust)
+boolEnableThreatConnect = ValueFromINI(strIniPath, "BooleanValues", "ThreatConnect", boolEnableThreatConnect)
+boolEnabletor = ValueFromINI(strIniPath, "BooleanValues", "tor", boolEnabletor)
+boolEnableNetAPI32Check = ValueFromINI(strIniPath, "BooleanValues", "MS08-067", boolEnableNetAPI32Check)
+boolEnableFlashCheck = ValueFromINI(strIniPath, "BooleanValues", "FlashPlayer", boolEnableFlashCheck)
+boolEnableMshtmlCheck = ValueFromINI(strIniPath, "BooleanValues", "MS15-065", boolEnableMshtmlCheck)
+boolEnableSilverlightCheck = ValueFromINI(strIniPath, "BooleanValues", "Silverlight", boolEnableSilverlightCheck)
+boolEnableIexploreCheck = ValueFromINI(strIniPath, "BooleanValues", "InternetExplorer", boolEnableIexploreCheck)
+boolEnableCbKnownIOCsCheck = ValueFromINI(strIniPath, "BooleanValues", "KnownIOCs", boolEnableCbKnownIOCsCheck)
+boolEnableCbFileAnalysisCheck = ValueFromINI(strIniPath, "BooleanValues", "CbFileAnalysis", boolEnableCbFileAnalysisCheck)
+BoolEnableCbCommunityCheck = ValueFromINI(strIniPath, "BooleanValues", "CbCommunity", BoolEnableCbCommunityCheck)
+BoolEnableBit9EarlyAccessCheck = ValueFromINI(strIniPath, "BooleanValues", "EarlyAccess", BoolEnableBit9EarlyAccessCheck)
+bool3155533Check = ValueFromINI(strIniPath, "BooleanValues", "MS16-051", bool3155533Check)
+boolAdditionalQueries = ValueFromINI(strIniPath, "BooleanValues", "AdditionalQueries", boolAdditionalQueries)
+boolEnableCbInspection = ValueFromINI(strIniPath, "BooleanValues", "CbInspect", boolEnableCbInspection)
+boolMS17010Check = ValueFromINI(strIniPath, "BooleanValues", "MS17-010", boolMS17010Check)
+boolCVE_2017_11826 = ValueFromINI(strIniPath, "BooleanValues", "CVE-2017-11826", boolCVE_2017_11826)
+strStaticFPversion = ValueFromINI(strIniPath, "StringValues", "FlashVersion", strStaticFPversion)
 '---End ini loading section
+else
+	if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured/default settings instead"
+end if
 
 if strHostFilter <> "" then 
   msgbox "filtering to host " & strHostFilter
@@ -1718,8 +1724,7 @@ Function ReadIni( myFilePath, mySection, myKey ) 'http://www.robvanderwoude.com/
         Loop
         objIniFile.Close
     Else
-        if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured settings instead"
-        Wscript.Quit 1
+        if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured/default settings instead"
     End If
 End Function
 
@@ -1762,7 +1767,7 @@ Set objHttp = WScript.CreateObject("SocketTools.HttpClient.9")
 ' Initialize the object using the specified runtime license key;
 ' if the key is not specified, the development license will be used
 '
-strLicenseKey = "" ' Should be set to the runtime license key
+
 nError = objHttp.Initialize(strLicenseKey) 
 If nError <> 0 Then
     WScript.Echo "Unable to initialize SocketTools component"

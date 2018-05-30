@@ -59,8 +59,23 @@ intSizeLimit = 20000 'don't dump more than this number of pages per feed
 intReceiveTimeout = 120 'number of seconds for timeout
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'Lincense key is required to use SocketTools 
+strIniPath="Cb_Alerts.ini"
 '---End Config section
 
+if objFSO.FileExists(strIniPath) = True then
+'---Ini loading section
+	IntDayStartQuery = ValueFromINI(strIniPath, "IntegerValues", "StartTime", IntDayStartQuery)
+	IntDayEndQuery = ValueFromINI(strIniPath, "IntegerValues", "EndTime", IntDayEndQuery)
+	strTimeMeasurement = ValueFromINI(strIniPath, "StringValues", "TimeMeasurement", strTimeMeasurement)
+	intSleepDelay = ValueFromINI(strIniPath, "IntegerValues", "SleepDelay", intSleepDelay)
+	intPagesToPull = ValueFromINI(strIniPath, "IntegerValues", "PagesToPull", intPagesToPull)
+	intSizeLimit = ValueFromINI(strIniPath, "IntegerValues", "SizeLimit", intSizeLimit)
+	intReceiveTimeout = ValueFromINI(strIniPath, "IntegerValues", "ReceiveTimeout", intReceiveTimeout)
+	boolUseSocketTools = ValueFromINI(strIniPath, "BooleanValues", "UseSocketTools", boolUseSocketTools)
+'---End ini loading section
+else
+	if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured/default settings instead"
+end if
 
 if isnumeric(IntDayStartQuery) then
   strStartDateQuery = DateAdd(strTimeMeasurement,IntDayStartQuery,now)
@@ -567,6 +582,101 @@ FormatDate = datepart("yyyy",strFDate) & "-" & strTmpMonth & "-" & strTmpDay
 end function
 
 
+Function ValueFromIni(strFpath, iniSection, iniKey, currentValue)
+returniniVal = ReadIni( strFpath, iniSection, iniKey)
+if returniniVal = " " then 
+	returniniVal = currentValue
+end if 
+if TypeName(returniniVal) = "String" then
+	returniniVal = stringToBool(returniniVal)'convert type to boolean if needed
+elseif TypeName(returniniVal) = "Integer" then
+	returniniVal = int(returniniVal)'convert type to int if needed
+end if
+ValueFromIni = returniniVal
+end function
+
+Function stringToBool(strBoolean)
+if lcase(strBoolean) = "true" then 
+	returnBoolean = True
+elseif lcase(strBoolean) = "false" then 
+	returnBoolean = False
+else
+	returnBoolean = strBoolean
+end if
+stringToBool = returnBoolean
+end function
+
+Function ReadIni( myFilePath, mySection, myKey ) 'http://www.robvanderwoude.com/vbstech_files_ini.php
+    ' This function returns a value read from an INI file
+    '
+    ' Arguments:
+    ' myFilePath  [string]  the (path and) file name of the INI file
+    ' mySection   [string]  the section in the INI file to be searched
+    ' myKey       [string]  the key whose value is to be returned
+    '
+    ' Returns:
+    ' the [string] value for the specified key in the specified section
+    '
+    ' CAVEAT:     Will return a space if key exists but value is blank
+    '
+    ' Written by Keith Lacelle
+    ' Modified by Denis St-Pierre and Rob van der Woude
+
+    Dim intEqualPos
+    Dim objFSO, objIniFile
+    Dim strFilePath, strKey, strLeftString, strLine, strSection
+
+    Set objFSO = CreateObject( "Scripting.FileSystemObject" )
+
+    ReadIni     = ""
+    strFilePath = Trim( myFilePath )
+    strSection  = Trim( mySection )
+    strKey      = Trim( myKey )
+
+    If objFSO.FileExists( strFilePath ) Then
+        Set objIniFile = objFSO.OpenTextFile( strFilePath, ForReading, False )
+        Do While objIniFile.AtEndOfStream = False
+            strLine = Trim( objIniFile.ReadLine )
+
+            ' Check if section is found in the current line
+            If LCase( strLine ) = "[" & LCase( strSection ) & "]" Then
+                strLine = Trim( objIniFile.ReadLine )
+
+                ' Parse lines until the next section is reached
+                Do While Left( strLine, 1 ) <> "["
+                    ' Find position of equal sign in the line
+                    intEqualPos = InStr( 1, strLine, "=", 1 )
+                    If intEqualPos > 0 Then
+                        strLeftString = Trim( Left( strLine, intEqualPos - 1 ) )
+                        ' Check if item is found in the current line
+                        If LCase( strLeftString ) = LCase( strKey ) Then
+                            ReadIni = Trim( Mid( strLine, intEqualPos + 1 ) )
+                            ' In case the item exists but value is blank
+                            If ReadIni = "" Then
+                                ReadIni = " "
+                            End If
+                            ' Abort loop when item is found
+                            Exit Do
+                        End If
+                    End If
+
+                    ' Abort if the end of the INI file is reached
+                    If objIniFile.AtEndOfStream Then Exit Do
+
+                    ' Continue with next line
+                    strLine = Trim( objIniFile.ReadLine )
+                Loop
+            Exit Do
+            End If
+        Loop
+        objIniFile.Close
+    Else
+        if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured/default settings instead"
+    End If
+End Function
+
+
+
 
 Function SocketTools_HTTP(strRemoteURL)
 ' SocketTools 9.3 ActiveX Edition
@@ -605,7 +715,7 @@ Set objHttp = WScript.CreateObject("SocketTools.HttpClient.9")
 ' Initialize the object using the specified runtime license key;
 ' if the key is not specified, the development license will be used
 '
-strLicenseKey = "" ' Should be set to the runtime license key
+
 nError = objHttp.Initialize(strLicenseKey) 
 If nError <> 0 Then
     WScript.Echo "Unable to initialize SocketTools component"

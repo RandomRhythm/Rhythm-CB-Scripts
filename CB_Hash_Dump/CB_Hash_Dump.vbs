@@ -47,6 +47,7 @@ Dim dictYARA: Set dictYARA = CreateObject("Scripting.Dictionary")
 Dim dictYARoutput: Set dictYARoutput = CreateObject("Scripting.Dictionary")
 Dim boolUseSocketTools
 Dim strLicenseKey
+Dim strIniPath
 Const forwriting = 2
 Const ForAppending = 8
 Const ForReading = 1
@@ -74,6 +75,7 @@ boolEnableYARA = True'include yara
 expandYARA = False 'Adds a column for each rule. Set to false to put all YARA data in one column
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'Lincense key is required to use SocketTools 
+strIniPath = "Cb_HD.ini"
 '---End Config section
 
 if objFSO.FileExists(strIniPath) = True then
@@ -97,9 +99,10 @@ if objFSO.FileExists(strIniPath) = True then
 	boolOutputOrigFname = ValueFromINI(strIniPath, "BooleanValues", "OutputOriginalName", boolOutputOrigFname)
 	boolEnableYARA = ValueFromINI(strIniPath, "BooleanValues", "YARA", boolEnableYARA)
 	expandYARA = ValueFromINI(strIniPath, "BooleanValues", "ExpandYARA", expandYARA)
+	BoolDebugTrace = ValueFromINI(strIniPath, "BooleanValues", "Debug", BoolDebugTrace)	
 '---End ini loading section
 else
-	if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured/default settings instead"
+	if BoolRunSilent = False then WScript.Echo strIniPath & " does not exist. Using script configured/default settings instead"
 end if
 
 

@@ -89,9 +89,10 @@ boolCrossEnable = ValueFromINI(strIniPath, "BooleanValues", "Cross", boolCrossEn
 pullAllSections = ValueFromINI(strIniPath, "BooleanValues", "AllSections", pullAllSections)
 boolReportUserName = ValueFromINI(strIniPath, "BooleanValues", "ReportUserName", boolReportUserName)
 boolReportProcessName = ValueFromINI(strIniPath, "BooleanValues", "ReportProcessName", boolReportProcessName)
+boolDebug = ValueFromINI(strIniPath, "BooleanValues", "Debug", boolDebug)	
 '---End ini loading section
 else
-	if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured/default settings instead"
+	if BoolRunSilent = False then WScript.Echo strIniPath & " does not exist. Using script configured/default settings instead"
 end if
 
 strUnique = udate(now)

@@ -31,6 +31,7 @@ Dim DictGroupID: set DictGroupID = CreateObject("Scripting.Dictionary")
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim boolUseSocketTools
 Dim strLicenseKey
+Dim strIniPath
 
 '---Config Section
 BoolDebugTrace = False 
@@ -39,7 +40,24 @@ IntDayEndQuery = "*" 'days to go back for end date of query. Example "-1". Set t
 strIPquery = "" 'Only dump information for sensors that held a particual IP adress. example: "10.10.10.80"
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'Lincense key is required to use SocketTools 
+strIniPath = "Cb_sensor.ini"
 '---End Config section
+
+CurrentDirectory = GetFilePath(wscript.ScriptFullName)
+strIniPath = CurrentDirectory & "\" & strIniPath
+
+if objFSO.FileExists(strIniPath) = True then
+'---Ini loading section
+	IntDayStartQuery = ValueFromINI(strIniPath, "IntegerValues", "StartTime", IntDayStartQuery)
+	IntDayEndQuery = ValueFromINI(strIniPath, "IntegerValues", "EndTime", IntDayEndQuery)
+	strIPquery = ValueFromINI(strIniPath, "StringValues", "IPaddress", strIPquery)
+	boolUseSocketTools = ValueFromINI(strIniPath, "BooleanValues", "UseSocketTools", boolUseSocketTools)
+	BoolDebugTrace = ValueFromINI(strIniPath, "BooleanValues", "Debug", BoolDebugTrace)	
+'---End ini loading section
+else
+	if BoolRunSilent = False then WScript.Echo strIniPath & " does not exist. Using script configured/default settings instead"
+end if
+
 
 if isnumeric(IntDayStartQuery) then
   strStartDateQuery = DateAdd("d",IntDayStartQuery,date)
@@ -62,7 +80,7 @@ if strIPquery <> "" then
   end if
 end if
 
-CurrentDirectory = GetFilePath(wscript.ScriptFullName)
+
 strDebugPath = CurrentDirectory & "\Debug\"
 if objFSO.folderexists(CurrentDirectory & "\debug") = false then objFSO.createfolder CurrentDirectory & "\debug"
 if objFSO.folderexists(strDebugPath) = false then objFSO.createfolder strDebugPath

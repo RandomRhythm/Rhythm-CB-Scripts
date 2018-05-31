@@ -23,15 +23,25 @@ Const ForReading = 1
 Dim StrBaseCBURL
 Dim boolUseSocketTools
 Dim strLicenseKey
+Dim strIniPath
 
 '----Config section
-BoolDebugTrace = True
+BoolDebugTrace = False
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'Lincense key is required to use SocketTools 
 '----End Config section
  
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug\"
+
+if objFSO.FileExists(strIniPath) = True then
+'---Ini loading section
+	boolUseSocketTools = ValueFromINI(strIniPath, "BooleanValues", "UseSocketTools", boolUseSocketTools)
+	BoolDebugTrace = ValueFromINI(strIniPath, "BooleanValues", "Debug", BoolDebugTrace)	
+'---End ini loading section
+else
+	if BoolRunSilent = False then WScript.Echo strIniPath & " does not exist. Using script configured/default settings instead"
+end if
 
 Set objFSO = CreateObject("Scripting.FileSystemObject")
 

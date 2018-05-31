@@ -1,5 +1,7 @@
 # CB Sensor Dump
-### This script will dump sensor information via the CB Response (Carbon Black) API.
+### This executable will dump sensor information via the CB Response (Carbon Black) API.
+#### Defaults to using SocketTools (requires installation - use InstallSocketTools.exe)
+#### Use INI file in the same directory to change settings
 
 Dumps data to the following columns:
 * Computer

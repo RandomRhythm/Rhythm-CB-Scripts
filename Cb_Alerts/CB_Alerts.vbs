@@ -94,12 +94,13 @@ end if
 
 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
-strDebugPath = CurrentDirectory & "\Debug\VT\"
+strDebugPath = CurrentDirectory & "\Debug\"
 strSSfilePath = CurrentDirectory & "\CBIP_" & udate(now) & ".csv"
 
 strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" 'encryption key. Change if you want but can only decrypt with same key
 
-
+if objFSO.folderexists(strDebugPath) = False then _
+objFSO.createfolder(strDebugPath)
 
 if intCountMetaorVT = 0 then
 
@@ -181,7 +182,7 @@ for each strCBFeedID in DictFeedInfo
       if clng(intTotalQueries) > 0 then
         
         do while intCBcount < clng(intTotalQueries) and intCBcount < intSizeLimit
-          logdata strDebugPath & "\follow_queries.log" , date & " " & time & " " & DictFeedInfo.item(strCBFeedID) & ": " & intCBcount & " < " & intTotalQueries & " and " & intCBcount & " < " & intSizeLimit, false
+          If BoolDebugTrace = True Then logdata strDebugPath & "\follow_queries.log" , date & " " & time & " " & DictFeedInfo.item(strCBFeedID) & ": " & intCBcount & " < " & intTotalQueries & " and " & intCBcount & " < " & intSizeLimit, false
           DumpCarBlack intCBcount, True, intPagesToPull, strQueryFeed
           intCBcount = intCBcount + intPagesToPull
           wscript.sleep intSleepDelay

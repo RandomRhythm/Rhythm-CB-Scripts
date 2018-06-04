@@ -24,6 +24,7 @@ Dim StrBaseCBURL
 Dim boolUseSocketTools
 Dim strLicenseKey
 Dim strIniPath
+Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 '----Config section
 BoolDebugTrace = False
@@ -43,7 +44,6 @@ else
 	if BoolRunSilent = False then WScript.Echo strIniPath & " does not exist. Using script configured/default settings instead"
 end if
 
-Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 
 strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" 'encryption key. Change if you want but can only decrypt with same key

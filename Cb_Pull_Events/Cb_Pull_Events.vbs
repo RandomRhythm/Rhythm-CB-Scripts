@@ -52,6 +52,7 @@ Dim intReceiveTimeout
 Dim intAnswer: intAnswer = ""
 Dim boolUseSocketTools
 Dim strLicenseKey
+Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug"
@@ -75,6 +76,7 @@ strLicenseKey = "" 'Lincense key is required to use SocketTools
 strIniPath="Cb_pe.ini"
 'end config section
 
+
 if objFSO.FileExists(strIniPath) = True then
 '---Ini loading section
 intSleepDelay = ValueFromINI(strIniPath, "IntegerValues", "SleepDelay", intSleepDelay)
@@ -97,7 +99,7 @@ end if
 
 strUnique = udate(now)
 strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" 'encryption key. Change if you want but can only decrypt with same key
-Set objFSO = CreateObject("Scripting.FileSystemObject")
+
 'create sub directories
 if objFSO.folderexists(CurrentDirectory & "\Debug") = False then _
 objFSO.createfolder(CurrentDirectory & "\Debug")
@@ -1080,3 +1082,26 @@ End If
 objHttp.Disconnect
 objHttp.Uninitialize
 end function
+
+
+Function GetFilePath (ByVal FilePathName)
+found = False
+
+Z = 1
+
+Do While found = False and Z < Len((FilePathName))
+
+ Z = Z + 1
+
+         If InStr(Right((FilePathName), Z), "\") <> 0 And found = False Then
+          mytempdata = Left(FilePathName, Len(FilePathName) - Z)
+          
+             GetFilePath = mytempdata
+
+             found = True
+
+        End If      
+
+Loop
+
+end Function

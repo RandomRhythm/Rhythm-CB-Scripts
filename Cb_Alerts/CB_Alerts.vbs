@@ -42,6 +42,7 @@ Dim intSizeLimit
 Dim intReceiveTimeout
 Dim boolUseSocketTools
 Dim strLicenseKey
+Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 '---Config Section
 BoolDebugTrace = False
@@ -72,6 +73,7 @@ if objFSO.FileExists(strIniPath) = True then
 	intSizeLimit = ValueFromINI(strIniPath, "IntegerValues", "SizeLimit", intSizeLimit)
 	intReceiveTimeout = ValueFromINI(strIniPath, "IntegerValues", "ReceiveTimeout", intReceiveTimeout)
 	boolUseSocketTools = ValueFromINI(strIniPath, "BooleanValues", "UseSocketTools", boolUseSocketTools)
+	BoolDebugTrace = ValueFromINI(strIniPath, "BooleanValues", "Debug", BoolDebugTrace)	
 '---End ini loading section
 else
 	if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured/default settings instead"
@@ -96,7 +98,7 @@ strDebugPath = CurrentDirectory & "\Debug\VT\"
 strSSfilePath = CurrentDirectory & "\CBIP_" & udate(now) & ".csv"
 
 strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" 'encryption key. Change if you want but can only decrypt with same key
-Set objFSO = CreateObject("Scripting.FileSystemObject")
+
 
 
 if intCountMetaorVT = 0 then

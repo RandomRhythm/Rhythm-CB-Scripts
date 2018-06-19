@@ -286,27 +286,24 @@ end function
 
 Function GetData(contents, ByVal EndOfStringChar, ByVal MatchString)
 MatchStringLength = Len(MatchString)
-x= 0
+x= instr(contents, MatchString)
 
-do while x < len(contents) - (MatchStringLength +1)
-
-  x = x + 1
-  if Mid(contents, x, MatchStringLength) = MatchString then
-    'Gets server name for section
-    for y = 1 to len(contents) -x
-      if instr(Mid(contents, x + MatchStringLength, y),EndOfStringChar) = 0 then
-          TempData = Mid(contents, x + MatchStringLength, y)
-        else
-          exit do  
-      end if
-    next
+  if X >0 then
+    strSubContents = Mid(contents, x + MatchStringLength, len(contents) - MatchStringLength - x +1)
+    if instr(strSubContents,EndOfStringChar) > 0 then
+      GetData = Mid(contents, x + MatchStringLength, instr(strSubContents,EndOfStringChar) -1)
+      exit function
+    else
+      GetData = Mid(contents, x + MatchStringLength, len(contents) -x -1)
+      exit function
+    end if
+    
   end if
-loop
-GetData = TempData
+GetData = ""
 end Function
 
-Sub LogIOCdata(strCBresponseText)
 
+Sub LogIOCdata(strCBresponseText)
 
 if instr(strCBresponseText, "ioc_value") then 
 
@@ -314,6 +311,11 @@ if instr(strCBresponseText, "ioc_value") then
   strioc_value = getdata(strCBresponseText, chr(34), "ioc_value" & Chr(34) & ": " & Chr(34))
   if strioc_value = "" then 
     strioc_value = getdata(strCBresponseText, "}", "ioc_value" & Chr(34) & ": " & Chr(34) & "{")
+  end if
+  boolQueryIOC = False
+  if strioc_value = "{\" then 'gets query string for alert (behavior)
+	strioc_value = getdata(strCBresponseText, "}", "ioc_value" & Chr(34) & ": " & Chr(34) & "{")
+	boolQueryIOC = True
   end if
   interface_ip = getdata(strCBresponseText, chr(34), "interface_ip" & Chr(34) & ": " & Chr(34))
   sensor_id = getdata(strCBresponseText, chr(34), "sensor_id" & Chr(34) & ": " & Chr(34))
@@ -363,8 +365,22 @@ if instr(strCBresponseText, "ioc_value") then
   'RecordPathVendorStat strtmpCB_Fpath 'record path vendor statistics
 end if
 
-logdata currentdirectory & "\IOCs.txt", strioc_value, false
-if strioc_value = "" then msgbox "Debug - strioc_value = "": " & strCBresponseText
+
+if IsHash(strioc_value) = True then 
+	logdata currentdirectory & "\IOC_MD5.txt", strioc_value, false
+elseif IsIPaddress(strioc_value) = True then
+	logdata currentdirectory & "\IOC_IP.txt", strioc_value, false
+elseif boolQueryIOC = True then
+	logdata currentdirectory & "\IOC_Query.txt", strioc_value, false
+elseif instr(strioc_value, "$") = 0 then
+	logdata currentdirectory & "\IOC_Domain.txt", strioc_value, false
+else
+	logdata currentdirectory & "\IOCs.txt", strioc_value, false
+end if
+
+if strioc_value = "" and BoolDebugTrace = True then 
+	logdata currentdirectory & "\ioc_value.log", "Debug - did not contain ioc_value: " & strCBresponseText, False
+end if
 if strioc_value <> "" then
 
   strCBfilePath = AddPipe(strCBfilePath) 'CB File Path
@@ -766,3 +782,84 @@ End If
 objHttp.Disconnect
 objHttp.Uninitialize
 end function
+
+Function IsHash(TestString)
+    Dim sTemp
+    Dim iLen
+    Dim iCtr
+    Dim sChar
+
+    
+    sTemp = TestString
+    iLen = Len(sTemp)
+    If iLen > 0 Then
+        For iCtr = 1 To iLen
+            sChar = Mid(sTemp, iCtr, 1)
+            if isnumeric(sChar) or "a"= lcase(sChar) or "b"= lcase(sChar) or "c"= lcase(sChar) or "d"= lcase(sChar) or "e"= lcase(sChar) or "f"= lcase(sChar)  then
+              'allowed characters for hash (hex)
+            else
+              IsHash = False
+              exit function
+            end if
+        Next
+    
+    IsHash = True
+    else
+      IsHash = False
+    End If
+    
+End Function
+
+
+Function isIPaddress(strIPaddress)
+DIm arrayTmpquad
+Dim boolReturn_isIP
+boolReturn_isIP = True
+if instr(strIPaddress,".") then
+  arrayTmpquad = split(strIPaddress,".")
+  for each item in arrayTmpquad
+    if isnumeric(item) = false then boolReturn_isIP = false
+  next
+else
+  boolReturn_isIP = false
+end if
+if boolReturn_isIP = false then
+	boolReturn_isIP = isIpv6(strIPaddress)
+end if
+isIPaddress = boolReturn_isIP
+End Function
+
+
+
+
+Function IsIPv6(TestString)
+
+    Dim sTemp
+    Dim iLen
+    Dim iCtr
+    Dim sChar
+    
+    if instr(TestString, ":") = 0 then 
+		IsIPv6 = false
+		exit function
+	end if
+    
+    sTemp = TestString
+    iLen = Len(sTemp)
+    If iLen > 0 Then
+        For iCtr = 1 To iLen
+            sChar = Mid(sTemp, iCtr, 1)
+            if isnumeric(sChar) or "a"= lcase(sChar) or "b"= lcase(sChar) or "c"= lcase(sChar) or "d"= lcase(sChar) or "e"= lcase(sChar) or "f"= lcase(sChar) or ":" = sChar then
+              'allowed characters for hash (hex)
+            else
+              IsIPv6 = False
+              exit function
+            end if
+        Next
+    
+    IsIPv6 = True
+    else
+      IsIPv6 = False
+    End If
+    
+End Function

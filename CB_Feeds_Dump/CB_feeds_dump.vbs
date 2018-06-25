@@ -1,4 +1,4 @@
-'CB Feed Dump v4.6 'Add INI support. Add sensor ID filter. SocketTools support.
+'CB Feed Dump v4.7 'Update supported queries
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -160,7 +160,7 @@ boolEnableCbInspection = True
 boolMS17010Check = True
 boolCVE_2017_11826 = True
 strIniPath = "Cb_Feeds.ini"
-strStaticFPversion = "29.0.0.171"
+strStaticFPversion = "30.0.0.113"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End script settings section
 
@@ -266,8 +266,13 @@ objFSO.createfolder(strDebugPath)
     end if
 Next
 
-if strAdditionalQueryPath = "" and objFSO.fileexists(CurrentDirectory &"\aq.txt") then
-  strAdditionalQueryPath = CurrentDirectory &"\aq.txt"
+if strAdditionalQueryPath = "" and objFSO.fileexists(CurrentDirectory & "\aq.txt") then
+  strAdditionalQueryPath = CurrentDirectory & "\aq.txt"
+elseif strAdditionalQueryPath != "" then
+	if objFSO.fileexists(strAdditionalQueryPath) = False then
+		boolAdditionalQueries = False
+		msgbox "Additional query file does not exist: " & strAdditionalQueryPath
+	end if
 else
   boolAdditionalQueries = False
 end if
@@ -431,9 +436,9 @@ for each strCBFeedID in DictFeedInfo
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "silverlight.configuration.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation"
     Case "iexplore.exe"
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "iexplore.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation"
-    Case "MS16-051"
+    Case "vbscript.dll" 'MS16-051
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "vbscript.dll" & chr(34) & "& digsig_publisher:Microsoft Corporation"
-	Case "MS17-070"
+	Case "srv.sys" 'MS17-070
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "srv.sys" & chr(34) & "& digsig_publisher:Microsoft Corporation"
 	Case "winword.exe"
 	  strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "winword.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation"

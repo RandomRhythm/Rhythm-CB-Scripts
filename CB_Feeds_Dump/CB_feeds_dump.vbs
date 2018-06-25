@@ -268,7 +268,7 @@ Next
 
 if strAdditionalQueryPath = "" and objFSO.fileexists(CurrentDirectory & "\aq.txt") then
   strAdditionalQueryPath = CurrentDirectory & "\aq.txt"
-elseif strAdditionalQueryPath != "" then
+elseif strAdditionalQueryPath <> "" then
 	if objFSO.fileexists(strAdditionalQueryPath) = False then
 		boolAdditionalQueries = False
 		msgbox "Additional query file does not exist: " & strAdditionalQueryPath

@@ -1,4 +1,4 @@
-'Cb Pull Events v1.3.5 - Added support for accepting queries that contain quotes. Handling for error condition "The data necessary to complete this operation is not yet available"
+'Cb Pull Events v1.3.6 - Output query
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -224,13 +224,10 @@ else
 	next
 end if
 msgbox "executing query: " & strCbQuery
+logdata CurrentDirectory & "\Query_" & strUnique & ".txt",strCbQuery, false
 CbQuery strCbQuery
 
 
-
-
-
-Set objShellComplete = WScript.CreateObject("WScript.Shell") 
 
 Function CbQuery(strQuery)
 Dim intParseCount: intParseCount = 10

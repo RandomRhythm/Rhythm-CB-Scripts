@@ -355,9 +355,9 @@ intTotalQueries = 50
 'get feed info
 DumpCarBlack 0, False, intTotalQueries, "/api/v1/feed"
 
-if boolEnableNetAPI32Check = True then DictFeedInfo.Add "netapi32.dll", "netapi32.dll"
+if boolEnableNetAPI32Check = True then DictFeedInfo.Add "MS08-067", "netapi32.dll"
 if boolEnableFlashCheck = True then DictFeedInfo.Add "Flash Player", "Flash Player"
-if boolEnableMshtmlCheck = True then DictFeedInfo.Add "mshtml.dll", "mshtml.dll"
+if boolEnableMshtmlCheck = True then DictFeedInfo.Add "MS15-065", "mshtml.dll"
 if boolEnableSilverlightCheck = True then DictFeedInfo.Add "silverlight", "silverlight"
 if boolEnableIexploreCheck = True then DictFeedInfo.Add "iexplore.exe", "iexplore.exe"
 if bool3155533Check = True then DictFeedInfo.Add "MS16-051", "vbscript.dll"
@@ -428,9 +428,9 @@ for each strCBFeedID in DictFeedInfo
       if boolEnableCbInspection = True then strQueryFeed = "/api/v1/binary?q=alliance_score_cbinspection:*"	
 	  case "Flash Player"
       strQueryFeed = "/api/v1/binary?q=flash&digsig_publisher:Adobe  Systems  Incorporated"
-    case "mshtml.dll"
+    case "mshtml.dll" 'MS15-065
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "mshtml.dll" & chr(34) & "&digsig_publisher:Microsoft Corporation"
-    case "netapi32.dll"
+    case "netapi32.dll"'MS08-067
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "netapi32.dll" & chr(34) & "&digsig_publisher:Microsoft Corporation"
     case "silverlight"
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "silverlight.configuration.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation"
@@ -466,7 +466,7 @@ for each strCBFeedID in DictFeedInfo
     if clng(intTotalQueries) > 0 then
       intCBcount = 0
       if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", strCBFeedID & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
-      strUniquefName = DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
+      strUniquefName = strCBFeedID & "_" & udate(now) & ".csv"
       strHashOutPath = CurrentDirectory & "\CBmd5_" & strUniquefName
       do while intCBcount < clng(intTotalQueries)
         DumpCarBlack intCBcount, True, intPagesToPull, strQueryFeed & strStartDateQuery & strEndDateQuery & strHostFilter 
@@ -1471,6 +1471,9 @@ Else
     If clng(arrFirstVersion(i)) < clng(arrSecondVersion(i)) Then
       FirstVersionSupOrEqualToSecondVersion = False
       Exit Function
+    elseif clng(arrFirstVersion(i)) > clng(arrSecondVersion(i)) then
+      FirstVersionSupOrEqualToSecondVersion = True
+      Exit Function			
     End If
   Next
   If iFirstArraySize > iSecondArraySize Then

@@ -27,8 +27,16 @@ Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim objShell
 Dim BoolSilent
 Dim strFDname
-Set objShell = WScript.CreateObject( "WScript.Shell" )
+Dim strExtension
+
+'Config section
+strExtension = "zip"
 BoolSilent = True
+boolSubDir = False
+'end Config 
+
+Set objShell = WScript.CreateObject( "WScript.Shell" )
+
 
 strFDname = "filedata"
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
@@ -53,11 +61,17 @@ end if
 Set f = objFSO.GetFolder(ProcessDirectory)
 Set fc = f.files
 For Each f1 in fc
-  if lcase(right(f1.name, 4)) = ".zip" then
-
+  if lcase(right(f1.name, 4)) = "." & strExtension then
+    strOutputdir = CurrentDirectory
     if objFSO.FileExists(ProcessDirectory & "\" & f1.name) then
       if instr(f1.name, ".") then
-        objShell.Run chr(34) & str7zPath & Chr(34) & " x -y -o" & Chr(34) & CurrentDirectory & Chr(34) & " " & Chr(34) & ProcessDirectory & "\" & f1.name & Chr(34)
+        if boolSubDir = TRue then
+          if objFSO.folderexists(CurrentDirectory & "\" & f1.name)  = False then 
+            objFSO.createfolder(CurrentDirectory & "\" & f1.name)
+            strOutputdir = CurrentDirectory & "\" & f1.name
+          end if
+        end if
+        objShell.Run chr(34) & str7zPath & Chr(34) & " x -y -o" & Chr(34) & strOutputdir & Chr(34) & " " & Chr(34) & ProcessDirectory & "\" & f1.name & Chr(34)
         wscript.sleep 700
         intExistLoop = 0
         'wait for file to be created

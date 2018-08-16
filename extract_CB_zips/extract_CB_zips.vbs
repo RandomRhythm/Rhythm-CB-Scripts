@@ -1,7 +1,7 @@
-'Extract CB Zips (works with CB_File_Downloader) v 1.3 (prompt for folder path if not provided. )
-'parameter is the folder path containing the zip files to extract
+'Extract CB Zips v1.4 (works with CB_File_Downloader) 
+'parameter is the folder path containing the zip files to extract (prompt for folder path if not provided. )
 
-'Copyright (c) 2017 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
 'All rights reserved.
 
 'This program is free software: you can redistribute it and/or modify
@@ -32,7 +32,7 @@ Dim strExtension
 'Config section
 strExtension = "zip"
 BoolSilent = True
-boolSubDir = False
+boolSubDir = False 'create sub directories for each compressed file
 'end Config 
 
 Set objShell = WScript.CreateObject( "WScript.Shell" )
@@ -58,10 +58,15 @@ else
   wscript.quit(888)
 end if
 
+if objFSO.FolderExists(ProcessDirectory) = False then
+  msgbox "Folder does not exist " & chr(34) & ProcessDirectory & chr(34)
+  wscript.quit (882)
+end if
+
 Set f = objFSO.GetFolder(ProcessDirectory)
 Set fc = f.files
 For Each f1 in fc
-  if lcase(right(f1.name, 4)) = "." & strExtension then
+  if lcase(right(f1.name, len(strExtension) + 1)) = "." & strExtension then
     strOutputdir = CurrentDirectory
     if objFSO.FileExists(ProcessDirectory & "\" & f1.name) then
       if instr(f1.name, ".") then

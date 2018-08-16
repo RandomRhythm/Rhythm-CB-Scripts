@@ -1,9 +1,8 @@
 'Spreadsheet Vuln Parser for CB_feeds_dump csv output
 'requires Microsoft Excel
-'v1.3
+'v1.4
 
 'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
-'All rights reserved.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -25,6 +24,8 @@ Dim intTabCounter
 Dim boolJustMajorVersion : boolJustMajorVersion = False
 Dim unsupportedTotal: unsupportedTotal = 0
 Dim outdatedTotal: outdatedTotal = 0
+Dim objExcel
+Dim objWorkbook
 
 'set inital values
 intTabCounter = 1
@@ -183,10 +184,12 @@ Do Until objExcel.Cells(intRowCounter,1).Value = "" 'loop till you hit null valu
 
   intRowCounter = intRowCounter +1
 loop
+FixUpHeader
 intRowCounter = 1
 if dictUnsupported.count > 0 then
   Move_next_Workbook_Worksheet( "Unsupported")
-  Write_Spreadsheet_line "Unsupported " & strProduct & " Version|Version Number"
+  Write_Spreadsheet_line "Unsupported " & strProduct & " Computer|Version Number"
+  FixUpHeader
   for each strCompName in dictUnsupported
 	if DictUpdated.exists(strCompName) = False then
 		Write_Spreadsheet_line strCompName & "|" & dictUnsupported.item(strCompName)
@@ -194,10 +197,12 @@ if dictUnsupported.count > 0 then
 	end if
   next
 end if
+
 intRowCounter = 1
 if dictOutdated.count > 0 then
   Move_next_Workbook_Worksheet("Outdated")
-  Write_Spreadsheet_line strVulnType & strProduct & strVulnDetail & "|Version Number"
+  Write_Spreadsheet_line strVulnType & strProduct & strVulnDetail & " Computer|Version Number"
+  FixUpHeader
   for each strCompName in dictOutdated 
 	if DictUpdated.exists(strCompName) = False then
 		Write_Spreadsheet_line strCompName & "|" & dictOutdated.item(strCompName)
@@ -207,19 +212,22 @@ if dictOutdated.count > 0 then
 end if
 intRowCounter = 1
 Move_next_Workbook_Worksheet("Up to Date")
-Write_Spreadsheet_line strPatched & strProduct & strPatchDetail & "|Version Number"
+Write_Spreadsheet_line strPatched & strProduct & strPatchDetail & " Computer|Version Number"
+FixUpHeader
 for each strCompName in DictUpdated
   Write_Spreadsheet_line strCompName & "|" & DictUpdated.item(strCompName)
 next
 
 Move_next_Workbook_Worksheet("Support Chart")
 Write_Spreadsheet_line strProduct & strChatText & "|" & "Count"
+FixUpHeader
 if dictUnsupported.count > 0 then Write_Spreadsheet_line "Unsupported|" &  unsupportedTotal
 if dictOutdated.count > 0 then Write_Spreadsheet_line "Outdated|" &  outdatedTotal
 Write_Spreadsheet_line "Updated|" &  DictUpdated.count
 
 Move_next_Workbook_Worksheet("Version Chart")
 Write_Spreadsheet_line  strProduct & " Versions" & "|" & "Count"
+FixUpHeader
 for each strVersionNumber in DictVersion
   Write_Spreadsheet_line strVersionNumber & "|" &  DictVersion.item(strVersionNumber)
 next
@@ -245,6 +253,19 @@ else
   DictVersion.add strVN, 1
 end if  
 end sub
+
+Sub FixUpHeader() 'https://www.experts-exchange.com/questions/23820327/Freeze-Panes-through-VBS-Script.html
+With objExcel.ActiveSheet
+	.Rows(1).Font.Bold = True '1.  Bold the headers (always in row 1)
+	.AutoFilterMode = False 'turn off any existing autofilter just in case
+	.Rows(1).AutoFilter '2. Turn on AutoFilter for all coloms
+	.Columns.AutoFit '3. Set Column width to AutoFit Selection
+	'4. Set a freeze under column 1 so that the header is always present at the top
+	.Range("A2").Select
+End With
+objExcel.ActiveWindow.FreezePanes = True
+end sub
+
 Function RemoveCharsForFname(TextFileName)
 'Remove unsupported characters from file name
 strTmpFilName1 = right(TextFileName, len(TextFileName) - instrrev(TextFileName,"\"))

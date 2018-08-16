@@ -163,9 +163,11 @@ end if
   intRowCounter = intRowCounter +1
 loop
 
+FixUpHeader
 intRowCounter = 1
-  Move_next_Workbook_Worksheet( "Operating Systems")
-  Write_Spreadsheet_line "Operating Systems|Count"
+Move_next_Workbook_Worksheet( "Operating Systems")
+Write_Spreadsheet_line "Operating Systems|Count"
+FixUpHeader
 if DictOSconsolidated.count > 0 then
 
   for each strOSname in DictOSconsolidated
@@ -176,6 +178,7 @@ end if
 intRowCounter = 1
   Move_next_Workbook_Worksheet( "OS Version")
   Write_Spreadsheet_line "OS Versions|Count"
+  FixUpHeader
 if DictOSWorkversion.count > 0 then
 
   for each strOSname in DictOSWorkversion
@@ -190,6 +193,7 @@ end if
 intRowCounter = 1
   Move_next_Workbook_Worksheet( "Workstation OS")
   Write_Spreadsheet_line "Workstation OS|Count"
+  FixUpHeader
 if DictOSWorkversion.count > 0 then
   for each strOSname in DictOSWorkversion
     Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSWorkversion.item(strOSname)
@@ -199,6 +203,7 @@ end if
 intRowCounter = 1
   Move_next_Workbook_Worksheet( "Mac OS")
   Write_Spreadsheet_line "Mac OS|Count"
+  FixUpHeader
 if DictOSWorkversionMac.count > 0 then
   for each strOSname in DictOSWorkversionMac
     Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSWorkversionMac.item(strOSname)
@@ -208,6 +213,7 @@ end if
 intRowCounter = 1
   Move_next_Workbook_Worksheet( "Windows Workstation OS")
   Write_Spreadsheet_line "Windows Workstation OS|Count"
+  FixUpHeader
 if DictOSWorkversionWindows.count > 0 then
   for each strOSname in DictOSWorkversionWindows
     Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSWorkversionWindows.item(strOSname)
@@ -217,6 +223,7 @@ end if
 intRowCounter = 1
   Move_next_Workbook_Worksheet( "Server OS")
   Write_Spreadsheet_line "Server OS|Count"
+  FixUpHeader
 if DictOSServversion.count > 0 then
   for each strOSname in DictOSServversion
     Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSServversion.item(strOSname)
@@ -226,6 +233,7 @@ end if
 intRowCounter = 1
   Move_next_Workbook_Worksheet( "Windows Server OS")
   Write_Spreadsheet_line "Windows Server|Count"
+  FixUpHeader
 if DictOSServversionWindows.count > 0 then
   for each strOSname in DictOSServversionWindows
     Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSServversionWindows.item(strOSname)
@@ -236,6 +244,7 @@ end if
 intRowCounter = 1
   Move_next_Workbook_Worksheet( "Linux OS")
   Write_Spreadsheet_line "Linux Server|Count"
+  FixUpHeader
 if DictOSServversionLinux.count > 0 then
   for each strOSname in DictOSServversionLinux
     Write_Spreadsheet_line ShortenOSname(strOSname) & "|" & DictOSServversionLinux.item(strOSname)
@@ -575,3 +584,14 @@ End Function
 
 
 
+Sub FixUpHeader() 'https://www.experts-exchange.com/questions/23820327/Freeze-Panes-through-VBS-Script.html
+With objExcel.ActiveSheet
+	.Rows(1).Font.Bold = True '1.  Bold the headers (always in row 1)
+	.AutoFilterMode = False 'turn off any existing autofilter just in case
+	.Rows(1).AutoFilter '2. Turn on AutoFilter for all coloms
+	.Columns.AutoFit '3. Set Column width to AutoFit Selection
+	'4. Set a freeze under column 1 so that the header is always present at the top
+	.Range("A2").Select
+End With
+objExcel.ActiveWindow.FreezePanes = True
+end sub

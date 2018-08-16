@@ -1,4 +1,4 @@
-'Cb Pull Events v1.3.6 - Output query
+'Cb Pull Events v1.3.6 - Output query. Handle resource unavailable when using SocketTools 
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -7,7 +7,6 @@
 'More information on querying the CB Response API https://github.com/carbonblack/cbapi/tree/master/client_apis
 
 'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
-'All rights reserved.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -282,38 +281,38 @@ do while boolexit = False
 				if instr(strCBID, "-") > 0 then strCBID = left(strCBID, len(strCBID) -9)
 			end if
 			if strCBID <> "" then
-        logdata CurrentDirectory & "\CB_UID.log", strCBID & "-" & strCBSegID ,False 
-        segments = SegCheck(strCBID)
-        if instr(segments, "|") > 0 then
-         arraySegment = split(segments, "|")
-         for each strSeg in arraySegment
-          if dictUID.exists(strSeg) = false then
-            if len(strSeg) > 12 then
-              CBEventData strCBID & "/" & HexToDec(right(strSeg, 12))
-            end if
-          
-            dictUID.add strSeg, ""
-          end if
-         next
-        elseif strCBSegID <> "" then
-         'segment_id: REQUIRED the process segment id; this is the segment_id field in search results. If this is set to 0
-          CBEventData strCBID & "/" & strCBSegID 
-        end if
+		logdata CurrentDirectory & "\CB_UID.log", strCBID & "-" & strCBSegID ,False 
+		segments = SegCheck(strCBID)
+		if instr(segments, "|") > 0 then
+		 arraySegment = split(segments, "|")
+		 for each strSeg in arraySegment
+		  if dictUID.exists(strSeg) = false then
+			if len(strSeg) > 12 then
+			  CBEventData strCBID & "/" & HexToDec(right(strSeg, 12))
+			end if
+		  
+			dictUID.add strSeg, ""
+		  end if
+		 next
+		elseif strCBSegID <> "" then
+		 'segment_id: REQUIRED the process segment id; this is the segment_id field in search results. If this is set to 0
+		  CBEventData strCBID & "/" & strCBSegID 
+		end if
 			end if
 		next
 	end if
 	intResultCount = getdata(StrTmpResponse, ",", "total_results" & Chr(34) & ": ")
 
 	if isnumeric(intResultCount) then
-    if intResultCount = 0 then
-      wscript.echo "Zero items were retrieved. Please double check your query and try again: " & chr(34) & strCbQuery & chr(34)
-      wscript.quit (997)
-    end if
-    if intParseCount >= clng(intResultCount) then
-      wscript.echo intResultCount & " items retrieved for query " & chr(34) & strCbQuery & chr(34)
-      wscript.quit
-    end if
-    if intAnswer = "" then intAnswer = msgbox (intParseCount & " items have been pulled down for query " & chr(34) & strCbQuery & Chr(34) & ". Do you want to pull the rest down? There are a total of " & intResultCount & " items to retrieve. Selecting no will pull down " & intPagesToPull & " more",vbYesNoCancel, "Cb Scripts")
+		if intResultCount = 0 then
+		  wscript.echo "Zero items were retrieved. Please double check your query and try again: " & chr(34) & strCbQuery & chr(34)
+		  wscript.quit (997)
+		end if
+		if intParseCount >= clng(intResultCount) then
+		  wscript.echo intResultCount & " items retrieved for query " & chr(34) & strCbQuery & chr(34)
+		  wscript.quit
+		end if
+		if intAnswer = "" then intAnswer = msgbox (intParseCount & " items have been pulled down for query " & chr(34) & strCbQuery & Chr(34) & ". Do you want to pull the rest down? There are a total of " & intResultCount & " items to retrieve. Selecting no will pull down " & intPagesToPull & " more",vbYesNoCancel, "Cb Scripts")
 		if intAnswer <> vbCancel and intParseCount < clng(intResultCount) then
 			if intAnswer = vbNo then intAnswer = ""
 			strAppendQuery = "&start=" & intParseCount & "&rows=" & intPagesToPull
@@ -324,8 +323,8 @@ do while boolexit = False
 		end if
 	else
 		boolexit = True
-		msgbox "Error 1"
-		msgbox intResultCount
+		msgbox "total_results is missing from HTTP Response - " & StrTmpResponse
+		msgbox "The script will now exit. Try running the query with a time limitation by adding something like " & chr(34) & "AND last_update:10080" & chr(34) & ". This example addition will restrict the query to the last week of activity" 
 		exit function
 	end if
 	wscript.sleep intSleepDelay
@@ -1062,8 +1061,8 @@ On Error GoTo 0
 nError = objHttp.Connect()
 
 If nError <> 0 Then
-    WScript.echo "Error connecting to " & strRemoteURL & ". " & objHttp.LastError & ": " & objHttp.LastErrorString
-    WScript.Quit(1)
+    'WScript.echo "Error connecting to " & strRemoteURL & ". " & objHttp.LastError & ": " & objHttp.LastErrorString
+    logdata CurrentDirectory & "\CB_Pull_Error.log", Date & " " & Time & " Error connecting to " & strRemoteURL & ". " & objHttp.LastError & ": " & objHttp.LastErrorString, false
 End If
 objHttp.timeout = 90
 ' Download the file to the local system

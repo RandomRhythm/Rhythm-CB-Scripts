@@ -3,11 +3,17 @@ Collection of scripts for working with Carbon Black Cb Response API
 
 *Note: If you are getting connection errors it is likely happening because the HTTP Windows API the scripts use by default doesn't support the TLS version configured on the Cb Response console. To work around this problem utilize the compiled executables with SocketTools:
 1. Install SocketTools from this repo (InstallSocketTools.exe)
-a. Must be run with administrator rights. Will launch regsvr32 to register the ActiveX controls. 
+   
+   a. Must be run with administrator rights. Will launch regsvr32 to register the ActiveX controls. 
+   
 2. Browse to the EXE folder for each script and edit the INI file
-a. Each executable has its own INI file
-b. By default the INI file in the EXE directories are configured with UseSocketTools=True
-c. Configuration changes can be made in the INI such as start and end time filters
+   
+   a. Each executable has its own INI file
+   
+   b. By default the INI file in the EXE directories are configured with UseSocketTools=True
+   
+   c. Configuration changes can be made in the INI such as start and end time filters
+   
 3. Run the EXE
 
 ### Configuring the INI file

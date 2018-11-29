@@ -45,3 +45,5 @@ These are boolean values (True or False) to turn on or off features of the scrip
 Other Values exist and may be unique to the individual script. The above examples are provided as they are generally available for each INI file.
 
 Problems or questions? email randomrhythm@rhythmengineering.com
+
+If you get an error such as error on line 1 that is likely due to the file being saved in unicode. Open up the script in notepad.exe and click File > Save As. In the save as dialog change the encoding at the bottom of the screen to ANSI.

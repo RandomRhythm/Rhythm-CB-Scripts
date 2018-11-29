@@ -515,7 +515,7 @@ objHttp.Disconnect
 objHttp.Uninitialize
 end function
 
-unction ValueFromIni(strFpath, iniSection, iniKey, currentValue)
+Function ValueFromIni(strFpath, iniSection, iniKey, currentValue)
 returniniVal = ReadIni( strFpath, iniSection, iniKey)
 if returniniVal = " " then 
 	returniniVal = currentValue

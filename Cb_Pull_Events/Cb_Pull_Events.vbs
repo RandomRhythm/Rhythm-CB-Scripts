@@ -1,4 +1,4 @@
-'Cb Pull Events v1.3.6 - Output query. Handle resource unavailable when using SocketTools 
+'Cb Pull Events v1.3.7 - Support for v2 - v4 API. Set V4 as default version
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -51,12 +51,15 @@ Dim intReceiveTimeout
 Dim intAnswer: intAnswer = ""
 Dim boolUseSocketTools
 Dim strLicenseKey
+Dim sensor_id
+Dim APIVersion
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug"
 
 'Optional config section
+APIVersion = 4
 boolNetworkEnable = True
 boolRegEnable = True
 boolModEnable = True
@@ -81,6 +84,7 @@ if objFSO.FileExists(strIniPath) = True then
 intSleepDelay = ValueFromINI(strIniPath, "IntegerValues", "SleepDelay", intSleepDelay)
 intPagesToPull = ValueFromINI(strIniPath, "IntegerValues", "PagesToPull", intPagesToPull)
 intReceiveTimeout = ValueFromINI(strIniPath, "IntegerValues", "ReceiveTimeout", intReceiveTimeout)
+APIVersion = ValueFromINI(strIniPath, "IntegerValues", "APIVersion", APIVersion)
 boolUseSocketTools = ValueFromINI(strIniPath, "BooleanValues", "UseSocketTools", boolUseSocketTools)
 boolNetworkEnable = ValueFromINI(strIniPath, "BooleanValues", "Network", boolNetworkEnable)
 boolModEnable = ValueFromINI(strIniPath, "BooleanValues", "Modules", boolModEnable)
@@ -94,6 +98,11 @@ boolDebug = ValueFromINI(strIniPath, "BooleanValues", "Debug", boolDebug)
 '---End ini loading section
 else
 	if BoolRunSilent = False then WScript.Echo strIniPath & " does not exist. Using script configured/default settings instead"
+end if
+
+if cint(APIVersion) > 4 then
+  msgbox "API version " & APIVersion & " is not supported. Changing to V4"
+  APIVersion = 4
 end if
 
 strUnique = udate(now)
@@ -333,7 +342,7 @@ End function
 
 Function SegCheck(strIDPath)
 Set objHTTP = CreateObject("WinHttp.WinHttpRequest.5.1")
-strAVEurl = StrBaseCBURL & "/api/v1/process/" & strIDPath & "/segment"
+strAVEurl = StrBaseCBURL & "/api/v" & APIVersion & "/process/" & strIDPath & "/segment"
 if boolUseSocketTools = False then
 	objHTTP.open "GET", strAVEurl, False
 	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
@@ -385,7 +394,7 @@ dim strAssocWith
 Dim CBresponseText
 Dim binTempResponse
 Dim StrTmpResponse
-strAVEurl = StrBaseCBURL & "/api/v1/process/" & strIDPath & "/event" 
+strAVEurl = StrBaseCBURL & "/api/v" & APIVersion & "/process/" & strIDPath & "/event" 
 if boolUseSocketTools = False then
 	objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
 	objHTTP.open "GET", strAVEurl, False
@@ -472,7 +481,40 @@ process_pid = getdata(StrTmpResponse,",", "process_pid" & CHr(34) & ": " )
 
 
 
-if boolNetworkEnable = True then
+
+if boolNetworkEnable = True and APIVersion  > 1 and APIVersion < 5 then
+  if boolNetworkHeader = False then
+	outrow = "Date Time|IP Address|Local Port|Remote Port|Protocol|Domain|Outbound|Sensor ID" & userNheader & processNheader
+	logdata CurrentDirectory & "\IP_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+	boolNetworkHeader = True
+  end if
+  strTmpText = getdata(StrTmpResponse,"]", "netconn_complete" & CHr(34) & ": [") 
+  if instr(strTmpText, "},") = 0 then
+    strTmpText = strTmpText & ","
+  end if
+  arrayIPinfo = split(strTmpText, "},")
+  for each IPinfo in arrayIPinfo
+    strDomain = getdata (IPinfo, chr(34), "domain" & Chr(34) & ": " & chr(34))
+    strProtocol = getdata (IPinfo, chr(34), "proto" & Chr(34) & ": " & chr(34))
+  strLport = getdata (IPinfo, ",", "local_port" & Chr(34) & ": " )
+  strDirection = getdata (IPinfo, chr(34), "direction" & Chr(34) & ": " & chr(34))
+  strRport = getdata (IPinfo, ",", "remote_port" & Chr(34) & ": ")
+  strIP = getdata (IPinfo, chr(34), "remote_ip" & Chr(34) & ": " & chr(34))
+  strDtime = getdata (IPinfo, chr(34), "timestamp" & Chr(34) & ": " & chr(34))
+  if strDtime <> "" Then
+    if APIVersion = 2 or APIVersion = 3 then
+      strIP = IPDecToDotQuad(strIP)
+    end if
+    strWriteLine = Chr(34) & strDtime & chr(34) & "," & Chr(34) & strIP & chr(34) & "," & _
+    Chr(34) & strLport & chr(34) & "," & Chr(34) & strRport & chr(34) & "," & Chr(34) & strProtocol & chr(34) & "," & _
+    Chr(34) & strDomain & chr(34) & "," & Chr(34) & strDirection & chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
+    logdata CurrentDirectory & "\IP_out_" & strUnique & ".csv",strWriteLine, false
+  end if
+  next
+
+end if
+
+if boolNetworkEnable = True and APIVersion  = 1 then
   if boolNetworkHeader = False then
 	outrow = "Date Time|IP Address|Remote Port|Protocol|Domain|Outbound|Sensor ID" & userNheader & processNheader
 	logdata CurrentDirectory & "\IP_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
@@ -900,7 +942,7 @@ End Function
 
 Function ValueFromIni(strFpath, iniSection, iniKey, currentValue)
 returniniVal = ReadIni( strFpath, iniSection, iniKey)
-if returniniVal = " " then 
+if returniniVal = " " or  returniniVal = "" then 
 	returniniVal = currentValue
 end if 
 if TypeName(returniniVal) = "String" then

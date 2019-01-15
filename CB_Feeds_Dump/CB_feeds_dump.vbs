@@ -466,7 +466,7 @@ for each strCBFeedID in DictFeedInfo
     if clng(intTotalQueries) > 0 then
       intCBcount = 0
       if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", strCBFeedID & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
-      strUniquefName = strCBFeedID & "_" & udate(now) & ".csv"
+      strUniquefName = DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
       strHashOutPath = CurrentDirectory & "\CBmd5_" & strUniquefName
       do while intCBcount < clng(intTotalQueries)
         DumpCarBlack intCBcount, True, intPagesToPull, strQueryFeed & strStartDateQuery & strEndDateQuery & strHostFilter 
@@ -563,6 +563,12 @@ if boolUseSocketTools = False then
 		if objHTTP.status = 500 or objHTTP.status = 501 then
 			'failed query
 			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP status " & objHTTP.status & " - " & strAVEurl,False 
+			exit function
+		end if
+		if objHTTP.status = 405 then
+			'failed access
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP status " & objHTTP.status & " - This could indicate you do not have appropiate rights to query feeds",False 
+			msgbox "CarBlack lookup failed with HTTP status " & objHTTP.status & " - This could indicate you do not have appropiate rights to query feeds" 
 			exit function
 		end if
 		if objHTTP.status <> 200 then

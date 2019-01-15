@@ -247,6 +247,10 @@ if instr(strCBresponseText, "400 Bad Request") then
   msgbox "Server did not like the query. Try using " & chr(34) & "*" & CHr(34) & " for the start and end dates" & vbcrlf & strAVEurl
   wscript.quit(996)
 end if
+if instr(strCBresponseText, "Unhandled exception. Check logs for details.") then
+  msgbox "Server returned unhandled exception. This could indicate you do not have appropiate rights to query sensors"
+  wscript.quit(995)
+end if
 strArrayCBresponse = split(strCBresponseText, vblf & "  {")
 for each strCBResponseText in strArrayCBresponse
 

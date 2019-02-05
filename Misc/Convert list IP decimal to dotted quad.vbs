@@ -6,7 +6,15 @@ Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strinFile = CurrentDirectory & "\dotquad.txt"
+if objFSO.fileexists(strinFile) = False then
+  msgbox "Input file does not exist: " & strinFile
+  wscript.quit 2
+end if
 Set objFile = objFSO.OpenTextFile(strinFile)
+if objFile.AtEndOfStream = true then
+  msgbox "Please add IP addresses to file: " & strinFile
+  wscript.quit 3
+end if
 Do While Not objFile.AtEndOfStream
 
     strData = objFile.ReadLine

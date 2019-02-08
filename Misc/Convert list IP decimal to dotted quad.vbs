@@ -1,3 +1,7 @@
+'Build Cb Response query with IP addresses and/or domains
+'provide a list of IP address/domains in dotquad.txt
+'output to cbquery.txt
+
 Const forwriting = 2
 Const ForAppending = 8
 Const ForReading = 1
@@ -18,16 +22,26 @@ end if
 Do While Not objFile.AtEndOfStream
 
     strData = objFile.ReadLine
-    logdata CurrentDirectory & "\decout.txt", Dotted2LongIP(strData), false
-    if strCBout= "" then
-      strCBout = "ipaddr:" & Dotted2LongIP(strData)
+    strTmpIP = strData
+    if isIPaddress(strData) = true then
+      if isIPv6(strData) = False then
+        strTmpIP = Dotted2LongIP(strData)
+        logdata CurrentDirectory & "\decout.txt", strTmpIP, false
+      end if
+      strType = "ipaddr"
     else
-      strCBout = strCBout & " OR ipaddr:" & Dotted2LongIP(strData)
+      strType = "domain"
+    end if
+    
+    if strCBout= "" then
+      strCBout = strType & ":" & strTmpIP
+    else
+      strCBout = strCBout & " OR " & strType & ":" & strTmpIP
     end if
 loop
     
-logdata CurrentDirectory & "\cbcout.txt", strCBout, false
-msgbox IPDecToDotQuad(intDec)
+logdata CurrentDirectory & "\cbquery.txt", strCBout, false
+msgbox "Finished"
 
 Public Function Dotted2LongIP(DottedIP) 'http://www.freevbcode.com/ShowCode.asp?ID=938
     ' errors will result in a zero value
@@ -168,3 +182,57 @@ Do While found = False and Z < Len((FilePathName))
 Loop
 
 end Function
+
+
+
+Function isIPaddress(strIPaddress)
+DIm arrayTmpquad
+Dim boolReturn_isIP
+boolReturn_isIP = True
+if instr(strIPaddress,".") then
+  arrayTmpquad = split(strIPaddress,".")
+  for each item in arrayTmpquad
+    if isnumeric(item) = false then boolReturn_isIP = false
+  next
+else
+  boolReturn_isIP = false
+end if
+if boolReturn_isIP = false then
+	boolReturn_isIP = isIpv6(strIPaddress)
+end if
+isIPaddress = boolReturn_isIP
+END FUNCTION
+
+
+
+Function IsIPv6(TestString)
+
+    Dim sTemp
+    Dim iLen
+    Dim iCtr
+    Dim sChar
+    
+    if instr(TestString, ":") = 0 then 
+		IsIPv6 = false
+		exit function
+	end if
+    
+    sTemp = TestString
+    iLen = Len(sTemp)
+    If iLen > 0 Then
+        For iCtr = 1 To iLen
+            sChar = Mid(sTemp, iCtr, 1)
+            if isnumeric(sChar) or "a"= lcase(sChar) or "b"= lcase(sChar) or "c"= lcase(sChar) or "d"= lcase(sChar) or "e"= lcase(sChar) or "f"= lcase(sChar) or ":" = sChar then
+              'allowed characters for hash (hex)
+            else
+              IsIPv6 = False
+              exit function
+            end if
+        Next
+    
+    IsIPv6 = True
+    else
+      IsIPv6 = False
+    End If
+    
+End Function

@@ -1,7 +1,9 @@
 # Rhythm-CB-Scripts
 Collection of scripts for working with Carbon Black Cb Response API
 
-*Note: If you are getting connection errors it is likely happening because the HTTP Windows API the scripts use by default doesn't support the TLS version configured on the Cb Response console. To work around this problem utilize the compiled executables with SocketTools:
+*Note: If you are getting connection errors it is likely happening because the HTTP Windows API the scripts use by default don't support the TLS version configured on the Cb Response console. To fix this problem in Windows peform the fix Microsoft describes here:
+https://support.microsoft.com/en-us/help/3140245/update-to-enable-tls-1-1-and-tls-1-2-as-default-secure-protocols-in-wi
+To work around this problem utilize the compiled executables with SocketTools:
 1. Install SocketTools from this repo (InstallSocketTools.exe)
    
    a. Must be run with administrator rights. Will launch regsvr32 to register the ActiveX controls. 

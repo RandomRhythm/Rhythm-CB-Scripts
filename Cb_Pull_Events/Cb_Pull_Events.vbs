@@ -988,18 +988,18 @@ Function ReadIni( myFilePath, mySection, myKey ) 'http://www.robvanderwoude.com/
     ' Modified by Denis St-Pierre and Rob van der Woude
 
     Dim intEqualPos
-    Dim objIniFile
+    Dim objFSO_ini, objIniFile
     Dim strFilePath, strKey, strLeftString, strLine, strSection
 
-    'Set objFSO = CreateObject( "Scripting.FileSystemObject" )
+    Set objFSO_ini = CreateObject( "Scripting.FileSystemObject" )
 
     ReadIni     = ""
     strFilePath = Trim( myFilePath )
     strSection  = Trim( mySection )
     strKey      = Trim( myKey )
 
-    If objFSO.FileExists( strFilePath ) Then
-        Set objIniFile = objFSO.OpenTextFile( strFilePath, ForReading, False )
+    If objFSO_ini.FileExists( strFilePath ) Then
+        Set objIniFile = objFSO_ini.OpenTextFile( strFilePath, ForReading, False )
         Do While objIniFile.AtEndOfStream = False
             strLine = Trim( objIniFile.ReadLine )
 
@@ -1039,6 +1039,7 @@ Function ReadIni( myFilePath, mySection, myKey ) 'http://www.robvanderwoude.com/
         if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured/default settings instead"
     End If
 	Set objIniFile = nothing
+	Set objFSO_ini = nothing
 End Function
 
 

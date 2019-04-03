@@ -1,4 +1,4 @@
-'Cb Pull Events v1.3.8 - Implement pullAllSections (set to false to limit the amount of data being pulled)
+'Cb Pull Events v1.3.9 - Destroy all set objects
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -239,18 +239,18 @@ CbQuery strCbQuery
 
 Function CbQuery(strQuery)
 Dim intParseCount: intParseCount = 10
-Set objHTTP = CreateObject("WinHttp.WinHttpRequest.5.1")
-objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
+Set objHTTP_CbQ = CreateObject("WinHttp.WinHttpRequest.5.1")
+objHTTP_CbQ.SetTimeouts 600000, 600000, 600000, 900000 
 strAppendQuery = ""
 boolexit = False 
 do while boolexit = False 
 	strAVEurl = StrBaseCBURL & "/api/v1/process?q=" & strQuery & strAppendQuery
 	if boolUseSocketTools = False then
-		objHTTP.open "GET", strAVEurl, False
-		objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+		objHTTP_CbQ.open "GET", strAVEurl, False
+		objHTTP_CbQ.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
 		on error resume next
-		  objHTTP.send 
-		  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
+		  objHTTP_CbQ.send 
+		  If objHTTP_CbQ.waitForResponse(intReceiveTimeout) Then 'response ready
 			'success!
 		  Else 'wait timeout exceeded
 			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to timeout", False
@@ -261,7 +261,7 @@ do while boolexit = False
 			exit function 
 		  end if
 		on error goto 0 
-		CBresponseText = objHTTP.responseBody
+		CBresponseText = objHTTP_CbQ.responseBody
 	else
 	  StrTmpResponse = SocketTools_HTTP(strAVEurl)
 	  CBresponseText = StrTmpResponse
@@ -340,23 +340,24 @@ do while boolexit = False
 	end if
 	wscript.sleep intSleepDelay
 loop
+set objHTTP_CbQ = nothing
 End function
 
 Function SegCheck(strIDPath)
-Set objHTTP = CreateObject("WinHttp.WinHttpRequest.5.1")
+Set objHTTP_SC = CreateObject("WinHttp.WinHttpRequest.5.1")
 strAVEurl = StrBaseCBURL & "/api/v" & APIVersion & "/process/" & strIDPath & "/segment"
 if boolUseSocketTools = False then
-	objHTTP.open "GET", strAVEurl, False
-	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+	objHTTP_SC.open "GET", strAVEurl, False
+	objHTTP_SC.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
 
 	on error resume next
-	  objHTTP.send 
+	  objHTTP_SC.send 
 	  if err.number <> 0 then
 		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
 		exit function 
 	  end if
 	on error goto 0 
-	CBresponseText = objHTTP.responseBody
+	CBresponseText = objHTTP_SC.responseBody
 else
 	  StrTmpResponse = SocketTools_HTTP(strAVEurl)
 	  CBresponseText = StrTmpResponse
@@ -364,7 +365,7 @@ end if
 
 if len(CBresponseText) > 0 then
 	if boolUseSocketTools = False then
-		binTempResponse = objHTTP.responseBody
+		binTempResponse = objHTTP_SC.responseBody
 		StrTmpResponse = RSBinaryToString(binTempResponse)
 	end if
   if instr(StrTmpResponse, "Unhandled exception.") > 0 then exit function 
@@ -386,11 +387,12 @@ if len(CBresponseText) > 0 then
 end if
 
 SegCheck = strUIDs
+set objHTTP_SC = nothing
 end function
 
 
 Function CBEventData(strIDPath)
-Set objHTTP = CreateObject("WinHttp.WinHttpRequest.5.1")
+Set objHTTP_ED = CreateObject("WinHttp.WinHttpRequest.5.1")
 Dim strAVEurl
 Dim strReturnURL
 dim strAssocWith
@@ -399,13 +401,13 @@ Dim binTempResponse
 Dim StrTmpResponse
 strAVEurl = StrBaseCBURL & "/api/v" & APIVersion & "/process/" & strIDPath & "/event" 
 if boolUseSocketTools = False then
-	objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
-	objHTTP.open "GET", strAVEurl, False
-	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+	objHTTP_ED.SetTimeouts 600000, 600000, 600000, 900000 
+	objHTTP_ED.open "GET", strAVEurl, False
+	objHTTP_ED.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
 	logdata CurrentDirectory & "\CB_Download.log", strAVEurl,False 
 	on error resume next
-	  objHTTP.send 
-	  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
+	  objHTTP_ED.send 
+	  If objHTTP_ED.waitForResponse(intReceiveTimeout) Then 'response ready
 		'success!
 	  Else 'wait timeout exceeded
 		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to timeout", False
@@ -418,7 +420,7 @@ if boolUseSocketTools = False then
 		  end if
 	  end if
 	err.clear
-	CBresponseText = objHTTP.responseBody
+	CBresponseText = objHTTP_ED.responseBody
 else
 	  StrTmpResponse = SocketTools_HTTP(strAVEurl)
 	  CBresponseText = StrTmpResponse
@@ -429,7 +431,7 @@ if err.number <> 0 then
 	if err.message = "The data necessary to complete this operation is not yet available." then
 		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " " & err.number & " " & err.message, False
 		wscript.sleep intSleepDelay
-		CBresponseText = objHTTP.responseBody
+		CBresponseText = objHTTP_ED.responseBody
 	end if
 End If
 on error goto 0 
@@ -439,7 +441,7 @@ if len(CBresponseText) = 0 then
   exit function
 end if
 if boolUseSocketTools = False then
-	binTempResponse = objHTTP.responseBody
+	binTempResponse = objHTTP_ED.responseBody
 	StrTmpResponse = RSBinaryToString(binTempResponse)
 end if
 if boolDebug = true then logdata CurrentDirectory & "\CB_EDownload.txt", StrTmpResponse,False 
@@ -680,7 +682,7 @@ logdata CurrentDirectory & "\CB_Download.log", Date & " " & Time & " Event can't
 wscript.sleep 5
 end if
 
-
+set objHTTP_ED = nothing
 end function
 
 Function SaveBinaryDataTextStream(FileName, responseBody)
@@ -729,6 +731,7 @@ Function RSBinaryToString(xBinary)
   Else
     RSBinaryToString = ""
   End If
+  Set RS = nothing
 End Function
 
 
@@ -829,6 +832,7 @@ if TextFileName <> "" then
   Set objStream = nothing
   end if
 end if
+ Set WriteTextFile = nothing
 Set fsoLogData = Nothing
 End Function
 
@@ -987,7 +991,7 @@ Function ReadIni( myFilePath, mySection, myKey ) 'http://www.robvanderwoude.com/
     Dim objFSO, objIniFile
     Dim strFilePath, strKey, strLeftString, strLine, strSection
 
-    Set objFSO = CreateObject( "Scripting.FileSystemObject" )
+    'Set objFSO = CreateObject( "Scripting.FileSystemObject" )
 
     ReadIni     = ""
     strFilePath = Trim( myFilePath )
@@ -1034,6 +1038,7 @@ Function ReadIni( myFilePath, mySection, myKey ) 'http://www.robvanderwoude.com/
     Else
         if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured/default settings instead"
     End If
+	Set objIniFile = nothing
 End Function
 
 
@@ -1122,6 +1127,7 @@ End If
 
 objHttp.Disconnect
 objHttp.Uninitialize
+Set objHttp = nothing
 end function
 
 

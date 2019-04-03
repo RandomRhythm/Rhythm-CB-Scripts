@@ -988,7 +988,7 @@ Function ReadIni( myFilePath, mySection, myKey ) 'http://www.robvanderwoude.com/
     ' Modified by Denis St-Pierre and Rob van der Woude
 
     Dim intEqualPos
-    Dim objFSO, objIniFile
+    Dim objIniFile
     Dim strFilePath, strKey, strLeftString, strLine, strSection
 
     'Set objFSO = CreateObject( "Scripting.FileSystemObject" )

@@ -1,4 +1,4 @@
-'Cb Pull Events v1.3.7 - Support for v2 - v4 API. Set V4 as default version
+'Cb Pull Events v1.3.8 - Implement pullAllSections (set to false to limit the amount of data being pulled)
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -6,7 +6,7 @@
 
 'More information on querying the CB Response API https://github.com/carbonblack/cbapi/tree/master/client_apis
 
-'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -290,23 +290,25 @@ do while boolexit = False
 				if instr(strCBID, "-") > 0 then strCBID = left(strCBID, len(strCBID) -9)
 			end if
 			if strCBID <> "" then
-		logdata CurrentDirectory & "\CB_UID.log", strCBID & "-" & strCBSegID ,False 
-		segments = SegCheck(strCBID)
-		if instr(segments, "|") > 0 then
-		 arraySegment = split(segments, "|")
-		 for each strSeg in arraySegment
-		  if dictUID.exists(strSeg) = false then
-			if len(strSeg) > 12 then
-			  CBEventData strCBID & "/" & HexToDec(right(strSeg, 12))
-			end if
-		  
-			dictUID.add strSeg, ""
-		  end if
-		 next
-		elseif strCBSegID <> "" then
-		 'segment_id: REQUIRED the process segment id; this is the segment_id field in search results. If this is set to 0
-		  CBEventData strCBID & "/" & strCBSegID 
-		end if
+				logdata CurrentDirectory & "\CB_UID.log", strCBID & "-" & strCBSegID ,False 
+				if pullAllSections = True then
+					segments = SegCheck(strCBID)
+					if instr(segments, "|") > 0 then
+					 arraySegment = split(segments, "|")
+					 for each strSeg in arraySegment
+					  if dictUID.exists(strSeg) = false then
+						if len(strSeg) > 12 then
+						  CBEventData strCBID & "/" & HexToDec(right(strSeg, 12))
+						end if
+					  
+						dictUID.add strSeg, ""
+					  end if
+					 next
+					elseif strCBSegID <> "" then
+					 'segment_id: REQUIRED the process segment id; this is the segment_id field in search results. If this is set to 0
+					  CBEventData strCBID & "/" & strCBSegID 
+					end if
+				end if
 			end if
 		next
 	end if
@@ -384,8 +386,9 @@ if len(CBresponseText) > 0 then
 end if
 
 SegCheck = strUIDs
-
 end function
+
+
 Function CBEventData(strIDPath)
 Set objHTTP = CreateObject("WinHttp.WinHttpRequest.5.1")
 Dim strAVEurl

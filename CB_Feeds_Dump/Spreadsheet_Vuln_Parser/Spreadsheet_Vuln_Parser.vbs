@@ -1,8 +1,8 @@
 'Spreadsheet Vuln Parser for CB_feeds_dump csv output
 'requires Microsoft Excel
-'v1.4
+'v1.5
 
-'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -26,15 +26,22 @@ Dim unsupportedTotal: unsupportedTotal = 0
 Dim outdatedTotal: outdatedTotal = 0
 Dim objExcel
 Dim objWorkbook
+Dim dictHostExclusion: Set dictHostInclusion = CreateObject("Scripting.Dictionary")'used to exclude hosts from reporting such as ones that have been decommissioned.
+Dim dictOutdated: Set dictOutdated = CreateObject("Scripting.Dictionary")'
+Dim dictUnsupported: Set dictUnsupported = CreateObject("Scripting.Dictionary")'
+Dim DictUpdated: Set DictUpdated = CreateObject("Scripting.Dictionary")'
+Dim DictVersion: Set DictVersion = CreateObject("Scripting.Dictionary")'
+
+CurrentDirectory = GetFilePath(wscript.ScriptFullName)
+
+'config
+strPathToIncludedHosts = CurrentDirectory & "\includedHosts.txt"
+'end config
+
 
 'set inital values
 intTabCounter = 1
 intWriteRowCounter = 1
-
-
-
-CurrentDirectory = GetFilePath(wscript.ScriptFullName)
-strCachePath = CurrentDirectory & "\cache"
 
 
 strDebugPath = CurrentDirectory & "\Debug"
@@ -48,14 +55,15 @@ Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 'create sub directories 
 if objFSO.folderexists(strDebugPath) = False then _
 objFSO.createfolder(strDebugPath)
-if objFSO.folderexists(strCachePath) = False then _
-objFSO.createfolder(strCachePath)
 
 
-Dim dictOutdated: Set dictOutdated = CreateObject("Scripting.Dictionary")'
-Dim dictUnsupported: Set dictUnsupported = CreateObject("Scripting.Dictionary")'
-Dim DictUpdated: Set DictUpdated = CreateObject("Scripting.Dictionary")'
-Dim DictVersion: Set DictVersion = CreateObject("Scripting.Dictionary")'
+
+
+LoadList strPathToIncludedHosts, dictHostInclusion
+if dictHostInclusion.count > 0 then
+	msgbox "Hosts listed in " & strPathToIncludedHosts & " will be reported on. All other hosts will be excluded from reporting"
+end if
+
 Set objExcel = CreateObject("Excel.Application")
 OpenFilePath1 = OpenFilePath1
 Set objWorkbook = objExcel.Workbooks.Open _
@@ -63,23 +71,23 @@ Set objWorkbook = objExcel.Workbooks.Open _
     objExcel.Visible = True
 mycolumncounter = 1
 Do Until objExcel.Cells(1,mycolumncounter).Value = ""
-  if objExcel.Cells(1,mycolumncounter).Value = "MD5" then int_MD5_Location = mycolumncounter 'Source IP
-  if objExcel.Cells(1,mycolumncounter).Value = "Path" then int_path_Location = mycolumncounter 'Host Name of source
-  if objExcel.Cells(1,mycolumncounter).Value = "Publisher" then intfileHashLocation = mycolumncounter 'File Hash
-  if objExcel.Cells(1,mycolumncounter).Value = "Company" then intsnameLocation = mycolumncounter'Detection Name
-  if objExcel.Cells(1,mycolumncounter).Value = "Product" then intalertTypeLocation = mycolumncounter'Alert Type
-  if objExcel.Cells(1,mycolumncounter).Value = "CB Prevalence" then intactionLocation = mycolumncounter'Action taken (blocked, notify)
-  if objExcel.Cells(1,mycolumncounter).Value = "Logical Size" then intoccurredLocation = mycolumncounter 'Time stamp
-  if objExcel.Cells(1,mycolumncounter).Value = "Host Name" then int_hostname_location = mycolumncounter 'C&C IP address
-  if objExcel.Cells(1,mycolumncounter).Value = "Info Link" then intcncportLocation = mycolumncounter 'C&C port number
-  if objExcel.Cells(1,mycolumncounter).Value = "Alliance Score" then intchannelLocation = mycolumncounter 'communication
-  if objExcel.Cells(1,mycolumncounter).Value = "Parent Name" then intheaderLocation = mycolumncounter 'header
-  if objExcel.Cells(1,mycolumncounter).Value = "Command Line" then intobjurlLocation = mycolumncounter 'objurl
-  if objExcel.Cells(1,mycolumncounter).Value = "ID GUID" then intSevLocation = mycolumncounter 'Severity
-  if objExcel.Cells(1,mycolumncounter).Value = "Child Count" then intosinfoLocation = mycolumncounter 'osinfo
-  if objExcel.Cells(1,mycolumncounter).Value = "Version" then int_version_location = mycolumncounter 'smtp-to
-  if objExcel.Cells(1,mycolumncounter).Value = "64-bit" then intSMTPFromLocation = mycolumncounter'smtp-mail-from
-  if objExcel.Cells(1,mycolumncounter).Value = "Vuln" then int_vuln_location = mycolumncounter'subject
+  if objExcel.Cells(1,mycolumncounter).Value = "MD5" then int_MD5_Location = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "Path" then int_path_Location = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "Publisher" then intfileHashLocation = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "Company" then intsnameLocation = mycolumncounter'
+  if objExcel.Cells(1,mycolumncounter).Value = "Product" then intalertTypeLocation = mycolumncounter'
+  if objExcel.Cells(1,mycolumncounter).Value = "CB Prevalence" then intactionLocation = mycolumncounter'
+  if objExcel.Cells(1,mycolumncounter).Value = "Logical Size" then intoccurredLocation = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "Host Name" then int_hostname_location = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "Info Link" then intcncportLocation = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "Alliance Score" then intchannelLocation = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "Parent Name" then intheaderLocation = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "Command Line" then intobjurlLocation = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "ID GUID" then intSevLocation = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "Child Count" then intosinfoLocation = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "Version" then int_version_location = mycolumncounter '
+  if objExcel.Cells(1,mycolumncounter).Value = "64-bit" then intSMTPFromLocation = mycolumncounter'
+  if objExcel.Cells(1,mycolumncounter).Value = "Vuln" then int_vuln_location = mycolumncounter'
   
   mycolumncounter = mycolumncounter +1
 loop
@@ -154,7 +162,7 @@ Do Until objExcel.Cells(intRowCounter,1).Value = "" 'loop till you hit null valu
   arrayComNames = split(strTmpCompNames, "/")
   strTmpVersionNumber = objExcel.Cells(intRowCounter,int_version_location).Value
   for each strCompName in arrayComNames
-    if strCompName <> "" then
+    if strCompName <> "" and (dictHostInclusion.count = 0 or dictHostInclusion.exists(lcase(strCompName)) = True) then 'only report on included hosts
 		strTmpCompName = ucase(strCompName)
       
 
@@ -548,3 +556,18 @@ End Function
 
 
 
+Sub LoadList(strListPath, dictToLoad)
+if objFSO.fileexists(strListPath) then
+  Set objFile = objFSO.OpenTextFile(strListPath)
+  Do While Not objFile.AtEndOfStream
+    if not objFile.AtEndOfStream then 'read file
+        On Error Resume Next
+        strData = objFile.ReadLine
+          if dictToLoad.exists(lcase(strData)) = False then 
+			dictToLoad.add lcase(strData), ""
+		end if
+        on error goto 0
+    end if
+  loop
+end if
+end sub

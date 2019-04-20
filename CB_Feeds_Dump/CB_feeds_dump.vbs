@@ -160,7 +160,7 @@ boolEnableCbInspection = True
 boolMS17010Check = True
 boolCVE_2017_11826 = True
 strIniPath = "Cb_Feeds.ini"
-strStaticFPversion = "30.0.0.113"
+strStaticFPversion = "32.0.0.171"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End script settings section
 
@@ -584,7 +584,7 @@ if boolUseSocketTools = False then
 	if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
 	strCBresponseText = objHTTP.responseText
 else
-	strCBresponseText = SocketTools_HTTP(strAVEurl)
+	strCBresponseText = SocketTools_HTTP(strAVEurl, True)
 end if	
 if instr(strCBresponseText, "401 Unauthorized") then
   Msgbox "Carbon Black did not like the API key supplied"
@@ -1745,7 +1745,7 @@ End Function
 
 
 
-Function SocketTools_HTTP(strRemoteURL)
+Function SocketTools_HTTP(strRemoteURL, SuppressResponseError)
 ' SocketTools 9.3 ActiveX Edition
 ' Copyright 2018 Catalyst Development Corporation
 ' All rights reserved
@@ -1823,8 +1823,11 @@ nError = objHttp.GetData(objHttp.Resource, strBuffer, nLength, httpTransferConve
 If nError = 0 Then
     SocketTools_HTTP = strBuffer
 Else
-    WScript.echo "Error " & objHttp.LastError & ": " & objHttp.LastErrorString
-	SocketTools_HTTP = objHttp.ResultString
+	if SuppressResponseError = False then
+		WScript.echo "SocketTools HTTP Response Error " & objHttp.LastError & ": " & objHttp.LastErrorString
+	end if
+	logdata CurrentDirectory & "\CB_Error.log", date & " " & time & ": " & "SocketTools HTTP Response Error " & objHttp.LastError & ": " & objHttp.LastErrorString ,boolEchoInfo
+
 End If
 
 objHttp.Disconnect

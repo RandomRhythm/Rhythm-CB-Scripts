@@ -1,4 +1,4 @@
-'Cb Pull Events v1.3.9 - Destroy all set objects
+'Cb Pull Events v1.4.0 - Unique constraint only required when running queries within queries which is not performed currently
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -296,18 +296,19 @@ do while boolexit = False
 					if instr(segments, "|") > 0 then
 					 arraySegment = split(segments, "|")
 					 for each strSeg in arraySegment
-					  if dictUID.exists(strSeg) = false then
+					  'if dictUID.exists(strCBID & "-" & strCBSegID) = false then
 						if len(strSeg) > 12 then
 						  CBEventData strCBID & "/" & HexToDec(right(strSeg, 12))
 						end if
 					  
-						dictUID.add strSeg, ""
+						'dictUID.add strCBID & "-" & strCBSegID, ""
 					  end if
 					 next
-					elseif strCBSegID <> "" then
-					 'segment_id: REQUIRED the process segment id; this is the segment_id field in search results. If this is set to 0
-					  CBEventData strCBID & "/" & strCBSegID 
 					end if
+				end if
+				if strCBSegID <> "" then
+				 'segment_id: REQUIRED the process segment id; this is the segment_id field in search results. If this is set to 0
+				  CBEventData strCBID & "/" & strCBSegID 
 				end if
 			end if
 		next

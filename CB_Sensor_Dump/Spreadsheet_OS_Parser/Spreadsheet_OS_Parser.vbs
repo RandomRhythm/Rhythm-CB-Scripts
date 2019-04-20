@@ -1,8 +1,8 @@
 'Spreadsheet OS Parser for CB_Sensor_Dump csv output
 'requires Microsoft Excel
-'v1.7 - Improved OS reporting.
+'v1.8 - Further improved OS reporting.
 
-'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -254,11 +254,16 @@ end if
 
 Function ShortenOSname(strOSname)
 Dim strReturnShort
+Dim boolServer
 strReturnShort = strOSname
 if instr(strReturnShort, "Linux") > 0 and instr(strReturnShort, "release") > 0 and instr(strReturnShort, ".") > 0 then
     strReturnShort = Left(strReturnShort, instr(strReturnShort, ".") + 1)
 	strReturnShort = replace(strReturnShort, "release","")
 	strReturnShort = replace(strReturnShort, "Red Hat Enterprise Linux Server","RHEL")
+end if
+boolServer = False
+if instr(strReturnShort, "Server ") > 0 then
+	boolServer = True
 end if
 strReturnShort = replace(strReturnShort, "Windows Server ", "")
 strReturnShort = replace(strReturnShort, "Windows ", "")
@@ -272,8 +277,11 @@ strReturnShort = replace(strReturnShort, "Enterprise Edition", "EE")
 strReturnShort = replace(strReturnShort, "Enterprise", "EE")
 strReturnShort = replace(strReturnShort, "Edition", "")
 strReturnShort = replace(strReturnShort, "without", "w/o")
-strReturnShort = replace(strReturnShort, "10 EE", "2016 EE")
-strReturnShort = replace(strReturnShort, "10 DCE", "2016 DCE")
+if boolServer = True then
+	strReturnShort = replace(strReturnShort, "10 STD", "2016 STD")
+	strReturnShort = replace(strReturnShort, "10 EE", "2016 EE")
+	strReturnShort = replace(strReturnShort, "10 DCE", "2016 DCE")
+end if
 strReturnShort = replace(strReturnShort, "Microsoft ", "")
 strReturnShort = replace(strReturnShort, "(Evaluation)", "(Eval)")
 if instr(strReturnShort, "Linux") > 0 and (instr(strReturnShort, "CentOS") > 0 or instr(strReturnShort, "RHEL") > 0) then

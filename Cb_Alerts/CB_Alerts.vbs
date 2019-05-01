@@ -1,6 +1,6 @@
 'Cb Response Alert Dump
 
-'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -47,13 +47,14 @@ Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 '---Config Section
 BoolDebugTrace = False
 boolEchoInfo = False 
-IntDayStartQuery = "-9" 'days to go back for start date of query. Set to * to query all binaries
+IntDayStartQuery = "-9" 'days to go back for start date of query. Set to * to query all 
 IntDayEndQuery = "*" 'days to go back for end date of query. Set to * for no end date
 strTimeMeasurement = "d" '"h" for hours "d" for days
 'DictFeedExclude.add "SRSThreat", 0 'exclude feed
 'DictFeedExclude.add "NVD", 0 'exclude feed
 'DictFeedExclude.add "SRSTrust", 0 'exclude feed
 'DictFeedExclude.add "cbemet", 0 'exclude feed
+DictFeedExclude.add "attackframework", 0 'exclude feed due to large amounts of alerts
 intSleepDelay = 90000 'delay between queries
 intPagesToPull = 20 'Number of alerts to retrieve at a time
 intSizeLimit = 20000 'don't dump more than this number of pages per feed
@@ -382,7 +383,8 @@ if strioc_value = "" and BoolDebugTrace = True then
 	logdata currentdirectory & "\ioc_value.log", "Debug - did not contain ioc_value: " & strCBresponseText, False
 end if
 if strioc_value <> "" then
-
+  strioc_value = replace(strioc_value, chr(34), "") 'value provided can contain characters that mess with CSV output
+  strioc_value = replace(strioc_value, ",", "")
   strCBfilePath = AddPipe(strCBfilePath) 'CB File Path
   process_name = AddPipe(process_name) 'CB Digital Sig
   netconn_count = AddPipe(netconn_count)'CB Company Name

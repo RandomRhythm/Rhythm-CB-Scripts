@@ -1,9 +1,9 @@
-'CB Hash Dump v2.9 - Dumps hashes from CB (Carbon Black) Response
+'CB Hash Dump v3.0 - Dumps hashes from CB (Carbon Black) Response
 'Dumps CSV "MD5|Path|Publisher|Company|Product|CB Prevalence|Logical Size|Score
 
 'This script will write out hashes and some associated data via the CB Response (Carbon Black) API
 
-'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -198,7 +198,7 @@ end if
 strCarBlackAPIKey = strTempAPIKey
 
 
-if instr(lcase(StrBaseCBURL),".") <> 0 and instr(lcase(StrBaseCBURL),"http") <> 0 and instr(lcase(StrBaseCBURL),"://") <> 0 then
+if instr(lcase(StrBaseCBURL),"http") <> 0 and instr(lcase(StrBaseCBURL),"://") <> 0 then
   if strCarBlackAPIKey <> "" and StrBaseCBURL <> "" then BoolUseCarbonBlack = True   
 else
   msgbox "Invalid URL specified for Carbon Black: " & StrBaseCBURL & vbcrlf & "Delete the dat file to input new URL information: " & strFile

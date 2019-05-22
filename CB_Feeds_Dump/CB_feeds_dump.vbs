@@ -1,4 +1,4 @@
-'CB Feed Dump v4.7 'Update supported queries
+'CB Feed Dump v4.8 'Move error logging for XMLHTTP GET request.
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -554,8 +554,13 @@ if boolUseSocketTools = False then
 
 	on error resume next
 	  objHTTP.send
-	  If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
-			'success!
+		If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
+			'success!?
+			if err.number <> 0 then
+				logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+				logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " HTTP status code - " & objHTTP.status,False 
+				exit function 
+			end if
 		Else 'wait timeout exceeded
 			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed due to timeout", False
 			exit function  

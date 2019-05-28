@@ -1,4 +1,4 @@
-'CB Feed Dump v4.8 'Move error logging for XMLHTTP GET request.
+'CB Feed Dump v4.8.1 'Handle invalid date format provided by API
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -8,7 +8,7 @@
 
 'More information on querying the CB Response API https://github.com/carbonblack/cbapi/tree/master/client_apis
 
-'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -726,15 +726,18 @@ if instr(strCBresponseText, "md5") > 0 then
       strtmpEnd = left(strtmpEnd, len(strtmpEnd) - 1)
     end if
     if (isdate(strtmpStart) = false and strtmpStart <> "") or isdate(strtmpEnd) = false then
-      msgbox "invalid date:" & strCBStartTime &"|" & strtmpStart & "|" & strCbEndTime & "|" & strtmpEnd
-    end if
-    'msgbox isdate(strtmpEnd)
-    strCbDuration = datediff("n",strtmpStart,strtmpEnd)
-    if strCbDuration = 0 then
-      strCbDuration = datediff("n",strtmpStart,strtmpEnd) & " sec"
-    else
-      strCbDuration = strCbDuration & " min"
-    end if
+        msgbox "invalid date:" & strCBStartTime &"|" & strtmpStart & "|" & strCbEndTime & "|" & strtmpEnd
+
+		'msgbox isdate(strtmpEnd)
+		strCbDuration = datediff("n",strtmpStart,strtmpEnd)
+		if strCbDuration = 0 then
+		  strCbDuration = datediff("n",strtmpStart,strtmpEnd) & " sec"
+		else
+		  strCbDuration = strCbDuration & " min"
+		end if
+	else
+		strCbDuration = "error"
+	end if
   end if
   
   strCBHostname = getdata(strCBresponseText, Chr(34), "hostname" & Chr(34) & ": " & Chr(34))

@@ -302,7 +302,7 @@ do while boolexit = False
 						end if
 					  
 						'dictUID.add strCBID & "-" & strCBSegID, ""
-					  end if
+					  'end if
 					 next
 					end if
 				end if

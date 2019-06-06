@@ -10,3 +10,5 @@ Will take the provided query and attempt to pull the following associated event 
 
 Example:
 Cb_Pull_Events.vbs query
+
+If providing multiple statements within the query you must quote the whole query. Remove drive letters from file paths.

@@ -288,7 +288,7 @@ if boolAdditionalQueries = True then
           if instr(strData, "|") then
             strTmpArrayAQ = split(strData, "|")
             if DictAdditionalQueries.exists(lcase(strTmpArrayAQ(0))) = False then 
-				if instr(strTmpArrayAQ(1), "?") > 0 and instr(strTmpArrayAQ(1), "/") then
+				if instr(strTmpArrayAQ(1), "?") > 0 and instr(strTmpArrayAQ(1), "/") and instr(strTmpArrayAQ(1), "q=") then
 					DictAdditionalQueries.add lcase(strTmpArrayAQ(0)), strTmpArrayAQ(1)
 				else
 					msgbox "invalid additional query: " &  strData
@@ -725,18 +725,17 @@ if instr(strCBresponseText, "md5") > 0 then
     else
       strtmpEnd = left(strtmpEnd, len(strtmpEnd) - 1)
     end if
+
     if (isdate(strtmpStart) = false and strtmpStart <> "") or isdate(strtmpEnd) = false then
         msgbox "invalid date:" & strCBStartTime &"|" & strtmpStart & "|" & strCbEndTime & "|" & strtmpEnd
-
-		'msgbox isdate(strtmpEnd)
+		strCbDuration = "error"
+	else
 		strCbDuration = datediff("n",strtmpStart,strtmpEnd)
 		if strCbDuration = 0 then
 		  strCbDuration = datediff("n",strtmpStart,strtmpEnd) & " sec"
 		else
 		  strCbDuration = strCbDuration & " min"
 		end if
-	else
-		strCbDuration = "error"
 	end if
   end if
   

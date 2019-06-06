@@ -27,3 +27,4 @@ name|query
 Example:
 
 	knowndll|/api/v1/binary?q=observed_filename:known.dll&digsig_result:Unsigned
+	evasion_installutil|/api/v1/process?q=process_name:installutil.exe AND parent_name:cmd.exe

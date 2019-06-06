@@ -1,4 +1,4 @@
-'CB Feed Dump v4.8.1 'Handle invalid date format provided by API
+'CB Feed Dump v4.8.2 'Use popup for invalid date message
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -97,6 +97,7 @@ Dim boolQueryChild
 DIm boolQueryParent
 Dim boolUseSocketTools
 Dim strLicenseKey
+DIm objShell: Set objShell = WScript.CreateObject("WScript.Shell") 
 
 'debug
 BoolDebugTrace = False
@@ -727,7 +728,7 @@ if instr(strCBresponseText, "md5") > 0 then
     end if
 
     if (isdate(strtmpStart) = false and strtmpStart <> "") or isdate(strtmpEnd) = false then
-        msgbox "invalid date:" & strCBStartTime &"|" & strtmpStart & "|" & strCbEndTime & "|" & strtmpEnd
+		objShell.popup "invalid date:" & strCBStartTime &"|" & strtmpStart & "|" & strCbEndTime & "|" & strtmpEnd, 10
 		strCbDuration = "error"
 	else
 		strCbDuration = datediff("n",strtmpStart,strtmpEnd)

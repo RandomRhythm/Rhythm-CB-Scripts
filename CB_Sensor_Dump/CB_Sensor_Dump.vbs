@@ -1,7 +1,7 @@
-'CB Sensor Dump v2.2 - Output network adapters
+'CB Sensor Dump v2.3 - Error handling for date registered or last seen do not contain period.
 'This script will dump sensor information via the CB Response (Carbon Black) API
 
-'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -259,7 +259,6 @@ for each strCBResponseText in strArrayCBresponse
     if instr(strCBresponseText, "Sample not found by hash ") then
       'hash not found
     else
-
       if instr(strCBresponseText, "computer_dns_name")  then 
        ' msgbox strCBresponseText
        ' msgbox instr(strCBresponseText, "os_environment_display_string" & Chr(34) & ": " & chr(34))
@@ -276,7 +275,11 @@ for each strCBResponseText in strArrayCBresponse
         strTmpEvtBytes = getdata(strCBresponseText, chr(34), "num_eventlog_bytes" & Chr(34) & ": "& chr(34) )
         strCompName = getdata(strCBresponseText, chr(34), "computer_name" & Chr(34) & ": "& chr(34) )
 		strNetwork = getdata(strCBresponseText, chr(34), "network_adapters" & Chr(34) & ": "& chr(34) )
-        strDaysonline = datediff("d", left(strTmpregistered, instr(strTmpregistered, ".") -1),left(strTmpLastCheckIn, instr(strTmpLastCheckIn, ".") -1))
+        if instr(strTmpLastCheckIn, ".") > 0 and instr(strTmpregistered, ".") > 0 then 
+			strDaysonline = datediff("d", left(strTmpregistered, instr(strTmpregistered, ".") -1),left(strTmpLastCheckIn, instr(strTmpLastCheckIn, ".") -1))
+		else
+			strDaysonline = "N/A"
+		end if
         LogData strSSfilePath, chr(34) & strTmpName & chr(34) & "," & chr(34) & strTmpOS & chr(34) & "," & chr(34) & strTmpregistered & chr(34) & "," & chr(34) & strStoredBytes & chr(34) & "," & chr(34) & strStatusBytes & chr(34) & "," & chr(34) & strHealth & chr(34) & "," & chr(34) & strGroup & chr(34) & "," & chr(34) & DictGroupID.item(strGroup) & chr(34) & "," & chr(34) & strTmpLastCheckIn & chr(34) & "," & chr(34) & strTmpEvtBytes & chr(34) & "," & chr(34) & strDaysonline & chr(34) & "," & chr(34) & strCompName & chr(34) & "," & chr(34) & strNetwork & chr(34) & "," & chr(34) & strID & chr(34), False
       end if
     end if

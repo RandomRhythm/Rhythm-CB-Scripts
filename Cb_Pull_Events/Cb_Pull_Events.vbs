@@ -78,6 +78,11 @@ strLicenseKey = "" 'Lincense key is required to use SocketTools
 strIniPath="Cb_pe.ini"
 'end config section
 
+if objFSO.FileExists(strIniPath) = false then
+	If InStr(strIniPath, "\") = 0 Then 
+		strIniPath = CurrentDirectory & "\" & strIniPath
+	End If
+End if		
 
 if objFSO.FileExists(strIniPath) = True then
 '---Ini loading section

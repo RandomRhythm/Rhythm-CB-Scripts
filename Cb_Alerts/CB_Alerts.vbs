@@ -42,11 +42,15 @@ Dim intSizeLimit
 Dim intReceiveTimeout
 Dim boolUseSocketTools
 Dim strLicenseKey
+Dim boolOutputID
+Dim boolOutputWID
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 '---Config Section
 BoolDebugTrace = False
 boolEchoInfo = False 
+boolOutputID = True 'Alert ID
+boolOutputWID = True 'Watchlist ID
 IntDayStartQuery = "-9" 'days to go back for start date of query. Set to * to query all 
 IntDayEndQuery = "*" 'days to go back for end date of query. Set to * for no end date
 strTimeMeasurement = "d" '"h" for hours "d" for days
@@ -54,7 +58,7 @@ strTimeMeasurement = "d" '"h" for hours "d" for days
 'DictFeedExclude.add "NVD", 0 'exclude feed
 'DictFeedExclude.add "SRSTrust", 0 'exclude feed
 'DictFeedExclude.add "cbemet", 0 'exclude feed
-DictFeedExclude.add "attackframework", 0 'exclude feed due to large amounts of alerts
+'DictFeedExclude.add "attackframework", 0 'exclude feed due to large amounts of alerts
 intSleepDelay = 90000 'delay between queries
 intPagesToPull = 20 'Number of alerts to retrieve at a time
 intSizeLimit = 20000 'don't dump more than this number of pages per feed
@@ -103,11 +107,10 @@ strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" '
 if objFSO.folderexists(strDebugPath) = False then _
 objFSO.createfolder(strDebugPath)
 
-if intCountMetaorVT = 0 then
 
-  strFile= CurrentDirectory & "\cb.dat"
-  strAPIproduct = "Carbon Black" 
-end if
+strFile= CurrentDirectory & "\cb.dat"
+strAPIproduct = "Carbon Black" 
+
 
 strData = ""
 if objFSO.fileexists(strFile) then
@@ -115,9 +118,8 @@ if objFSO.fileexists(strFile) then
   if not objFile.AtEndOfStream then 'read file
       On Error Resume Next
       strData = objFile.ReadLine 
-      if intCountMetaorVT = 0 then 
-        StrBaseCBURL = objFile.ReadLine
-      end if  
+      StrBaseCBURL = objFile.ReadLine
+
       on error goto 0
   end if
   if strData <> "" then
@@ -134,10 +136,8 @@ if not objFSO.fileexists(strFile) and strData = "" then
     strTempEncryptedAPIKey = encrypt(strTempEncryptedAPIKey,strRandom)
     logdata strFile,strTempEncryptedAPIKey,False
     strTempEncryptedAPIKey = ""
-    if intCountMetaorVT = 0 then
-      StrBaseCBURL = inputbox("Enter your " & strAPIproduct & " base URL (example: https://ryancb-example.my.carbonblack.io")
-      logdata strFile,StrBaseCBURL,False
-    end if 
+    StrBaseCBURL = inputbox("Enter your " & strAPIproduct & " base URL (example: https://ryancb-example.my.carbonblack.io")
+    logdata strFile,StrBaseCBURL,False
   end if
 end if  
 if strTempAPIKey = "" then
@@ -238,7 +238,7 @@ if boolUseSocketTools = False then
 	  end if
 	on error goto 0  
 	'creates a lot of data. Don't uncomment next line unless your going to disable it again
-	'if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
+	if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
 	strCBresponseText = objHTTP.responseText
 else
   strCBresponseText = SocketTools_HTTP(strAVEurl)
@@ -325,9 +325,11 @@ if instr(strCBresponseText, "ioc_value") then
   StrCBMD5 = getdata(strCBresponseText, chr(34), "md5" & Chr(34) & ": " & Chr(34))
   strCBprevalence = getdata(strCBresponseText, ",", "hostCount" & Chr(34) & ": ")
   strCBHostname = getdata(strCBresponseText, chr(34), "hostname" & Chr(34) & ": " & chr(34))
-  strstatus = getdata(strCBresponseText, ",", "strstatus" & Chr(34) & ": ")
+  strstatus = getdata(strCBresponseText, chr(34), "status" & Chr(34) & ": " & chr(34)) '"status": "Unresolved"
   process_name = getdata(strCBresponseText, chr(34), "process_name" & Chr(34) & ": " & chr(34))
   netconn_count = getdata(strCBresponseText, ",", "netconn_count" & Chr(34) & ": ")
+  unique_id = getdata(strCBresponseText, chr(34), "unique_id" & Chr(34) & ": " & chr(34))
+  watchlist_id = getdata(strCBresponseText, chr(34), "watchlist_id" & Chr(34) & ": " & chr(34))
   if instr(strCBresponseText,"ioc_attr") then
     iocSection = getdata(strCBresponseText, "}", "ioc_attr" & Chr(34) & ": " & chr(34) & "{")
     strDirection = getdata(iocSection, "\", "direction\" & Chr(34) & ": \" & Chr(34))
@@ -380,7 +382,7 @@ else
 end if
 
 if strioc_value = "" and BoolDebugTrace = True then 
-	logdata currentdirectory & "\ioc_value.log", "Debug - did not contain ioc_value: " & strCBresponseText, False
+	logdata strDebugPath & "\ioc_value.log", "Debug - did not contain ioc_value: " & strCBresponseText, False
 end if
 if strioc_value <> "" then
   strioc_value = replace(strioc_value, chr(34), "") 'value provided can contain characters that mess with CSV output
@@ -413,14 +415,28 @@ if strioc_value <> "" then
     IOC_Entries = strDirection & strprotocol & strlocal_port & strdns_name & strlocal_ip & strport & strremote_ip & search_query
     IOC_Head = ",Direction, Protocol, Local Port, DNS Name, Local IP, Port, Report IP, search_query"
   end if
+  endHead = ",Host Name"
+  if boolOutputID = True then 
+	endHead = endHead & ", AlertID"
+	unique_id = addPipe(unique_id)
+  else
+	unique_id = ""
+  end if	
+    if boolOutputWID = True then 
+	endHead = endHead & ", WatchlistID"
+	watchlist_id = addPipe(watchlist_id)
+  else
+	watchlist_id = ""
+  end if	
+  
 
   if boolHeaderWritten = False then
-      strSSrow = "IOC,MD5,Path," & "process_name," & "netconn_count," & "Status," & "CB Prevalence,interface_ip, sensor_id, Description, Severity" & IOC_Head & ",Host Name"
+      strSSrow = "IOC,MD5,Path," & "process_name," & "netconn_count," & "Status," & "CB Prevalence,interface_ip, sensor_id, Description, Severity" & IOC_Head & endHead
       logdata strHashOutPath, strSSrow, False
       boolHeaderWritten = True
   END IF
 
-  strSSrow = strioc_value & StrCBMD5 & strCBfilePath & process_name & netconn_count & strstatus & strCBprevalence & interface_ip  & sensor_id & strdescription & alert_severity & IOC_Entries & strCBHostname
+  strSSrow = strioc_value & StrCBMD5 & strCBfilePath & process_name & netconn_count & strstatus & strCBprevalence & interface_ip  & sensor_id & strdescription & alert_severity & IOC_Entries & strCBHostname & unique_id & watchlist_id
   strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
   logdata strHashOutPath, strTmpSSlout, False
 end if

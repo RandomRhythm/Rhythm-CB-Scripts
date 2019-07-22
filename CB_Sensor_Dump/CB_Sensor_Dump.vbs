@@ -1,4 +1,4 @@
-'CB Sensor Dump v2.3 - Error handling for date registered or last seen do not contain period.
+'CB Sensor Dump v2.4 - Support for inactive_filter_days
 'This script will dump sensor information via the CB Response (Carbon Black) API
 
 'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
@@ -32,6 +32,8 @@ Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim boolUseSocketTools
 Dim strLicenseKey
 Dim strIniPath
+Dim questionQuery
+Dim ampersand1
 
 '---Config Section
 BoolDebugTrace = False 
@@ -50,6 +52,7 @@ if objFSO.FileExists(strIniPath) = True then
 '---Ini loading section
 	IntDayStartQuery = ValueFromINI(strIniPath, "IntegerValues", "StartTime", IntDayStartQuery)
 	IntDayEndQuery = ValueFromINI(strIniPath, "IntegerValues", "EndTime", IntDayEndQuery)
+	inactive_filter_days = ValueFromINI(strIniPath, "IntegerValues", "inactive_filter_days", inactive_filter_days)
 	strIPquery = ValueFromINI(strIniPath, "StringValues", "IPaddress", strIPquery)
 	boolUseSocketTools = ValueFromINI(strIniPath, "BooleanValues", "UseSocketTools", boolUseSocketTools)
 	BoolDebugTrace = ValueFromINI(strIniPath, "BooleanValues", "Debug", BoolDebugTrace)	
@@ -70,16 +73,28 @@ if isnumeric(IntDayStartQuery) then
     IntDayEndQuery = "*]"
   end if
 end if
-
+questionQuery = ""
 if strIPquery <> "" then
   if isIPaddress(strIPquery) then
-    strIPquery = "?ip=" & strIPquery
+    strIPquery = "ip=" & strIPquery
+	questionQuery = "?"
   else
     msgbox "Invalid IP address: " & strIPquery
     wscript.quit 998
   end if
 end if
 
+
+if inactive_filter_days <> "" then
+  if isNumeric(inactive_filter_days) then
+    inactive_filter_days = "inactive_filter_days=" & inactive_filter_days
+	questionQuery = "?"
+	if strIPquery <> "" then ampersand1 = "&"
+  else
+    msgbox "Invalid inactive_filter_days: " & inactive_filter_days
+    wscript.quit 997
+  end if
+end if
 
 strDebugPath = CurrentDirectory & "\Debug\"
 if objFSO.folderexists(CurrentDirectory & "\debug") = false then objFSO.createfolder CurrentDirectory & "\debug"
@@ -220,7 +235,7 @@ dim strAssocWith
 Dim strCBresponseText
 Dim strtmpCB_Fpath
 
-strAVEurl = StrBaseCBURL & "/api/v1/sensor" & strIPquery
+strAVEurl = StrBaseCBURL & "/api/v1/sensor" & questionQuery & strIPquery & ampersand1 & inactive_filter_days
 if boolUseSocketTools = False then
 	objHTTP.open "GET", strAVEurl, False
 

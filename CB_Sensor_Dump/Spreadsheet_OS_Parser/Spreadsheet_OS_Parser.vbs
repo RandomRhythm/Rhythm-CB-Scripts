@@ -35,7 +35,7 @@ CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strCachePath = CurrentDirectory & "\cache"
 
 strDebugPath = CurrentDirectory & "\Debug"
-wscript.echo "Please open the vuln CSV report"
+wscript.echo "Please open the sensor CSV report"
 OpenFilePath1 = SelectFile( )
 
 

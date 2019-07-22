@@ -256,7 +256,17 @@ do while boolexit = False
 		on error resume next
 		  objHTTP_CbQ.send 
 		  If objHTTP_CbQ.waitForResponse(intReceiveTimeout) Then 'response ready
-			'success!
+			'success?
+			if objHTTP_CbQ.Status <> 200 then
+				logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Non-200 status code returned: " & objHTTP_CbQ.Status & " " & objHTTP_CbQ.StatusText, False
+				If objHTTP_CbQ.Status = 504 then
+					msgbox "The gateway timed out. Perhaps try using a smaller PagesToPull value in the Cb_PE.ini file. The script will now exit"
+					wscript.quit (504)
+				ElseIf objHTTP_CbQ.Status = 502 then
+					msgbox "Bad Gateway. Perhaps try using a smaller PagesToPull value in the Cb_PE.ini file. The script will now exit"
+					wscript.quit (502)
+				end if
+			end if
 		  Else 'wait timeout exceeded
 			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to timeout", False
 			exit function  
@@ -281,8 +291,11 @@ do while boolexit = False
 
 		end if
 		if boolDebug = true then logdata CurrentDirectory & "\Cb_QueryResults.log", StrTmpResponse,False 
-
-		if instr(StrTmpResponse, vblf & "    {") > 0 then
+		
+		if instr(StrTmpResponse, "title>Maintenance - Carbon Black Response Cloud") > 0 then
+		  logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Server under maintenance", False
+		  Msgbox "The Cb Response server reports it is under maintenance and is not providing API results. This can occur when running large queries. Try limiting the query and see if the problem persists."
+		elseif instr(StrTmpResponse, vblf & "    {") > 0 then
 		  strArrayCBresponse = split(StrTmpResponse, vblf & "    {")
 		else
 		  strArrayCBresponse = split(StrTmpResponse, vblf & "  {")
@@ -341,7 +354,7 @@ do while boolexit = False
 	else
 		boolexit = True
 		msgbox "total_results is missing from HTTP Response - " & StrTmpResponse
-		msgbox "The script will now exit. Try running the query with a time limitation by adding something like " & chr(34) & "AND last_update:10080" & chr(34) & ". This example addition will restrict the query to the last week of activity" 
+		msgbox "The script will now exit. Try running the query with a time limitation by adding something like " & chr(34) & "AND last_update:-10080m" & chr(34) & ". This example addition will restrict the query to the last week of activity" 
 		exit function
 	end if
 	wscript.sleep intSleepDelay

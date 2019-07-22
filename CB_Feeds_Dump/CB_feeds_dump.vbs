@@ -1,4 +1,4 @@
-'CB Feed Dump v4.8.2 'Use popup for invalid date message
+'CB Feed Dump v4.8.3 'Fix additional query validation check. Support ATT&CK Framework
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -90,6 +90,7 @@ Dim dictYARA: Set dictYARA = CreateObject("Scripting.Dictionary")
 Dim intParseCount: intParseCount = 10
 Dim BoolDebugTrace
 Dim boolCVE_2017_11826
+DIm boolEnableAttackFramework
 Dim intSleepDelay
 Dim intPagesToPull
 Dim intReceiveTimeout
@@ -97,6 +98,7 @@ Dim boolQueryChild
 DIm boolQueryParent
 Dim boolUseSocketTools
 Dim strLicenseKey
+Dim strReportPath
 DIm objShell: Set objShell = WScript.CreateObject("WScript.Shell") 
 
 'debug
@@ -112,6 +114,7 @@ IntDayEndQuery = "*" 'days to go back for end date of query. Set to * for no end
 strTimeMeasurement = "d" '"h" for hours "d" for days
 strHostFilter = "" 'computer name to filter to. Typically uppercase and is case sensitive.
 strSensorID = "" 'sensor_id
+strReportPath = "\Reports" 'directory to write report output
 intSleepDelay = 100 'delay between queries
 intPagesToPull = 10000 'Number of alerts to retrieve at a time
 intReceiveTimeout = 120 'number of seconds for timeout
@@ -160,8 +163,9 @@ boolAdditionalQueries = True
 boolEnableCbInspection = True
 boolMS17010Check = True
 boolCVE_2017_11826 = True
+boolEnableAttackFramework = False 'disable this by default due to amount
 strIniPath = "Cb_Feeds.ini"
-strStaticFPversion = "32.0.0.171"
+strStaticFPversion = "32.0.0.207"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End script settings section
 
@@ -204,6 +208,7 @@ if objFSO.FileExists(strIniPath) = True then
 	boolEnableCbFileAnalysisCheck = ValueFromINI(strIniPath, "BooleanValues", "CbFileAnalysis", boolEnableCbFileAnalysisCheck)
 	BoolEnableCbCommunityCheck = ValueFromINI(strIniPath, "BooleanValues", "CbCommunity", BoolEnableCbCommunityCheck)
 	BoolEnableBit9EarlyAccessCheck = ValueFromINI(strIniPath, "BooleanValues", "EarlyAccess", BoolEnableBit9EarlyAccessCheck)
+	boolEnableAttackFramework = ValueFromINI(strIniPath, "BooleanValues", "attackframework", boolEnableAttackFramework)
 	bool3155533Check = ValueFromINI(strIniPath, "BooleanValues", "MS16-051", bool3155533Check)
 	boolAdditionalQueries = ValueFromINI(strIniPath, "BooleanValues", "AdditionalQueries", boolAdditionalQueries)
 	boolEnableCbInspection = ValueFromINI(strIniPath, "BooleanValues", "CbInspect", boolEnableCbInspection)
@@ -238,15 +243,20 @@ if isnumeric(IntDayStartQuery) then
   end if
 end if
 
+'Set directory paths
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug"
 strSSfilePath = CurrentDirectory & "\CBIP_" & udate(now) & ".csv"
+if instr(strReportPath, ":") = 0 then 
+	strReportPath = CurrentDirectory & "\" & strReportPath
+end if
 
 strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" 'encryption key. Change if you want but can only decrypt with same key
 Set objFSO = CreateObject("Scripting.FileSystemObject")
+
 'create sub directories
-if objFSO.folderexists(CurrentDirectory & "\Debug") = False then _
-objFSO.createfolder(CurrentDirectory & "\Debug")
+if objFSO.folderexists(strReportPath) = False then _
+objFSO.createfolder(strReportPath)
 if objFSO.folderexists(strDebugPath) = False then _
 objFSO.createfolder(strDebugPath)
 
@@ -289,7 +299,7 @@ if boolAdditionalQueries = True then
           if instr(strData, "|") then
             strTmpArrayAQ = split(strData, "|")
             if DictAdditionalQueries.exists(lcase(strTmpArrayAQ(0))) = False then 
-				if instr(strTmpArrayAQ(1), "?") > 0 and instr(strTmpArrayAQ(1), "/") and instr(strTmpArrayAQ(1), "q=") then
+				if instr(strTmpArrayAQ(1), "?") > 0 and instr(strTmpArrayAQ(1), "/") > 0 and instr(strTmpArrayAQ(1), "q=") > 0 then
 					DictAdditionalQueries.add lcase(strTmpArrayAQ(0)), strTmpArrayAQ(1)
 				else
 					msgbox "invalid additional query: " &  strData
@@ -393,7 +403,9 @@ for each strCBFeedID in DictFeedInfo
       if boolEnablefbthreatexchange = True then strQueryFeed = "/api/v1/process?q=alliance_score_fbthreatexchange:*"
     case "iconmatching"
       if boolEnableiconmatching = True then strQueryFeed = "/api/v1/binary?q=alliance_score_iconmatching:*"
-    case "sans"
+    case "attackframework"
+      if boolEnableAttackFramework = True then strQueryFeed = "/api/v1/binary?q=alliance_score_attackframework:*"
+	case "sans"
       if boolEnablesans = True then strQueryFeed = "/api/v1/process?q=alliance_score_sans:*"            
     case "NVD"
       if boolEnableNVD = True then strQueryFeed = "/api/v1/binary?q=alliance_score_nvd:*"
@@ -468,7 +480,7 @@ for each strCBFeedID in DictFeedInfo
       intCBcount = 0
       if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", strCBFeedID & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
       strUniquefName = DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
-      strHashOutPath = CurrentDirectory & "\CBmd5_" & strUniquefName
+      strHashOutPath = strReportPath & "\CBmd5_" & strUniquefName
       do while intCBcount < clng(intTotalQueries)
         DumpCarBlack intCBcount, True, intPagesToPull, strQueryFeed & strStartDateQuery & strEndDateQuery & strHostFilter 
         intCBcount = intCBcount + intPagesToPull
@@ -499,7 +511,7 @@ for each strCBFeedID in DictFeedInfo
       
       'limited CSV output
       if DictLimitedOut.count > 0 then
-        strHashOutPath = CurrentDirectory & "\Limited_CBmd5_" & strUniquefName      
+        strHashOutPath = strReportPath & "\Limited_CBmd5_" & strUniquefName      
          
         if left(lcase(strQueryFeed), 15) = "/api/v1/binary?" then
           'not using Parent Name,Command Line,TOR IP,ID GUID,Child Count

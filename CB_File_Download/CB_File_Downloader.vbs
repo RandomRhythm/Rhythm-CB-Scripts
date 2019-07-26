@@ -1,7 +1,7 @@
-'CB File Downloader v1.6
+'CB File Downloader v1.7
 'Similar concept in Python - https://github.com/carbonblack/cbapi-python/blob/master/examples/response/dump_all_binaries.py
 
-'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -192,7 +192,7 @@ if len(binCBresponseText) > 0 then
 binTempResponse = objHTTP.responseBody
   StrTmpResponse = RSBinaryToString(binTempResponse)
   if instr(StrTmpResponse, ">The requested URL was not found on the server.<") = 0 then
-    if objFSO.fileexists(strCarBlack_ScanItem) = false then _
+    if objFSO.fileexists(strDownloadDir & "\" & strCarBlack_ScanItem & ".zip") = false then _
     SaveBinaryDataTextStream strDownloadDir & "\" & strCarBlack_ScanItem & ".zip", binCBresponseText
   else
     logdata CurrentDirectory & "\CB_Download.log", Date & " " & Time & " File can't be retrieved - " & strCarBlack_ScanItem,False 
@@ -325,7 +325,7 @@ Function encrypt(StrText, key) 'Rafael Paran? - https://gallery.technet.microsof
   encrypt = Newstr 
 End Function 
   
-Function Decrypt(StrText,key) 'Rafael ParanÃ¡ - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
+Function Decrypt(StrText,key) 'Rafael Paraná - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
   Dim lenKey, KeyPos, LenStr, x, Newstr 
    
   Newstr = "" 

@@ -1,4 +1,4 @@
-'CB Feed Dump v4.8.3 'Fix additional query validation check. Support ATT&CK Framework
+'CB Feed Dump v4.8.4 'Add clipping level feature. Add skip feature to ignore queries with large results (intIgnoreAmount)
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -118,6 +118,8 @@ strReportPath = "\Reports" 'directory to write report output
 intSleepDelay = 100 'delay between queries
 intPagesToPull = 10000 'Number of alerts to retrieve at a time
 intReceiveTimeout = 120 'number of seconds for timeout
+intIgnoreAmount = 800000 'If a query returns more than this amount skip trying to process it.
+intClippingLevel = 40000 'Stop pulling results for query after hitting this amount.
 boolQueryChild = False 'Query child processes of alerts in feeds
 boolQueryParent = False 'Query parent processes of alerts in feeds
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
@@ -460,7 +462,11 @@ for each strCBFeedID in DictFeedInfo
         strQueryFeed = strCBFeedID
       end if
   end select
-  if strQueryFeed <> "" then
+  if strQueryFeed = "" then
+  
+    logdata CurrentDirectory & "\CB_Feeds.log", date & " " & time & ": " & "Parser not configured for " & DictFeedInfo.item(strCBFeedID) ,boolEchoInfo 
+  else
+    
 	wscript.sleep 10 
     if instr(strQueryFeed, "/api/v1/binary?q=") > 0 and (boolEnableYARA = True or boolAddYARAtoReports = True) and dictYARA.count  = 0 then
 		CbFeedQuery "feed_id:" & yaraFeedID, "YARA"
@@ -472,20 +478,23 @@ for each strCBFeedID in DictFeedInfo
 	end if
 	wscript.sleep 10
     intTotalQueries = 10
-    intTotalQueries = DumpCarBlack(0, False, intTotalQueries, strQueryFeed)
+    intTotalQueries = DumpCarBlack(0, False, intTotalQueries, strQueryFeed & strStartDateQuery & strEndDateQuery & strHostFilter)
     logdata CurrentDirectory & "\CB_Feeds.log", date & " " & time & ": " & "Total number of items being retrieved for feed " & DictFeedInfo.item(strCBFeedID) & ": " & intTotalQueries ,boolEchoInfo
 
     boolHeaderWritten = False
-    if clng(intTotalQueries) > 0 then
+
+    if clng(intTotalQueries) > 0 and intIgnoreAmount > clng(intTotalQueries) then
       intCBcount = 0
       if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", strCBFeedID & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
       strUniquefName = DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
       strHashOutPath = strReportPath & "\CBmd5_" & strUniquefName
-      do while intCBcount < clng(intTotalQueries)
+      do while intCBcount < clng(intTotalQueries) and intClippingLevel > clng(intCBcount)
         DumpCarBlack intCBcount, True, intPagesToPull, strQueryFeed & strStartDateQuery & strEndDateQuery & strHostFilter 
         intCBcount = intCBcount + intPagesToPull
-		
       loop
+      if intClippingLevel < clng(intCBcount) then
+        logdata CurrentDirectory & "\CB_Feeds.log", date & " " & time & ": " & "Clipping amount hit for feed " & DictFeedInfo.item(strCBFeedID) & ". Try modifying the query to limit the results" ,boolEchoInfo
+      end if
       if DictAdhocQuery.count > 0 then
         if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", "Child processes " & DictAdhocQuery.count & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
 
@@ -527,19 +536,19 @@ for each strCBFeedID in DictFeedInfo
         next
         DictLimitedOut.RemoveAll
       end if
-    end if
+    elseif intIgnoreAmount < clng(intTotalQueries) then
+		logdata CurrentDirectory & "\CB_Feeds.log", date & " " & time & ": " & "Query results are being skipped from feed " & DictFeedInfo.item(strCBFeedID) & ". Try modifying the query to limit the results" ,boolEchoInfo
+	end if
     'strSSfilePath = CurrentDirectory & "\CBIP_" & DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
     'For each item in DictIPAddresses
     '  LogData strSSfilePath, item & "|" & DictIPAddresses.item(item), False
     'next
     'DictIPAddresses.RemoveAll
-   
-  else
-    logdata CurrentDirectory & "\CB_Feeds.log", date & " " & time & ": " & "Parser not configured for " & DictFeedInfo.item(strCBFeedID) ,boolEchoInfo
+
   end if
 next
 
-'msgbox DumpCarBlack("EDD800F2A7F82E43392CEF00391109BE")
+
 Function DumpCarBlack(intCBcount,BoolProcessData, intCBrows, strURLQuery)
 wscript.sleep intSleepDelay
 Set objHTTP = CreateObject("MSXML2.ServerXMLHTTP")
@@ -572,10 +581,11 @@ if boolUseSocketTools = False then
 			if err.number <> 0 then
 				logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
 				logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " HTTP status code - " & objHTTP.status,False 
+				logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " strAVEurl - " & strAVEurl,False 
 				exit function 
 			end if
 		Else 'wait timeout exceeded
-			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed due to timeout", False
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Try limiting the date range and lowering the PagesToPull in the ini file. CarBlack lookup failed due to timeout: " & strAVEurl, False
 			exit function  
 		End If 
 		if objHTTP.status = 500 or objHTTP.status = 501 then

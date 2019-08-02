@@ -1,4 +1,4 @@
-'Cb Pull Events v1.4.0 - Unique constraint only required when running queries within queries which is not performed currently
+'Cb Pull Events v1.4.1 - add clipping level and reports path
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -53,6 +53,7 @@ Dim boolUseSocketTools
 Dim strLicenseKey
 Dim sensor_id
 Dim APIVersion
+Dim intClippingLevel
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
@@ -73,6 +74,8 @@ strCbQuery = "" 'Cb Response query to run. Can be passed as an argument to the s
 intSleepDelay = 1000 'delay between queries
 intPagesToPull = 1000 'Number of alerts to retrieve at a time
 intReceiveTimeout = 120 'number of seconds for timeout
+intClippingLevel = 40000 'Stop pulling results for query after hitting this amount.
+strReportPath = "\Reports" 'directory to write report output
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'Lincense key is required to use SocketTools 
 strIniPath="Cb_pe.ini"
@@ -83,6 +86,10 @@ if objFSO.FileExists(strIniPath) = false then
 		strIniPath = CurrentDirectory & "\" & strIniPath
 	End If
 End if		
+if instr(strReportPath, ":") = 0 then 
+	strReportPath = CurrentDirectory & "\" & strReportPath
+end if
+
 
 if objFSO.FileExists(strIniPath) = True then
 '---Ini loading section
@@ -114,8 +121,8 @@ strUnique = udate(now)
 strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" 'encryption key. Change if you want but can only decrypt with same key
 
 'create sub directories
-if objFSO.folderexists(CurrentDirectory & "\Debug") = False then _
-objFSO.createfolder(CurrentDirectory & "\Debug")
+if objFSO.folderexists(strReportPath) = False then _
+objFSO.createfolder(strReportPath)
 if objFSO.folderexists(strDebugPath) = False then _
 objFSO.createfolder(strDebugPath)
 
@@ -237,7 +244,7 @@ else
 	next
 end if
 msgbox "executing query: " & strCbQuery
-logdata CurrentDirectory & "\Query_" & strUnique & ".txt",strCbQuery, false
+logdata strReportPath & "\Query_" & strUnique & ".txt",strCbQuery, false
 CbQuery strCbQuery
 
 
@@ -261,14 +268,16 @@ do while boolexit = False
 				logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Non-200 status code returned: " & objHTTP_CbQ.Status & " " & objHTTP_CbQ.StatusText, False
 				If objHTTP_CbQ.Status = 504 then
 					msgbox "The gateway timed out. Perhaps try using a smaller PagesToPull value in the Cb_PE.ini file. The script will now exit"
+					logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to gateway timeout: " & strAppendQuery, False 
 					wscript.quit (504)
 				ElseIf objHTTP_CbQ.Status = 502 then
 					msgbox "Bad Gateway. Perhaps try using a smaller PagesToPull value in the Cb_PE.ini file. The script will now exit"
+					logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to bad gateway: " & strAppendQuery, False 
 					wscript.quit (502)
 				end if
 			end if
 		  Else 'wait timeout exceeded
-			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to timeout", False
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to timeout: " & strAppendQuery, False
 			exit function  
 		  End If 
 		  if err.number <> 0 then
@@ -342,8 +351,10 @@ do while boolexit = False
 		  wscript.echo intResultCount & " items retrieved for query " & chr(34) & strCbQuery & chr(34)
 		  wscript.quit
 		end if
-		if intAnswer = "" then intAnswer = msgbox (intParseCount & " items have been pulled down for query " & chr(34) & strCbQuery & Chr(34) & ". Do you want to pull the rest down? There are a total of " & intResultCount & " items to retrieve. Selecting no will pull down " & intPagesToPull & " more",vbYesNoCancel, "Cb Scripts")
-		if intAnswer <> vbCancel and intParseCount < clng(intResultCount) then
+		strMessageText = ". Do you want to pull the rest down?"
+		if intClippingLevel < clng(intResultCount) then strMessageText = ". Do you want to pull the rest down (up to clipping level " & intClippingLevel & ")?"
+		if intAnswer = "" then intAnswer = msgbox (intParseCount & " items have been pulled down for query " & chr(34) & strCbQuery & Chr(34) & strMessageText & " There are a total of " & intResultCount & " items to retrieve. Selecting no will pull down " & intPagesToPull & " more",vbYesNoCancel, "Cb Scripts")
+		if intAnswer <> vbCancel and intParseCount < clng(intResultCount) and intClippingLevel > clng(intParseCount) then
 			if intAnswer = vbNo then intAnswer = ""
 			strAppendQuery = "&start=" & intParseCount & "&rows=" & intPagesToPull
 			intParseCount = intParseCount + intPagesToPull
@@ -495,10 +506,10 @@ strTmp_fork_children_count = getdata(StrTmpResponse,",", "fork_children_count" &
 strTmp_processblock_count = getdata(StrTmpResponse,",", "processblock_count" & CHr(34) & ": " )
 if boolEventHeader = False then
   outrow = "EMET|Execute|Network|Suspicious Indicators|SegmentID|Host Type|Group|Children|Blocked Process|CMD"
-  logdata CurrentDirectory & "\Event_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+  logdata strReportPath & "\Event_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
   boolEventHeader = True
 end if
-logdata CurrentDirectory & "\Event_out_" & strUnique & ".csv", chr(34) & strTmpemet_count & Chr(34) & "," & chr(34) & strTmpexec_events_count & Chr(34) & "," & chr(34) & strTmp_netconn_count & Chr(34) & "," & chr(34) & _
+logdata strReportPath & "\Event_out_" & strUnique & ".csv", chr(34) & strTmpemet_count & Chr(34) & "," & chr(34) & strTmpexec_events_count & Chr(34) & "," & chr(34) & strTmp_netconn_count & Chr(34) & "," & chr(34) & _
 strTmp_alliance_score_bit9suspiciousindicators & Chr(34) & ","& chr(34) & strTmp_segment_id & Chr(34) & "," & chr(34) & strTmp_host_type & Chr(34) & "," & chr(34) & strTmp_group & Chr(34) & "," & chr(34) & _
 strTmp_fork_children_count & Chr(34) & ","& chr(34) & strTmp_processblock_count & Chr(34) & ","& chr(34) & strTmpCmd & Chr(34), false
 process_pid = getdata(StrTmpResponse,",", "process_pid" & CHr(34) & ": " )
@@ -509,7 +520,7 @@ process_pid = getdata(StrTmpResponse,",", "process_pid" & CHr(34) & ": " )
 if boolNetworkEnable = True and APIVersion  > 1 and APIVersion < 5 then
   if boolNetworkHeader = False then
 	outrow = "Date Time|IP Address|Local Port|Remote Port|Protocol|Domain|Outbound|Sensor ID" & userNheader & processNheader
-	logdata CurrentDirectory & "\IP_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+	logdata strReportPath & "\IP_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolNetworkHeader = True
   end if
   strTmpText = getdata(StrTmpResponse,"]", "netconn_complete" & CHr(34) & ": [") 
@@ -532,7 +543,7 @@ if boolNetworkEnable = True and APIVersion  > 1 and APIVersion < 5 then
     strWriteLine = Chr(34) & strDtime & chr(34) & "," & Chr(34) & strIP & chr(34) & "," & _
     Chr(34) & strLport & chr(34) & "," & Chr(34) & strRport & chr(34) & "," & Chr(34) & strProtocol & chr(34) & "," & _
     Chr(34) & strDomain & chr(34) & "," & Chr(34) & strDirection & chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
-    logdata CurrentDirectory & "\IP_out_" & strUnique & ".csv",strWriteLine, false
+    logdata strReportPath & "\IP_out_" & strUnique & ".csv",strWriteLine, false
   end if
   next
 
@@ -541,7 +552,7 @@ end if
 if boolNetworkEnable = True and APIVersion  = 1 then
   if boolNetworkHeader = False then
 	outrow = "Date Time|IP Address|Remote Port|Protocol|Domain|Outbound|Sensor ID" & userNheader & processNheader
-	logdata CurrentDirectory & "\IP_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+	logdata strReportPath & "\IP_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolNetworkHeader = True
   end if
   strTmpText = getdata(StrTmpResponse,"]", "netconn_complete" & CHr(34) & ": [") 
@@ -556,7 +567,7 @@ if boolNetworkEnable = True and APIVersion  = 1 then
 			dotQuadIP = arrayEE(1)
 		end if
 	   strWriteLine = Chr(34) & arrayEE(0) & Chr(34) & "," & Chr(34) & dotQuadIP & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & arrayEE(3) & Chr(34) & "," & Chr(34) & arrayEE(4) & Chr(34) & "," & Chr(34) & arrayEE(5) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname 
-	  logdata CurrentDirectory & "\IP_out_" & strUnique & ".csv",strWriteLine, false
+	  logdata strReportPath & "\IP_out_" & strUnique & ".csv",strWriteLine, false
 	  end if
 	end if
   next
@@ -566,7 +577,7 @@ if boolRegEnable = True then
   if boolRegHeader = False then
 
 	outrow = "Action|Date Time|Registry Key|Sensor ID" & userNheader & processNheader
-	logdata CurrentDirectory & "\Reg_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+	logdata strReportPath & "\Reg_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolRegHeader = True
   end if
    strTmpText = getdata(StrTmpResponse,"]", "regmod_complete" & CHr(34) & ": [")
@@ -580,7 +591,7 @@ if boolRegEnable = True then
 		if dictRegAction.exists(arrayEE(0)) then strAction =  dictRegAction.item(arrayEE(0))
 	   strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
 	   
-	  logdata CurrentDirectory & "\Reg_out_" & strUnique & ".csv",strWriteLine, false
+	  logdata strReportPath & "\Reg_out_" & strUnique & ".csv",strWriteLine, false
 	  end if
 	end if
   next
@@ -592,7 +603,7 @@ if boolModEnable = True then
   if boolModHeader = False then
 
 	outrow = "Date Time|MD5|File Path|Sensor ID" & userNheader & processNheader
-	logdata CurrentDirectory & "\Mod_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+	logdata strReportPath & "\Mod_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolModHeader = True
   end if
    strTmpText = getdata(StrTmpResponse,"]", "modload_complete" & CHr(34) & ": [")
@@ -604,7 +615,7 @@ if boolModEnable = True then
 	  if ubound(arrayEE) > 1 then
 	   strWriteLine = chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
 	   
-	  logdata CurrentDirectory & "\Mod_out_" & strUnique & ".csv",strWriteLine, false
+	  logdata strReportPath & "\Mod_out_" & strUnique & ".csv",strWriteLine, false
 	  end if
 	end if
   next
@@ -614,7 +625,7 @@ if boolChildEnable = True then
   if boolChildHeader = False then
 
 	outrow = "Date Time|Unique ID|MD5|File Path|PID|Not Suppressed|Parent PID|Unique ID|Sensor ID" & userNheader & processNheader
-	logdata CurrentDirectory & "\Child_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+	logdata strReportPath & "\Child_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolChildHeader = True
   end if    
   strTmpText = getdata(StrTmpResponse,"]", "childproc_complete" & CHr(34) & ": [")
@@ -626,7 +637,7 @@ if boolChildEnable = True then
 	  if ubound(arrayEE) > 4 then
 	   strWriteLine = replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strIDPath & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
 	   
-	  logdata CurrentDirectory & "\Child_out_" & strUnique & ".csv",strWriteLine, false
+	  logdata strReportPath & "\Child_out_" & strUnique & ".csv",strWriteLine, false
 	  end if
 	end if
   next
@@ -638,7 +649,7 @@ if boolFileEnable = True then
   if boolFileHeader = False then
 
 	outrow = "Action|Date Time|File Path|Last Write MD5|File Type|Tamper Attempt|Sensor ID" & userNheader & processNheader
-	logdata CurrentDirectory & "\File_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+	logdata strReportPath & "\File_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolFileHeader = True
   end if       
   strTmpText = getdata(StrTmpResponse,chr(34) & "], ", "filemod_complete" & CHr(34) & ": [")
@@ -652,7 +663,7 @@ if boolFileEnable = True then
 		if dictRegAction.exists(arrayEE(0)) then strAction =  dictFileAction.item(arrayEE(0))
 		strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34)  & "," & Chr(34) & arrayEE(3) & Chr(34)  & "," & Chr(34) & arrayEE(4) & Chr(34)  & "," & Chr(34) & arrayEE(5) & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) & username & processname
 	   
-		logdata CurrentDirectory & "\File_out_" & strUnique & ".csv",strWriteLine, false
+		logdata strReportPath & "\File_out_" & strUnique & ".csv",strWriteLine, false
 	  else
 		logdata CurrentDirectory & "\CB_Pull_Error.log", Date & " " & Time & " FileMod error splitting the value into an array size greater than four: " & tmpEvent,False 
 	  end if
@@ -664,7 +675,7 @@ if boolCrossEnable = True then
   if boolCrossHeader = False then
 
 	outrow = "Action|Date Time|Target Unique ID|Target MD5|Target Path|Open Type|Access Requested|Tamper|Inbound Open|PID|Process Path|Unique ID|Sensor ID" & userNheader & processNheader
-	logdata CurrentDirectory & "\Cross_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+	logdata strReportPath & "\Cross_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolCrossHeader = True
   end if    
   strTmpText = getdata(StrTmpResponse,"]", "crossproc_complete" & CHr(34) & ": [")
@@ -676,7 +687,7 @@ if boolCrossEnable = True then
 	  if ubound(arrayEE) > 1 then
 	   strWriteLine = chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strTmp_ExePath & Chr(34) & "," & Chr(34) & strIDPath & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) & username & processname
 	   
-	  logdata CurrentDirectory & "\Cross_out_" & strUnique & ".csv",strWriteLine, false
+	  logdata strReportPath & "\Cross_out_" & strUnique & ".csv",strWriteLine, false
 	  end if
 	end if
   next
@@ -688,7 +699,7 @@ for each EventEntry in arrayEvents
   if instr(EventEntry, "|") > 0 then 
 	ArrayEE = split(replace(EventEntry,chr(34), ""), "|")
 	if ubound(arrayEE) > 4 then
-	  logdata CurrentDirectory & "\proc_guid_" & strUnique & ".txt",EventEntry, false
+	  logdata strReportPath & "\proc_guid_" & strUnique & ".txt",EventEntry, false
 
 	  CBEventData arrayEE(1) & "/1"
 	

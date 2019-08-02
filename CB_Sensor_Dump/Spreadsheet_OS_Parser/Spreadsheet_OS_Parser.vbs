@@ -1,6 +1,6 @@
 'Spreadsheet OS Parser for CB_Sensor_Dump csv output
 'requires Microsoft Excel
-'v1.8 - Further improved OS reporting.
+'v2.0 - Remove duplicate computers from reporting
 
 'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
 
@@ -24,6 +24,7 @@ Const ForAppending = 8
 Const ForReading = 1
 Dim intTabCounter
 Dim boolJustMajorVersion : boolJustMajorVersion = False
+Dim boolUniqueOnly: boolUniqueOnly = True 'only report on a unique computer name once.
 'set inital values
 
 intTabCounter = 1
@@ -48,7 +49,7 @@ objFSO.createfolder(strDebugPath)
 if objFSO.folderexists(strCachePath) = False then _
 objFSO.createfolder(strCachePath)
 
-
+Dim DictCompName: Set DictCompName = CreateObject("Scripting.Dictionary")'
 Dim DictOSWorkversion: Set DictOSWorkversion = CreateObject("Scripting.Dictionary")'
 Dim DictOSServversion: Set DictOSServversion = CreateObject("Scripting.Dictionary")
 Dim DictOSWorkversionMac: Set DictOSWorkversionMac = CreateObject("Scripting.Dictionary")'
@@ -63,23 +64,9 @@ Set objWorkbook = objExcel.Workbooks.Open _
     objExcel.Visible = True
 mycolumncounter = 1
 Do Until objExcel.Cells(1,mycolumncounter).Value = ""
-  if objExcel.Cells(1,mycolumncounter).Value = "MD5" then int_MD5_Location = mycolumncounter 'Source IP
-  if objExcel.Cells(1,mycolumncounter).Value = "Path" then int_path_Location = mycolumncounter 'Host Name of source
-  if objExcel.Cells(1,mycolumncounter).Value = "Publisher" then intfileHashLocation = mycolumncounter 'File Hash
-  if objExcel.Cells(1,mycolumncounter).Value = "Company" then intsnameLocation = mycolumncounter'Detection Name
-  if objExcel.Cells(1,mycolumncounter).Value = "Product" then intalertTypeLocation = mycolumncounter'Alert Type
-  if objExcel.Cells(1,mycolumncounter).Value = "CB Prevalence" then intactionLocation = mycolumncounter'Action taken (blocked, notify)
-  if objExcel.Cells(1,mycolumncounter).Value = "Logical Size" then intoccurredLocation = mycolumncounter 'Time stamp
-  if objExcel.Cells(1,mycolumncounter).Value = "Computer" then int_hostname_location = mycolumncounter 'C&C IP address
-  if objExcel.Cells(1,mycolumncounter).Value = "Info Link" then intcncportLocation = mycolumncounter 'C&C port number
-  if objExcel.Cells(1,mycolumncounter).Value = "Alliance Score" then intchannelLocation = mycolumncounter 'communication
-  if objExcel.Cells(1,mycolumncounter).Value = "Parent Name" then intheaderLocation = mycolumncounter 'header
-  if objExcel.Cells(1,mycolumncounter).Value = "Command Line" then intobjurlLocation = mycolumncounter 'objurl
-  if objExcel.Cells(1,mycolumncounter).Value = "ID GUID" then intSevLocation = mycolumncounter 'Severity
-  if objExcel.Cells(1,mycolumncounter).Value = "Child Count" then intosinfoLocation = mycolumncounter 'osinfo
-  if objExcel.Cells(1,mycolumncounter).Value = "Version" then int_version_location = mycolumncounter 'smtp-to
-  if objExcel.Cells(1,mycolumncounter).Value = "64-bit" then intSMTPFromLocation = mycolumncounter'smtp-mail-from
-  if objExcel.Cells(1,mycolumncounter).Value = "Operating System" then int_vuln_location = mycolumncounter'subject
+    
+  if objExcel.Cells(1,mycolumncounter).Value = "Computer" then int_hostname_location = mycolumncounter
+  if objExcel.Cells(1,mycolumncounter).Value = "Operating System" then int_vuln_location = mycolumncounter
   
   mycolumncounter = mycolumncounter +1
 loop
@@ -93,72 +80,76 @@ end if
 intRowCounter = 2
 
 Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null value (end of rows)
-  strTmpVulnInfo = objExcel.Cells(intRowCounter,int_vuln_location).Value
-  if instr(strTmpVulnInfo, "Server") > 0 or instr(strTmpVulnInfo, "Linux CentOS") > 0 then
-    if DictOSServversion.exists(strTmpVulnInfo) = False then 
-		DictOSServversion.add strTmpVulnInfo, 1
-		if Instr(strTmpVulnInfo, "Windows") > 0 and DictOSServversionWindows.exists(strTmpVulnInfo) = False then _
-		  DictOSServversionWindows.add strTmpVulnInfo, 1
-		if instr(strTmpVulnInfo, "Linux") > 0 and DictOSServversionLinux.exists(ShortenOSname(strTmpVulnInfo)) = False then _
-		  DictOSServversionLinux.add ShortenOSname(strTmpVulnInfo), 1
-	  
-    else
-      DictOSServversion.item(strTmpVulnInfo) = DictOSServversion.item(strTmpVulnInfo) + 1
-	  if Instr(strTmpVulnInfo, "Windows") > 0  then _
-      DictOSServversionWindows.item(strTmpVulnInfo) = DictOSServversionWindows.item(strTmpVulnInfo) + 1
-	  if Instr(strTmpVulnInfo, "Linux") > 0  then _
-      DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) = DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) + 1	 	  
-    end if  
-  else 
-    if DictOSWorkversion.exists(strTmpVulnInfo) = False then
-		DictOSWorkversion.add strTmpVulnInfo, 1
-		if Instr(strTmpVulnInfo, "Mac") > 0 and DictOSWorkversionMac.exists(strTmpVulnInfo) = False then _
-		  DictOSWorkversionMac.add strTmpVulnInfo, 1
-		if instr(strTmpVulnInfo, "Windows") > 0 and DictOSWorkversionWindows.exists(strTmpVulnInfo) = False then _
-		  DictOSWorkversionWindows.add strTmpVulnInfo, 1
-    else
-      DictOSWorkversion.item(strTmpVulnInfo) = DictOSWorkversion.item(strTmpVulnInfo) + 1
-	  if Instr(strTmpVulnInfo, "Mac") > 0  then _
-      DictOSWorkversionMac.item(strTmpVulnInfo) = DictOSWorkversionMac.item(strTmpVulnInfo) + 1
-	  if Instr(strTmpVulnInfo, "Windows") > 0  then _
-      DictOSWorkversionWindows.item(strTmpVulnInfo) = DictOSWorkversionWindows.item(strTmpVulnInfo) + 1	  
-    end if
-  end if
-  if instr(strTmpVulnInfo, "OSX") then
-    strConsolidated = "Mac OS X"
-  elseif instr(strTmpVulnInfo, "Linux") > 0 and instr(strTmpVulnInfo, "release") > 0 and instr(strTmpVulnInfo, ".") > 0 then
-    strConsolidated = ShortenOSname(strTmpVulnInfo)
-  elseif instr(strTmpVulnInfo, "2003") then
-    strConsolidated = "Windows 2003"
-  elseif instr(strTmpVulnInfo, "2008") then
-    strConsolidated = "Windows 2008"
-  elseif instr(strTmpVulnInfo, "2012") then
-    strConsolidated = "Windows 2012"
-  elseif instr(strTmpVulnInfo, "2016") then
-    strConsolidated = "Windows 2016"
-  elseif instr(strTmpVulnInfo, "Windows XP") then
-    strConsolidated = "Windows XP"
-  elseif instr(strTmpVulnInfo, "Vista") then
-    strConsolidated = "Windows Vista"
-  elseif instr(strTmpVulnInfo, "Windows 7") then
-    strConsolidated = "Windows 7"
-  elseif instr(strTmpVulnInfo, "Windows 8.1") then
-    strConsolidated = "Windows 8.1"
-  elseif instr(strTmpVulnInfo, "Windows 8") then
-    strConsolidated = "Windows 8"
-  elseif instr(strTmpVulnInfo, "Windows 10") then
-    if instr(strTmpVulnInfo, "Server") then
+  strCompName = objExcel.Cells(intRowCounter,int_hostname_location).Value
+  if boolUniqueOnly = False or (boolUniqueOnly = True and DictCompName.exists(strCompName) = False) then 
+	  strTmpVulnInfo = objExcel.Cells(intRowCounter,int_vuln_location).Value
+	  if instr(strTmpVulnInfo, "Server") > 0 or instr(strTmpVulnInfo, "Linux CentOS") > 0 then
+		if DictOSServversion.exists(strTmpVulnInfo) = False then 
+			DictOSServversion.add strTmpVulnInfo, 1
+			if Instr(strTmpVulnInfo, "Windows") > 0 and DictOSServversionWindows.exists(strTmpVulnInfo) = False then _
+			  DictOSServversionWindows.add strTmpVulnInfo, 1
+			if instr(strTmpVulnInfo, "Linux") > 0 and DictOSServversionLinux.exists(ShortenOSname(strTmpVulnInfo)) = False then _
+			  DictOSServversionLinux.add ShortenOSname(strTmpVulnInfo), 1
+		  
+		else
+		  DictOSServversion.item(strTmpVulnInfo) = DictOSServversion.item(strTmpVulnInfo) + 1
+		  if Instr(strTmpVulnInfo, "Windows") > 0  then _
+		  DictOSServversionWindows.item(strTmpVulnInfo) = DictOSServversionWindows.item(strTmpVulnInfo) + 1
+		  if Instr(strTmpVulnInfo, "Linux") > 0  then _
+		  DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) = DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) + 1	 	  
+		end if  
+	  else 
+		if DictOSWorkversion.exists(strTmpVulnInfo) = False then
+			DictOSWorkversion.add strTmpVulnInfo, 1
+			if Instr(strTmpVulnInfo, "Mac") > 0 and DictOSWorkversionMac.exists(strTmpVulnInfo) = False then _
+			  DictOSWorkversionMac.add strTmpVulnInfo, 1
+			if instr(strTmpVulnInfo, "Windows") > 0 and DictOSWorkversionWindows.exists(strTmpVulnInfo) = False then _
+			  DictOSWorkversionWindows.add strTmpVulnInfo, 1
+		else
+		  DictOSWorkversion.item(strTmpVulnInfo) = DictOSWorkversion.item(strTmpVulnInfo) + 1
+		  if Instr(strTmpVulnInfo, "Mac") > 0  then _
+		  DictOSWorkversionMac.item(strTmpVulnInfo) = DictOSWorkversionMac.item(strTmpVulnInfo) + 1
+		  if Instr(strTmpVulnInfo, "Windows") > 0  then _
+		  DictOSWorkversionWindows.item(strTmpVulnInfo) = DictOSWorkversionWindows.item(strTmpVulnInfo) + 1	  
+		end if
+	  end if
+	  if instr(strTmpVulnInfo, "OSX") then
+		strConsolidated = "Mac OS X"
+	  elseif instr(strTmpVulnInfo, "Linux") > 0 and instr(strTmpVulnInfo, "release") > 0 and instr(strTmpVulnInfo, ".") > 0 then
+		strConsolidated = ShortenOSname(strTmpVulnInfo)
+	  elseif instr(strTmpVulnInfo, "2003") then
+		strConsolidated = "Windows 2003"
+	  elseif instr(strTmpVulnInfo, "2008") then
+		strConsolidated = "Windows 2008"
+	  elseif instr(strTmpVulnInfo, "2012") then
+		strConsolidated = "Windows 2012"
+	  elseif instr(strTmpVulnInfo, "2016") then
 		strConsolidated = "Windows 2016"
-	else
-		strConsolidated = "Windows 10"
-	end if
-end if
-  if DictOSconsolidated.exists(strConsolidated) = False then
-    DictOSconsolidated.add strConsolidated, 1
-  else
-    DictOSconsolidated.item(strConsolidated) = DictOSconsolidated.item(strConsolidated) + 1
-  end if
+	  elseif instr(strTmpVulnInfo, "Windows XP") then
+		strConsolidated = "Windows XP"
+	  elseif instr(strTmpVulnInfo, "Vista") then
+		strConsolidated = "Windows Vista"
+	  elseif instr(strTmpVulnInfo, "Windows 7") then
+		strConsolidated = "Windows 7"
+	  elseif instr(strTmpVulnInfo, "Windows 8.1") then
+		strConsolidated = "Windows 8.1"
+	  elseif instr(strTmpVulnInfo, "Windows 8") then
+		strConsolidated = "Windows 8"
+	  elseif instr(strTmpVulnInfo, "Windows 10") then
+		if instr(strTmpVulnInfo, "Server") then
+			strConsolidated = "Windows 2016"
+		else
+			strConsolidated = "Windows 10"
+		end if
+	  end if
+	  if DictOSconsolidated.exists(strConsolidated) = False then
+		DictOSconsolidated.add strConsolidated, 1
+	  else
+		DictOSconsolidated.item(strConsolidated) = DictOSconsolidated.item(strConsolidated) + 1
+	  end if
 
+	DictCompName.add strCompName, ""
+  end if
   
   intRowCounter = intRowCounter +1
 loop
@@ -265,6 +256,7 @@ boolServer = False
 if instr(strReturnShort, "Server ") > 0 then
 	boolServer = True
 end if
+strReturnShort = replace(strReturnShort, "Windows Server 2008 R2 Windows Storage Server 2008 R2", "Storage Server 2008 R2")
 strReturnShort = replace(strReturnShort, "Windows Server ", "")
 strReturnShort = replace(strReturnShort, "Windows ", "")
 strReturnShort = replace(strReturnShort, "Server ", "")

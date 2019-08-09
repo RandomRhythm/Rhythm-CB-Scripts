@@ -611,6 +611,7 @@ if boolModEnable = True then
   for each EventEntry in CbarrayEvents
 	if instr(EventEntry, "|") > 0 then 
 	  tmpEvent = replace(EventEntry,chr(34), "")
+	  if right(tmpEvent,1) = "|" then tmpEvent = left(tmpEvent, len(tmpEvent) -1) 'remove end pipe as have not seen any values after it.
 	  ArrayEE = split(tmpEvent, "|")
 	  if ubound(arrayEE) > 1 then
 	   strWriteLine = chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname

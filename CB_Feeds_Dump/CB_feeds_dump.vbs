@@ -1,4 +1,4 @@
-'CB Feed Dump v4.8.4 'Add clipping level feature. Add skip feature to ignore queries with large results (intIgnoreAmount)
+'CB Feed Dump v4.8.5 - Grab full cmdline when quotes were used.
 'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -721,7 +721,7 @@ if instr(strCBresponseText, "md5") > 0 then
   strCBproductName = "|" & replace(strCBproductName, "|", " ")
   StrCBMD5 = getdata(strCBresponseText, chr(34), "md5" & Chr(34) & ": " & Chr(34))
   strCBprevalence = getdata(strCBresponseText, ",", "host_count" & Chr(34) & ": ")
-  strCBcmdline = getdata(strCBresponseText, Chr(34), "cmdline" & Chr(34) & ": " & Chr(34))
+  strCBcmdline = getdata(strCBresponseText, Chr(34) & ",", "cmdline" & Chr(34) & ": " & Chr(34))
   strCBis64 = getdata(strCBresponseText, ",", "is_64bit" & Chr(34) & ": " )
   strCBVersion = getdata(strCBresponseText, Chr(34), "file_version" & Chr(34) & ": " & Chr(34))
   if strCBVersion = "" then

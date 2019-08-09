@@ -1,4 +1,4 @@
-'Cb Pull Events v1.4.1 - add clipping level and reports path
+'Cb Pull Events v1.4.2
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")

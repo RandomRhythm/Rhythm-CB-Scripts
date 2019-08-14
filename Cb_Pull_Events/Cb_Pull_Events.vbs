@@ -1,4 +1,4 @@
-'Cb Pull Events v1.4.2
+'Cb Pull Events v1.4.3 - Support for >=v3 childproc_complete.
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -41,6 +41,7 @@ Dim boolFileEnable
 Dim boolCrossEnable
 Dim dictRegAction: Set dictRegAction = CreateObject("Scripting.Dictionary")
 Dim dictFileAction: Set dictFileAction = CreateObject("Scripting.Dictionary")
+Dim dictChild: Set dictChild = CreateObject("Scripting.Dictionary")
 Dim dictUID: Set dictUID = CreateObject("Scripting.Dictionary")
 Dim boolDebug: boolDebug = false
 Dim boolReportUserName
@@ -622,7 +623,43 @@ if boolModEnable = True then
   next
 end if
 
-if boolChildEnable = True then 
+if boolChildEnable = True and APIVersion  >= 3 then 
+  dictChild.RemoveAll
+  if boolChildHeader = False then
+	outrow = "Start Time|End Time|Unique ID|MD5|File Path|PID|Suppressed|Parent PID|Parent Unique ID|Sensor ID|Child Command Line" & userNheader & processNheader
+	logdata strReportPath & "\Child_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+	boolChildHeader = True
+  end if    
+  strTmpText = getdata(StrTmpResponse,"]", "childproc_complete" & CHr(34) & ": [")
+  if instr(strTmpText,  "},") = 0 then strTmpText = strTmpText & "},"
+  CbarrayEvents = split(strTmpText, "},")
+  for each EventEntry in CbarrayEvents
+	childMD5 = getdata(EventEntry,chr(34), "md5" & CHr(34) & ": " & chr(34) )
+	childCommandLine = getdata(EventEntry,chr(34) & ",", "commandline" & CHr(34) & ": " & chr(34) )
+	childSha256 = getdata(EventEntry,chr(34), "sha256" & CHr(34) & ": " & chr(34) )
+	childProcessId = getdata(EventEntry,chr(34), "processId" & CHr(34) & ": " & chr(34) )
+	childIs_suppressed = getdata(EventEntry,",", "is_suppressed" & CHr(34) & ": " )
+	childDateStartTime = getdata(EventEntry,chr(34), "start" & CHr(34) & ": " & chr(34) )
+	childDateEndTime = getdata(EventEntry,chr(34), "end" & CHr(34) & ": " & chr(34) )
+	childIs_tampered = getdata(EventEntry,",", "is_tampered" & CHr(34) & ": " )
+	childPID = getdata(EventEntry,",", "pid" & CHr(34) & ": " )
+	childIDPath = getdata(EventEntry,chr(34), "path" & CHr(34) & ": " & chr(34) )
+	if childMD5 <> "" then
+		
+	   strWriteLine = Chr(34) & childProcessId & Chr(34) & _
+	   "," & Chr(34) & childMD5 & Chr(34) & "," & Chr(34) & childIDPath & Chr(34) & _
+	   "," & Chr(34) & childPID & Chr(34) & "," & Chr(34) & childIs_suppressed & Chr(34) & _
+	   "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strIDPath & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & "," & Chr(34) & childCommandLine & Chr(34) & username & processname
+	   if dictChild.exists(strWriteLine) = False then 
+		dictChild.add strWriteLine, childDateEndTime
+	   else		
+		logdata strReportPath & "\Child_out_" & strUnique & ".csv",Chr(34) & childDateStartTime & Chr(34) & "," & Chr(34) & dictChild.item(strWriteLine) & Chr(34) & "," & strWriteLine, false
+	   end if	
+	end if
+  next
+end if
+
+if boolChildEnable = True and APIVersion  < 3 then 
   if boolChildHeader = False then
 
 	outrow = "Date Time|Unique ID|MD5|File Path|PID|Not Suppressed|Parent PID|Unique ID|Sensor ID" & userNheader & processNheader

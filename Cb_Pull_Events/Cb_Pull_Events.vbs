@@ -1,4 +1,4 @@
-'Cb Pull Events v1.4.3 - Support for >=v3 childproc_complete.
+'Cb Pull Events v1.4.4 - Fix registry output.
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -587,7 +587,7 @@ if boolRegEnable = True then
 	if instr(EventEntry, "|") > 0 then 
 	  tmpEvent = replace(EventEntry,chr(34), "")
 	  ArrayEE = split(tmpEvent, "|")
-	  if ubound(arrayEE) > 4 then
+	  if ubound(arrayEE) > 3 then
 		strAction = ""
 		if dictRegAction.exists(arrayEE(0)) then strAction =  dictRegAction.item(arrayEE(0))
 	   strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname

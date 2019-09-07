@@ -41,7 +41,7 @@ IntDayStartQuery = "*" 'days to go back for start date of query. Example "-8". S
 IntDayEndQuery = "*" 'days to go back for end date of query. Example "-1". Set to "*" for no end date
 strIPquery = "" 'Only dump information for sensors that held a particual IP adress. example: "10.10.10.80"
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
-strLicenseKey = "" 'Lincense key is required to use SocketTools 
+strLicenseKey = "" 'License key is required to use SocketTools 
 strIniPath = "Cb_sensor.ini"
 '---End Config section
 

@@ -123,7 +123,7 @@ intClippingLevel = 40000 'Stop pulling results for query after hitting this amou
 boolQueryChild = False 'Query child processes of alerts in feeds
 boolQueryParent = False 'Query parent processes of alerts in feeds
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
-strLicenseKey = "" 'Lincense key is required to use SocketTools 
+strLicenseKey = "" 'License key is required to use SocketTools 
 strIniPath="Cb_Feeds.ini"
 '---End Query Config Section
 

@@ -64,7 +64,7 @@ intPagesToPull = 20 'Number of alerts to retrieve at a time
 intSizeLimit = 20000 'don't dump more than this number of pages per feed
 intReceiveTimeout = 120 'number of seconds for timeout
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
-strLicenseKey = "" 'Lincense key is required to use SocketTools 
+strLicenseKey = "" 'License key is required to use SocketTools 
 strIniPath="Cb_Alerts.ini"
 '---End Config section
 

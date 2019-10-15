@@ -1,4 +1,4 @@
-### Cb Event Sampler - Pulls event data from the CB Response API and dumps to CSV. 
+### Cb Event Sampler - Queries IOCs in Cb Response event data and provides a sampling CSV output.
 
 The script will try to pull sample event data from the following categories:
 * Network

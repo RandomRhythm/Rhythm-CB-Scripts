@@ -1,12 +1,11 @@
-'CB Feed Dump v4.8.5 - Grab full cmdline when quotes were used.
-'Pulls data from the CB Response feeds and dumps to CSV. Will pull parent and child data for the process alerts in the feeds.
+'CB Feed Dump v4.8.6 - Support watchlist output. Support displaying all file paths. Add detection for BlueKeep and DejaBlue. Modify ValueFromIni behavior.
+'Pulls data from the Cb Response API via feeds, watchlists and additional queries. Results are written to CSV. Can also pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
 'name|query
 'Example:
 'knowndll|/api/v1/binary?q=observed_filename:known.dll&digsig_result:Unsigned
 
-'More information on querying the CB Response API https://github.com/carbonblack/cbapi/tree/master/client_apis
 
 'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
 
@@ -91,6 +90,8 @@ Dim intParseCount: intParseCount = 10
 Dim BoolDebugTrace
 Dim boolCVE_2017_11826
 DIm boolEnableAttackFramework
+Dim boolCVE_2019_0708
+Dim boolDejaBlue
 Dim intSleepDelay
 Dim intPagesToPull
 Dim intReceiveTimeout
@@ -120,6 +121,7 @@ intPagesToPull = 10000 'Number of alerts to retrieve at a time
 intReceiveTimeout = 120 'number of seconds for timeout
 intIgnoreAmount = 800000 'If a query returns more than this amount skip trying to process it.
 intClippingLevel = 40000 'Stop pulling results for query after hitting this amount.
+boolOutputWatchLists = True 'Output query results from watchlists
 boolQueryChild = False 'Query child processes of alerts in feeds
 boolQueryParent = False 'Query parent processes of alerts in feeds
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
@@ -166,8 +168,10 @@ boolEnableCbInspection = True
 boolMS17010Check = True
 boolCVE_2017_11826 = True
 boolEnableAttackFramework = False 'disable this by default due to amount
+boolCVE_2019_0708 = True 'BlueKeep
+boolDejaBlue = True
 strIniPath = "Cb_Feeds.ini"
-strStaticFPversion = "32.0.0.207"
+strStaticFPversion = "32.0.0.255"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
 '---End script settings section
 
@@ -216,6 +220,9 @@ if objFSO.FileExists(strIniPath) = True then
 	boolEnableCbInspection = ValueFromINI(strIniPath, "BooleanValues", "CbInspect", boolEnableCbInspection)
 	boolMS17010Check = ValueFromINI(strIniPath, "BooleanValues", "MS17-010", boolMS17010Check)
 	boolCVE_2017_11826 = ValueFromINI(strIniPath, "BooleanValues", "CVE-2017-11826", boolCVE_2017_11826)
+	boolCVE_2019_0708 = ValueFromINI(strIniPath, "BooleanValues", "CVE-2019-0708", boolCVE_2019_0708)
+	boolDejaBlue = ValueFromINI(strIniPath, "BooleanValues", "DejaBlue", boolDejaBlue)
+	boolOutputWatchLists = ValueFromINI(strIniPath, "BooleanValues", "WatchLists", boolOutputWatchLists)
 	strStaticFPversion = ValueFromINI(strIniPath, "StringValues", "FlashVersion", strStaticFPversion)
 	BoolDebugTrace = ValueFromINI(strIniPath, "BooleanValues", "Debug", BoolDebugTrace)	
 '---End ini loading section
@@ -367,6 +374,8 @@ strCarBlackAPIKey = strTempAPIKey
 intTotalQueries = 50
 'get feed info
 DumpCarBlack 0, False, intTotalQueries, "/api/v1/feed"
+'get watchlist info
+If boolOutputWatchLists = True Then DumpCarBlack 0, False, intTotalQueries, "/api/v1/watchlist"
 
 if boolEnableNetAPI32Check = True then DictFeedInfo.Add "MS08-067", "netapi32.dll"
 if boolEnableFlashCheck = True then DictFeedInfo.Add "Flash Player", "Flash Player"
@@ -376,7 +385,9 @@ if boolEnableIexploreCheck = True then DictFeedInfo.Add "iexplore.exe", "iexplor
 if bool3155533Check = True then DictFeedInfo.Add "MS16-051", "vbscript.dll"
 if boolMS17010Check = true then DictFeedInfo.Add "MS17-070", "srv.sys"
 if boolCVE_2017_11826 = True then DictFeedInfo.Add "Microsoft Word", "winword.exe"
-if boolAdditionalQueries = True then 
+if boolCVE_2019_0708 = True then DictFeedInfo.Add "BlueKeep", "termdd.sys"
+if boolDejaBlue = True then DictFeedInfo.Add "DejaBlue", "termsrv.dll"
+if boolAdditionalQueries = True Or boolOutputWatchLists = True then 
   for each strAquery in DictAdditionalQueries
     if DictFeedInfo.exists(DictAdditionalQueries.item(strAquery)) = False then DictFeedInfo.Add DictAdditionalQueries.item(strAquery), strAquery
   next
@@ -457,7 +468,11 @@ for each strCBFeedID in DictFeedInfo
       strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "srv.sys" & chr(34) & "& digsig_publisher:Microsoft Corporation"
 	Case "winword.exe"
 	  strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "winword.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation"
-    Case else
+    Case "termdd.sys" 'RDP Vulnerability BlueKeep
+	  strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "termdd.sys" & chr(34) '& "& digsig_publisher:Microsoft Corporation"
+    Case "termsrv.dll" 'RDP Vulnerability DejaBlue
+	  strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "termsrv.dll" & chr(34) & "& digsig_publisher:Microsoft Corporation"
+	Case else
       if DictAdditionalQueries.exists(strCBFeedName) then 
         strQueryFeed = strCBFeedID
       end if
@@ -487,6 +502,7 @@ for each strCBFeedID in DictFeedInfo
       intCBcount = 0
       if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", strCBFeedID & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
       strUniquefName = DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
+      strUniquefName = Replace(strUniquefName, "\","_")
       strHashOutPath = strReportPath & "\CBmd5_" & strUniquefName
       do while intCBcount < clng(intTotalQueries) and intClippingLevel > clng(intCBcount)
         DumpCarBlack intCBcount, True, intPagesToPull, strQueryFeed & strStartDateQuery & strEndDateQuery & strHostFilter 
@@ -620,9 +636,11 @@ if instr(strCBresponseText, "401 Unauthorized") then
 end if
 if instr(strCBresponseText, vblf & "    {") > 0 then
   strArrayCBresponse = split(strCBresponseText, vblf & "    {")
-else
+ElseIf instr(strCBresponseText, vblf & "  {") > 0 then
   strArrayCBresponse = split(strCBresponseText, vblf & "  {")
-end if
+Else 
+  strArrayCBresponse = split(strCBresponseText, ", {")
+End If	
 for each strCBResponseText in strArrayCBresponse
 
   if len(strCBresponseText) > 0 then
@@ -637,7 +655,13 @@ for each strCBResponseText in strArrayCBresponse
         strTmpFeedName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
 		if strTmpFeedName = "yara" then yaraFeedID = strTmpFeedID
         if DictFeedInfo.exists(strTmpFeedID) = false then DictFeedInfo.add strTmpFeedID, strTmpFeedName
-      elseif instr(strAVEurl, "?") = 0 then 'Specific process query for children and parent
+      elseif instr(strCBresponseText, "search_query" & Chr(34) & ": ") > 0 and instr(strCBresponseText, "id" & Chr(34) & ": ") > 0 Then
+        strTmpwatchlistID = getdata(strCBresponseText, Chr(34), chr(34) & "id" & Chr(34) & ": " & Chr(34))
+        strTmpWLName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
+        strTmpActualWatchlistQuery = getdata(strCBresponseText, Chr(34), chr(34) & "search_query" & Chr(34) & ": " & Chr(34))
+	        strTmpWatchlistQuery = "/api/v1/process?q=watchlist_" & strTmpwatchlistID & ":*"
+      	DictAdditionalQueries.add strTmpWLName, strTmpWatchlistQuery
+      ElseIf instr(strAVEurl, "?") = 0 then 'Specific process query for children and parent
         
         if boolProcessChildren = True and BoolProcessData = False then
           strCBSegID = getdata(strCBresponseText, ",", "segment_id" & Chr(34) & ": ")
@@ -699,8 +723,14 @@ if instr(strCBresponseText, "md5") > 0 then
 
   strCBfilePath = getdata(strCBresponseText, "]", "observed_filename" & Chr(34) & ": [")
   strCBfilePath = replace(strCBfilePath,chr(10),"")
-  strCBfilePath = RemoveTLS(strCBfilePath)
-  strCBfilePath = getdata(strCBfilePath, chr(34),chr(34))'just grab the fist file path listed
+  strCBfilePath = RemoveTLS(strCBfilePath)		
+  If InStr(StrCBfilePath, ",") > 0 Then ' multiple files
+  	strCBfilePath = replace(strCBfilePath,chr(34),"^")
+  	strCBfilePath = replace(strCBfilePath,",","")
+  Else
+  	strCBfilePath = getdata(strCBfilePath, chr(34),chr(34))'get path inside quotes
+  End if  	
+  
   if strCBfilePath = "" then
     strCBfilePath = getdata(strCBresponseText, Chr(34), "path" & Chr(34) & ": " & Chr(34))
   end if
@@ -847,46 +877,42 @@ if StrCBMD5 <> "" then
     else
       strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
     end if
-  end if
-  if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "mshtml.dll" & chr(34) & "&digsig_publisher:Microsoft Corporation" then
+  elseif strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "mshtml.dll" & chr(34) & "&digsig_publisher:Microsoft Corporation" then
     if instr(lcase(strCBfilePath), "\system32\") = 0 and instr(lcase(strCBfilePath), "\syswow64\") = 0 then 
       exit sub
     else
       strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
     end if
-  end if
-  if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "netapi32.dll" & chr(34) & "&digsig_publisher:Microsoft Corporation" then
+  elseif strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "netapi32.dll" & chr(34) & "&digsig_publisher:Microsoft Corporation" then
     if instr(lcase(strCBfilePath), "\system32\") = 0 and instr(lcase(strCBfilePath), "\syswow64\") = 0 then 
       exit sub
     else
       strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
     end if
-  end if  
-  if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "silverlight.configuration.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
+  elseif strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "silverlight.configuration.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
     if instr(lcase(strCBfilePath), "silverlight.configuration.exe") = 0 and instr(lcase(strCBfilePath), "microsoft silverlight") = 0 then 
       exit sub
     else
       strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
     end if
-  end if  
-  if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "iexplore.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
+  elseif strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "iexplore.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
     if instr(lcase(strCBfilePath), "\program files") = 0 and instr(lcase(strCBfilePath), "internet explorer") = 0 then 
       exit sub
     else
       strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
     end if
-  end if    
-  if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "uxtheme.dll" & chr(34)  & "& digsig_result:Unsigned"then
+  elseif strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "uxtheme.dll" & chr(34)  & "& digsig_result:Unsigned"then
       strCBVuln = "Suspicious uxtheme.dll"
-  end if  
-  if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "vbscript.dll" & chr(34)  & "& digsig_publisher:Microsoft Corporation" then
+  elseif strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "vbscript.dll" & chr(34)  & "& digsig_publisher:Microsoft Corporation" then
        strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
-  end if  
-  if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "srv.sys" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
+  elseif strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "srv.sys" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
 	strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
-  end if
-  if strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "winword.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
+  elseif strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "winword.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
 	strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
+  elseif instr(strQueryFeed, "/api/v1/binary?q=observed_filename:") > 0 and instr(strQueryFeed, "termdd.sys") > 0 or instr(strQueryFeed, "termsrv.dll") > 0 then 
+	If instr(lcase(strCBfilePath), "\windows\") > 0 Then
+		strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
+	End if	
   end if
   'monitor for IP addresses in command lines
   if len(strCBcmdline) > 5 then
@@ -1425,11 +1451,59 @@ instr(lcase(strVulnPath), "\winword.exe") > 0 and instr(lcase(strVulnPath), "\mi
       ParseVulns = "Windows has been patched for CVE-2017-11826"
     else
       ParseVulns = "Windows missing patch released for CVE-2017-11826"
-    end if		
-
-
-
-
+    end if
+elseif instr(lcase(strVulnPath), "termdd.sys") > 0 then
+	'CVE-2019-0708
+	'https://support.microsoft.com/en-us/help/4500331/windows-update-kb4500331
+	if instr(StrVulnVersion, "5.1.2600") > 0 then 'x86 Win XP
+		StrVersionCompare = "5.1.2600.7701" 
+	elseif instr(StrVulnVersion, "5.2.3790") > 0 then 'Windows Server 2003
+		StrVersionCompare = "5.2.3790.6787"
+	elseif instr(StrVulnVersion, "6.0.6003") > 0 then 'vista and server 2008 KB4499180
+		StrVersionCompare = "6.0.6003.20514"
+	elseif FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, "6.1.0000.00000") then 'unaffected new OS
+		ParseVulns = "Windows version unaffected by bluekeep vulnerability"
+		Exit function
+	end if
+	'dejablue
+	'elseif instr(StrVulnVersion, "6.1.7601") > 0 then 'Win7 server 2008 R2 KB4512506 going to use termsrv.dll for this
+	'	StrVersionCompare = "6.1.7601.24441"
+	'elseif
+	if FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, StrVersionCompare) then
+      ParseVulns = "Windows has been patched for CVE-2019-0708 KB4500331"
+    else
+      ParseVulns = "Windows missing patch released under KB4500331 CVE-2019-0708"
+    end if
+elseif instr(lcase(strVulnPath), "termsrv.dll") > 0 then 'dejablue
+	if FirstVersionSupOrEqualToSecondVersion("6.0.9999.99999", StrVulnVersion) Then 'unaffected older OS
+		ParseVulns = "Windows version unaffected by dejablue vulnerabilities"
+		Exit function
+	elseif instr(StrVulnVersion, "6.1.7601.") > 0 Or instr(StrVulnVersion, "6.1.7600.") > 0 then 'Win7 server 2008 R2 KB4512506
+		StrVersionCompare = "6.1.7601.24402"
+	elseif instr(StrVulnVersion, "6.2.9200.") > 0 then 'KB4512518 server 2018
+		StrVersionCompare = "6.2.9200.22715"	
+	elseif instr(StrVulnVersion, "6.3.9600.") > 0 then 'KB4512488 ARM Windows RT 8.1
+		StrVersionCompare = "6.3.9600.19318"
+	elseif instr(StrVulnVersion, "10.0.10240.") > 0 then 'KB4512497
+		StrVersionCompare = "10.0.10240.18186"
+	elseif instr(StrVulnVersion, "10.0.14393.") > 0 then 'KB4512517 
+		StrVersionCompare = "10.0.14393.2906"		
+	elseif instr(StrVulnVersion, "10.0.15063.") > 0 then 'KB4512507 
+		StrVersionCompare = "10.0.15063.1746"			
+	elseif instr(StrVulnVersion, "10.0.16299.") > 0 then 'KB4512516 
+		StrVersionCompare = "10.0.16299.15"		
+	elseif instr(StrVulnVersion, "10.0.17134.") > 0 then 'KB4512501 (1803)
+		StrVersionCompare = "10.0.17134.706"	
+	elseif instr(StrVulnVersion, "10.0.17763.") > 0 then 'KB missing version number (1809)
+		StrVersionCompare = "10.0.17763.678" 
+	elseif instr(StrVulnVersion, "10.0.18362.") > 0 then 'KB4512501 (1903)
+		StrVersionCompare = "10.0.18362.295"		
+	end if
+	if FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, StrVersionCompare) then
+      ParseVulns = "Windows has been patched for dejablue vulnerabilities"
+    else
+      ParseVulns = "Windows missing patch for dejablue vulnerabilities"
+    end if
 end if
 end function
 
@@ -1682,9 +1756,11 @@ End Function
 
 Function ValueFromIni(strFpath, iniSection, iniKey, currentValue)
 returniniVal = ReadIni( strFpath, iniSection, iniKey)
-if returniniVal = " " then 
+if returniniVal = " " then 'key found with blank value
+	returniniVal = ""
+ElseIf returniniVal = "" then 'key not found
 	returniniVal = currentValue
-end if 
+End if 
 if TypeName(returniniVal) = "String" then
 	returniniVal = stringToBool(returniniVal)'convert type to boolean if needed
 elseif TypeName(returniniVal) = "Integer" then

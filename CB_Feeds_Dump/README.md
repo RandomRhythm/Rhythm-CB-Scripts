@@ -1,16 +1,16 @@
-# CB Feeds Dump - Pulls alert data from the CB Response feeds and dumps to CSV. 
+# CB Feeds Dump - Pulls data from the Cb Response API and dumps to CSV. 
 
-### This script will export two CSV files for each feed/query. One CSV containing all data and a limited CSV containing unique entries.
+### This script will export two CSV files for each feed/watchlist/query. One CSV containing all data and a limited CSV containing unique entries.
 
-You must edit the code of this script to adjust the query timeframe and host filter. The following section of code defines the query:
+Use the Cb_Feeds.ini to adjust the query timeframe and host filter. The following snippet identifies key values:
 
-	'---Config Section
-	boolEchoInfo = False
-	IntDayStartQuery = "*" 'days to go back for start date of query. Set to "*" to query all binaries or set to -24 to query last 24 time measurement
-	IntDayEndQuery = "*" 'days to go back for end date of query. Set to * for no end date
-	strTimeMeasurement = "d" '"h" for hours "d" for days
-	strHostFilter = "" 'computer name to filter to. Typically uppercase and is case sensitive.
-	'---End Config Section
+	'---INI snippet
+	[IntegerValues]
+	StartTime=* 'Number of time to go back for start date of query. Set to "*" to query all or set to -24 to query last 24 time measurement
+	EndTime=* 'days to go back for end date of query. Set to * for no end date
+	[StringValues]
+	TimeMeasurement=d '"h" for hours "d" for days
+	'---End INI snippet
 
 Script runs addtional queries to identify vulnerable and patched components. Currently supports the following checks:
 * Flash Player

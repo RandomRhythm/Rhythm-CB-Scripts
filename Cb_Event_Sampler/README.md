@@ -1,4 +1,4 @@
-### Cb Pull Events - Pulls event data from the CB Response API and dumps to CSV. 
+### Cb Event Sampler - Pulls event data from the CB Response API and dumps to CSV. 
 
 The script will try to pull sample event data from the following categories:
 * Network

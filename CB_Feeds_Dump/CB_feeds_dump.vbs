@@ -503,6 +503,7 @@ for each strCBFeedID in DictFeedInfo
       if BoolDebugTrace = True then logdata strDebugPath & "\CarBlacktext" & "" & ".txt", strCBFeedID & vbcrlf & "-------" & vbcrlf,BoolEchoLog 
       strUniquefName = DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
       strUniquefName = Replace(strUniquefName, "\","_")
+	  strUniquefName = Replace(strUniquefName, "/","_")
       strHashOutPath = strReportPath & "\CBmd5_" & strUniquefName
       do while intCBcount < clng(intTotalQueries) and intClippingLevel > clng(intCBcount)
         DumpCarBlack intCBcount, True, intPagesToPull, strQueryFeed & strStartDateQuery & strEndDateQuery & strHostFilter 

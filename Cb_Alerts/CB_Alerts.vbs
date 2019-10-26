@@ -47,8 +47,7 @@ Dim boolOutputWID
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 '---Config Section
-BoolDebugTrace = False
-boolEchoInfo = False 
+strReportPath = "\Reports" 'directory to write report output
 boolOutputID = True 'Alert ID
 boolOutputWID = True 'Watchlist ID
 IntDayStartQuery = "-9" 'days to go back for start date of query. Set to * to query all 
@@ -66,7 +65,13 @@ intReceiveTimeout = 120 'number of seconds for timeout
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'License key is required to use SocketTools 
 strIniPath="Cb_Alerts.ini"
+strReportPath = "\Reports" 'directory to write report output
 '---End Config section
+
+'---Debug
+BoolDebugTrace = False
+boolEchoInfo = False 
+'---End Debug
 
 if objFSO.FileExists(strIniPath) = True then
 '---Ini loading section
@@ -104,9 +109,13 @@ strSSfilePath = CurrentDirectory & "\CBIP_" & udate(now) & ".csv"
 
 strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" 'encryption key. Change if you want but can only decrypt with same key
 
-if objFSO.folderexists(strDebugPath) = False then _
+if BoolDebugTrace = False and objFSO.folderexists(strDebugPath) = False then _
 objFSO.createfolder(strDebugPath)
-
+if instr(strReportPath, ":") = 0 then 
+	strReportPath = CurrentDirectory & "\" & strReportPath
+end if
+if objFSO.folderexists(strReportPath) = False then _
+objFSO.createfolder(strReportPath)
 
 strFile= CurrentDirectory & "\cb.dat"
 strAPIproduct = "Carbon Black" 
@@ -165,6 +174,8 @@ strTempAPIKey = ""
 intTotalQueries = 50
 'get feed info  
 DumpCarBlack 0, False, intTotalQueries, "/api/v1/feed"
+'get watchlist info
+DumpCarBlack 0, False, intTotalQueries, "/api/v1/watchlist"
 
 for each strCBFeedID in DictFeedInfo
   'msgbox "DictFeedExclude.exists(" & DictFeedInfo.item(strCBFeedID) & ")=" & DictFeedExclude.exists(strCBFeedID)
@@ -175,7 +186,7 @@ for each strCBFeedID in DictFeedInfo
       wscript.sleep 10
       intCBcount = 10
       boolHeaderWritten = False
-      strHashOutPath = CurrentDirectory & "\CBalert_" & DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
+      strHashOutPath = strReportPath & "\CBalert_" & DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
       intTotalQueries = DumpCarBlack(0, True, intCBcount, strQueryFeed)
       wscript.sleep intSleepDelay
       logdata CurrentDirectory & "\CB_Alerts.log", date & " " & time & ": " & "Total number of items being retrieved for feed " & DictFeedInfo.item(strCBFeedID) & ": " & intTotalQueries ,boolEchoInfo
@@ -189,7 +200,7 @@ for each strCBFeedID in DictFeedInfo
           wscript.sleep intSleepDelay
         loop
       end if
-      strSSfilePath = CurrentDirectory & "\CBIP_" & DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
+      strSSfilePath = strReportPath & "\CBIP_" & DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
       For each item in DictIPAddresses
         LogData strSSfilePath, item & "|" & DictIPAddresses.item(item), False
       next
@@ -263,7 +274,15 @@ for each strCBResponseEntry in strArrayCBresponse
       if instr(strCBResponseEntry, "provider_url" & Chr(34) & ": ") and instr(strCBresponseText, "id" & Chr(34) & ": ") then
         strTmpFeedID = getdata(strCBResponseEntry, ",", "id" & Chr(34) & ": ")
         strTmpFeedName = getdata(strCBResponseEntry, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
+        If strTmpFeedID <> "" Then strTmpFeedID = "feed_name:" & strTmpFeedID
         if DictFeedInfo.exists(strTmpFeedID) = false then DictFeedInfo.add strTmpFeedID, strTmpFeedName
+      elseif instr(strCBresponseText, "search_query" & Chr(34) & ": ") > 0 and instr(strCBresponseText, "id" & Chr(34) & ": ") > 0 Then
+        strTmpwatchlistID = getdata(strCBresponseText, Chr(34), chr(34) & "id" & Chr(34) & ": " & Chr(34))
+        strTmpWLName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
+        strTmpActualWatchlistQuery = getdata(strCBresponseText, Chr(34), chr(34) & "search_query" & Chr(34) & ": " & Chr(34))
+        strTmpWatchlistQuery = "/api/v1/process?q=watchlist_" & strTmpwatchlistID & ":*"
+      	If strTmpwatchlistID <> "" Then strTmpwatchlistID = "watchlist_id:" & strTmpwatchlistID
+      	If DictFeedInfo.exists(strTmpwatchlistID) = false then DictFeedInfo.add strTmpwatchlistID, strTmpWLName
       elseif BoolProcessData = True then 
         if instr(strCBresponseText, "total_results" & Chr(34) & ": ") > 0 then
           DumpCarBlack = getdata(strCBresponseText, ",", "total_results" & Chr(34) & ": ")
@@ -370,15 +389,15 @@ end if
 
 
 if IsHash(strioc_value) = True then 
-	logdata currentdirectory & "\IOC_MD5.txt", strioc_value, false
+	logdata strReportPath & "\IOC_MD5.txt", strioc_value, false
 elseif IsIPaddress(strioc_value) = True then
-	logdata currentdirectory & "\IOC_IP.txt", strioc_value, false
+	logdata strReportPath & "\IOC_IP.txt", strioc_value, false
 elseif boolQueryIOC = True then
-	logdata currentdirectory & "\IOC_Query.txt", strioc_value, false
+	logdata strReportPath & "\IOC_Query.txt", strioc_value, false
 elseif instr(strioc_value, "$") = 0 then
-	logdata currentdirectory & "\IOC_Domain.txt", strioc_value, false
+	logdata strReportPath & "\IOC_Domain.txt", strioc_value, false
 else
-	logdata currentdirectory & "\IOCs.txt", strioc_value, false
+	logdata strReportPath & "\IOCs.txt", strioc_value, false
 end if
 
 if strioc_value = "" and BoolDebugTrace = True then 

@@ -1,10 +1,11 @@
-'Cb Pull Events v1.4.4 - Fix registry output.
+'Cb Pull Events v1.4.5 - Add baseline feature. +boolReportParentName to include parent of current process for child process output.
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
 '/a argument to auto accept pulling down all results.
+'/b to baseline. Add letters after the "b" to tell it what to baseline. 
+'/bmnc "m" - modules. "n" - network. "c" - cross process
 
-'More information on querying the CB Response API https://github.com/carbonblack/cbapi/tree/master/client_apis
 
 'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
 
@@ -43,6 +44,12 @@ Dim dictRegAction: Set dictRegAction = CreateObject("Scripting.Dictionary")
 Dim dictFileAction: Set dictFileAction = CreateObject("Scripting.Dictionary")
 Dim dictChild: Set dictChild = CreateObject("Scripting.Dictionary")
 Dim dictUID: Set dictUID = CreateObject("Scripting.Dictionary")
+Dim dictBaselineMod: Set dictBaselineMod = CreateObject("Scripting.Dictionary") 
+Dim dictBaselineCross: Set dictBaselineCross = CreateObject("Scripting.Dictionary")
+Dim dictBaselineNetwork: Set dictBaselineNetwork = CreateObject("Scripting.Dictionary")
+Dim boolBaselineMod
+Dim boolBaselineCross
+Dim boolBaselineNetwork
 Dim boolDebug: boolDebug = false
 Dim boolReportUserName
 Dim pullAllSections
@@ -71,12 +78,14 @@ boolCrossEnable = True
 pullAllSections = True 'set to true to grab everything
 boolReportUserName = True 'Include associated user name
 boolReportProcessName = True 'Include associated process name
+boolReportParentName = True 'Include parent name
 strCbQuery = "" 'Cb Response query to run. Can be passed as an argument to the script.
 intSleepDelay = 1000 'delay between queries
 intPagesToPull = 1000 'Number of alerts to retrieve at a time
 intReceiveTimeout = 120 'number of seconds for timeout
 intClippingLevel = 40000 'Stop pulling results for query after hitting this amount.
 strReportPath = "\Reports" 'directory to write report output
+strBaselinePath = "\baselines" 'baseline save directory
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'License key is required to use SocketTools 
 strIniPath="Cb_pe.ini"
@@ -89,6 +98,10 @@ if objFSO.FileExists(strIniPath) = false then
 End if		
 if instr(strReportPath, ":") = 0 then 
 	strReportPath = CurrentDirectory & "\" & strReportPath
+end if
+
+if instr(strBaselinePath, ":") = 0 then 
+	strBaselinePath = CurrentDirectory & "\" & strBaselinePath
 end if
 
 
@@ -126,7 +139,8 @@ if objFSO.folderexists(strReportPath) = False then _
 objFSO.createfolder(strReportPath)
 if objFSO.folderexists(strDebugPath) = False then _
 objFSO.createfolder(strDebugPath)
-
+if objFSO.folderexists(strBaselinePath) = False then _
+objFSO.createfolder(strBaselinePath)
 
 'RegMod field 0: operation type, an integer 1, 2, 4 or 8
 '1: Created the registry key
@@ -211,6 +225,19 @@ else
 	for each passedArg in WScript.Arguments
 		if lcase(passedArg) = "/a" and intAnswer = "" then
 			intAnswer = VbYes
+		elseif lcase(left(passedArg,2)) = "/b" Then
+      if instr(lcase(passedArg),"m") > 0 then 
+        boolBaselineMod = True
+        LoadBaseline strBaselinePath & "\Modules" & ".dat",dictBaselineMod 
+      end if
+      if instr(lcase(passedArg),"c") > 0 then 
+        boolBaselineCross = True
+        LoadBaseline strBaselinePath & "\CrossProc" & ".dat", dictBaselineCross
+      end if
+      if instr(lcase(passedArg),"n") > 0 then 
+        LoadBaseline strBaselinePath & "\Network" & ".dat",dictBaselineNetwork 
+        boolBaselineNetwork = True
+      end if
 		elseif boolQuerySet = True then
 			msgbox "A query was provided inside the script. If you want to use an external query then clear boolQuerySet in the Optional config section. Script will now exit. strCbQuery=" & strCbQuery
 			wscript.quit(22)	  
@@ -326,7 +353,7 @@ do while boolexit = False
 					 for each strSeg in arraySegment
 					  'if dictUID.exists(strCBID & "-" & strCBSegID) = false then
 						if len(strSeg) > 12 then
-						  CBEventData strCBID & "/" & HexToDec(right(strSeg, 12))
+						  CBEventData strCBID & "/" & HexToDec(right(strSeg, 12)), strquery
 						end if
 					  
 						'dictUID.add strCBID & "-" & strCBSegID, ""
@@ -336,7 +363,7 @@ do while boolexit = False
 				end if
 				if strCBSegID <> "" then
 				 'segment_id: REQUIRED the process segment id; this is the segment_id field in search results. If this is set to 0
-				  CBEventData strCBID & "/" & strCBSegID 
+				  CBEventData strCBID & "/" & strCBSegID, strquery
 				end if
 			end if
 		next
@@ -422,7 +449,7 @@ set objHTTP_SC = nothing
 end function
 
 
-Function CBEventData(strIDPath)
+Function CBEventData(strIDPath,strQuery)
 Set objHTTP_ED = CreateObject("WinHttp.WinHttpRequest.5.1")
 Dim strAVEurl
 Dim strReturnURL
@@ -499,7 +526,10 @@ if boolReportProcessName = True then
   processname = getdata(StrTmpResponse,Chr(34), "process_name" & CHr(34) & ": " & Chr(34))
   processname = "," & Chr(34) & processname & Chr(34) 
   processNheader = "|Process Name"
-  
+end if
+if boolReportParentName = True then
+  parentprocessname = getdata(StrTmpResponse,Chr(34), "parent_name" & CHr(34) & ": " & Chr(34))
+  parentNheader = "|Parent Name"
 end if
 strTmp_host_type = getdata(StrTmpResponse, Chr(34), "host_type" & CHr(34) & ": " & Chr(34))
 strTmp_group = getdata(StrTmpResponse, Chr(34), "group" & CHr(34) & ": " & Chr(34))
@@ -544,7 +574,15 @@ if boolNetworkEnable = True and APIVersion  > 1 and APIVersion < 5 then
     strWriteLine = Chr(34) & strDtime & chr(34) & "," & Chr(34) & strIP & chr(34) & "," & _
     Chr(34) & strLport & chr(34) & "," & Chr(34) & strRport & chr(34) & "," & Chr(34) & strProtocol & chr(34) & "," & _
     Chr(34) & strDomain & chr(34) & "," & Chr(34) & strDirection & chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
-    logdata strReportPath & "\IP_out_" & strUnique & ".csv",strWriteLine, false
+    if boolBaselineNetwork = False then
+      logdata strReportPath & "\IP_out_" & strUnique & ".csv",strWriteLine, false
+    elseif boolBaselineNetwork = True then
+      if dictBaselineNetwork.exists(strquery & "|" & strIP & "|" & strDomain & "|" & strDirection) = False then
+          dictBaselineNetwork.add strquery & "|" & strIP & "|" & strDomain & "|" & strDirection, ""
+          logdata strReportPath & "\IP_out_" & strUnique & ".csv",strWriteLine, false
+          logdata strBaselinePath & "\Network" & ".dat",strquery & "|" & strIP & "|" & strDomain & "|" & strDirection, false
+      end if
+    end if
   end if
   next
 
@@ -568,7 +606,15 @@ if boolNetworkEnable = True and APIVersion  = 1 then
 			dotQuadIP = arrayEE(1)
 		end if
 	   strWriteLine = Chr(34) & arrayEE(0) & Chr(34) & "," & Chr(34) & dotQuadIP & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & arrayEE(3) & Chr(34) & "," & Chr(34) & arrayEE(4) & Chr(34) & "," & Chr(34) & arrayEE(5) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname 
-	  logdata strReportPath & "\IP_out_" & strUnique & ".csv",strWriteLine, false
+      if dictBaselineNetwork = False then
+        logdata strReportPath & "\IP_out_" & strUnique & ".csv",strWriteLine, false
+      elseif dictBaselineNetwork = True then
+        if dictBaselineNetwork.exists(strquery & "|" & dotQuadIP & "|" & arrayEE(4) & "|" & arrayEE(5)) = False then
+          dictBaselineNetwork.add strquery & "|" & dotQuadIP & "|" & arrayEE(4) & "|" & arrayEE(5), ""
+          logdata strReportPath & "\IP_out_" & strUnique & ".csv",strWriteLine, false
+          logdata strBaselinePath & "\Network" & ".dat",strquery & "|" & dotQuadIP & "|" & arrayEE(4) & "|" & arrayEE(5), false
+        end if
+      end if
 	  end if
 	end if
   next
@@ -616,8 +662,16 @@ if boolModEnable = True then
 	  ArrayEE = split(tmpEvent, "|")
 	  if ubound(arrayEE) > 1 then
 	   strWriteLine = chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
-	   
-	  logdata strReportPath & "\Mod_out_" & strUnique & ".csv",strWriteLine, false
+	   if boolBaselineMod = False then
+        logdata strReportPath & "\Mod_out_" & strUnique & ".csv",strWriteLine, false
+      
+      elseif boolBaselineMod = True then
+        if dictBaselineMod.exists(strquery & "|" & arrayEE(1)) = False then
+          dictBaselineMod.add strquery & "|" & arrayEE(1), arrayEE(2)
+          logdata strReportPath & "\Mod_out_" & strUnique & ".csv",strWriteLine, false
+          logdata strBaselinePath & "\Modules" & ".dat",strquery & "|" & arrayEE(1), false
+        end if
+      end if
 	  end if
 	end if
   next
@@ -626,7 +680,7 @@ end if
 if boolChildEnable = True and APIVersion  >= 3 then 
   dictChild.RemoveAll
   if boolChildHeader = False then
-	outrow = "Start Time|End Time|Unique ID|MD5|File Path|PID|Suppressed|Parent PID|Parent Unique ID|Sensor ID|Child Command Line" & userNheader & processNheader
+	outrow = "Start Time|End Time|Unique ID|MD5|File Path|PID|Suppressed|Parent PID|Parent Unique ID|Sensor ID|Child Command Line" & userNheader & processNheader & parentNheader
 	logdata strReportPath & "\Child_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolChildHeader = True
   end if    
@@ -649,7 +703,7 @@ if boolChildEnable = True and APIVersion  >= 3 then
 	   strWriteLine = Chr(34) & childProcessId & Chr(34) & _
 	   "," & Chr(34) & childMD5 & Chr(34) & "," & Chr(34) & childIDPath & Chr(34) & _
 	   "," & Chr(34) & childPID & Chr(34) & "," & Chr(34) & childIs_suppressed & Chr(34) & _
-	   "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strIDPath & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & "," & Chr(34) & childCommandLine & Chr(34) & username & processname
+	   "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strIDPath & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & "," & Chr(34) & childCommandLine & Chr(34) & username & processname & parentprocessname
 	   if dictChild.exists(strWriteLine) = False then 
 		dictChild.add strWriteLine, childDateEndTime
 	   else		
@@ -662,7 +716,7 @@ end if
 if boolChildEnable = True and APIVersion  < 3 then 
   if boolChildHeader = False then
 
-	outrow = "Date Time|Unique ID|MD5|File Path|PID|Not Suppressed|Parent PID|Unique ID|Sensor ID" & userNheader & processNheader
+	outrow = "Date Time|Unique ID|MD5|File Path|PID|Not Suppressed|Parent PID|Unique ID|Sensor ID" & userNheader & processNheader & parentNheader
 	logdata strReportPath & "\Child_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolChildHeader = True
   end if    
@@ -673,7 +727,7 @@ if boolChildEnable = True and APIVersion  < 3 then
 	  tmpEvent = replace(EventEntry,chr(34), "")
 	  ArrayEE = split(tmpEvent, "|")
 	  if ubound(arrayEE) > 4 then
-	   strWriteLine = replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strIDPath & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
+	   strWriteLine = replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strIDPath & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname & parentprocessname
 	   
 	  logdata strReportPath & "\Child_out_" & strUnique & ".csv",strWriteLine, false
 	  end if
@@ -724,10 +778,17 @@ if boolCrossEnable = True then
 	  ArrayEE = split(tmpEvent, "|")
 	  if ubound(arrayEE) > 1 then
 	   strWriteLine = chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strTmp_ExePath & Chr(34) & "," & Chr(34) & strIDPath & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) & username & processname
-	   
-	  logdata strReportPath & "\Cross_out_" & strUnique & ".csv",strWriteLine, false
-	  end if
-	end if
+      if boolBaselineCross = False then
+        logdata strReportPath & "\Cross_out_" & strUnique & ".csv",strWriteLine, false
+      elseif boolBaselineCross = True then
+        if dictBaselineCross.exists(strquery & "|" & arrayEE(3)) = false then
+          dictBaselineCross.add strquery & "|" & arrayEE(3), ""
+          logdata strReportPath & "\Cross_out_" & strUnique & ".csv",strWriteLine, false
+          logdata strBaselinePath & "\CrossProc" & ".dat",strquery & "|" & arrayEE(3), false
+        end if
+      end if
+    end if
+   end if 
   next
 end if
 
@@ -1221,3 +1282,19 @@ Do While found = False and Z < Len((FilePathName))
 Loop
 
 end Function
+
+Sub LoadBaseline(strListPath, dictToLoad)
+if objFSO.fileexists(strListPath) then
+  Set objFile = objFSO.OpenTextFile(strListPath)
+  Do While Not objFile.AtEndOfStream
+    if not objFile.AtEndOfStream then 'read file
+        On Error Resume Next
+        strData = objFile.ReadLine
+          if dictToLoad.exists(lcase(strData)) = False then 
+			dictToLoad.add lcase(strData), ""
+		end if
+        on error goto 0
+    end if
+  loop
+end if
+end sub

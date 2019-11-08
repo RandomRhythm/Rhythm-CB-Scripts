@@ -1,4 +1,4 @@
-'CB Feed Dump v4.8.6 - Support watchlist output. Support displaying all file paths. Add detection for BlueKeep and DejaBlue. Modify ValueFromIni behavior.
+'CB Feed Dump v4.8.7 - Fix watchlist ID duplication error. 
 'Pulls data from the Cb Response API via feeds, watchlists and additional queries. Results are written to CSV. Can also pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -661,7 +661,9 @@ for each strCBResponseText in strArrayCBresponse
         strTmpWLName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
         strTmpActualWatchlistQuery = getdata(strCBresponseText, Chr(34), chr(34) & "search_query" & Chr(34) & ": " & Chr(34))
 	        strTmpWatchlistQuery = "/api/v1/process?q=watchlist_" & strTmpwatchlistID & ":*"
-      	DictAdditionalQueries.add strTmpWLName, strTmpWatchlistQuery
+      	if DictAdditionalQueries.exists(strTmpWLName) = False then
+			DictAdditionalQueries.add strTmpWLName, strTmpWatchlistQuery
+		end if
       ElseIf instr(strAVEurl, "?") = 0 then 'Specific process query for children and parent
         
         if boolProcessChildren = True and BoolProcessData = False then

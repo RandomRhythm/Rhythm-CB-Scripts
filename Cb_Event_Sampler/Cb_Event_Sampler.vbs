@@ -211,31 +211,32 @@ if strTempAPIKey = "" then
 end if
 strCarBlackAPIKey = strTempAPIKey
 
-
-if not objFSO.fileexists(CurrentDirectory & "\" & strInputPath) then
+if objFSO.fileexists(CurrentDirectory & "\" & strInputPath) then
+  strInputPath = CurrentDirectory & "\" & strInputPath
+else
 
 	wscript.echo "Please open the text input list or CSV file"
 	strInputPath = SelectFile( )
 end if
 
 'Read list of items to query
-if not objFSO.fileexists(CurrentDirectory & "\" & strInputPath) then
-  objFSO.CreateTextFile CurrentDirectory & "\" & strInputPath, True
-   objShellComplete.run "notepad.exe " & chr(34) & CurrentDirectory & "\" & strInputPath & chr(34)
-  msgbox "Input list (" & CurrentDirectory & "\" & strInputPath & ") file was not found. The file has been created and opened in notepad. Please input the hashes or IP and domain addresses you want to scan and save the file." 
+if not objFSO.fileexists(strInputPath) then
+  objFSO.CreateTextFile strInputPath, True
+   objShellComplete.run "notepad.exe " & chr(34) & strInputPath & chr(34)
+  msgbox "Input list (" & strInputPath & ") file was not found. The file has been created and opened in notepad. Please input the hashes or IP and domain addresses you want to scan and save the file." 
 end if
-Set oFile = objFSO.GetFile(CurrentDirectory & "\" & strInputPath)
+Set oFile = objFSO.GetFile(strInputPath)
 
 	If oFile.Size = 0 Then
-    objFSO.CreateTextFile CurrentDirectory & "\" & strInputPath, True
-   objShellComplete.run "notepad.exe " & chr(34) & CurrentDirectory & "\" & strInputPath & chr(34)
-  msgbox "Input list (" & CurrentDirectory & "\" & strInputPath & ") file was empty. The file has been opened in notepad. Please input hashes or IP addresses and domains you want to scan and save the file." 
+    objFSO.CreateTextFile strInputPath, True
+   objShellComplete.run "notepad.exe " & chr(34) & strInputPath & chr(34)
+  msgbox "Input list (" & strInputPath & ") file was empty. The file has been opened in notepad. Please input hashes or IP addresses and domains you want to scan and save the file." 
 
 	End If
 
 boolHeaderWritten = False
 strHeaderImport = "" 'header from CSV file we are importing
-Set objRLfile = objFSO.OpenTextFile(CurrentDirectory & "\" & strInputPath)
+Set objRLfile = objFSO.OpenTextFile(strInputPath)
 Do While Not objRLfile.AtEndOfStream
   if not objRLfile.AtEndOfStream then 'read file
 	  On Error Resume Next
@@ -314,11 +315,11 @@ do while boolexit = False
 			if objHTTP_CbQ.Status <> 200 then
 				logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Non-200 status code returned: " & objHTTP_CbQ.Status & " " & objHTTP_CbQ.StatusText, False
 				If objHTTP_CbQ.Status = 504 then
-					msgbox "The gateway timed out. Perhaps try using a smaller PagesToPull value in the Cb_ES.ini file. The script will now exit"
+					msgbox "The gateway timed out. Perhaps try using a smaller PagesToPull value in the Cb_PE.ini file. The script will now exit"
 					logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to gateway timeout: " & strAppendQuery, False 
 					wscript.quit (504)
 				ElseIf objHTTP_CbQ.Status = 502 then
-					msgbox "Bad Gateway. Perhaps try using a smaller PagesToPull value in the Cb_ES.ini file. The script will now exit"
+					msgbox "Bad Gateway. Perhaps try using a smaller PagesToPull value in the Cb_PE.ini file. The script will now exit"
 					logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb_Pull_Events lookup failed due to bad gateway: " & strAppendQuery, False 
 					wscript.quit (502)
 				end if
@@ -1428,3 +1429,35 @@ end if
 end sub
 
 
+Function SelectFile( )
+    ' File Browser via HTA
+    ' Author:   Rudi Degrande, modifications by Denis St-Pierre and Rob van der Woude
+    ' Features: Works in Windows Vista and up (Should also work in XP).
+    '           Fairly fast.
+    '           All native code/controls (No 3rd party DLL/ XP DLL).
+    ' Caveats:  Cannot define default starting folder.
+    '           Uses last folder used with MSHTA.EXE stored in Binary in [HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32].
+    '           Dialog title says "Choose file to upload".
+    ' Source:   http://social.technet.microsoft.com/Forums/scriptcenter/en-US/a3b358e8-15&?lig;-4ba3-bca5-ec349df65ef6
+
+    Dim objExec, strMSHTA, wshShell
+
+    SelectFile = ""
+
+    ' For use in HTAs as well as "plain" VBScript:
+    strMSHTA = "mshta.exe ""about:" & "<" & "input type=file id=FILE>" _
+             & "<" & "script>FILE.click();new ActiveXObject('Scripting.FileSystemObject')" _
+             & ".GetStandardStream(1).WriteLine(FILE.value);close();resizeTo(0,0);" & "<" & "/script>"""
+    ' For use in "plain" VBScript only:
+    ' strMSHTA = "mshta.exe ""about:<input type=file id=FILE>" _
+    '          & "<script>FILE.click();new ActiveXObject('Scripting.FileSystemObject')" _
+    '          & ".GetStandardStream(1).WriteLine(FILE.value);close();resizeTo(0,0);</script>"""
+
+    Set wshShell = CreateObject( "WScript.Shell" )
+    Set objExec = wshShell.Exec( strMSHTA )
+
+    SelectFile = objExec.StdOut.ReadLine( )
+
+    Set objExec = Nothing
+    Set wshShell = Nothing
+End Function

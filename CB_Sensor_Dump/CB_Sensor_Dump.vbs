@@ -1,4 +1,4 @@
-'CB Sensor Dump v2.4 - Support for inactive_filter_days
+'CB Sensor Dump v2.5 - Remove requirement for period in console URL
 'This script will dump sensor information via the CB Response (Carbon Black) API
 
 'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
@@ -153,7 +153,7 @@ end if
 strCarBlackAPIKey = strTempAPIKey
 
 
-if instr(lcase(StrBaseCBURL),".") <> 0 and instr(lcase(StrBaseCBURL),"http") <> 0 and instr(lcase(StrBaseCBURL),"://") <> 0 then
+if instr(lcase(StrBaseCBURL),"http") <> 0 and instr(lcase(StrBaseCBURL),"://") <> 0 then
   if strCarBlackAPIKey <> "" and StrBaseCBURL <> "" then BoolUseCarbonBlack = True   
 else
   msgbox "Invalid URL specified for Carbon Black: " & StrBaseCBURL & vbcrlf & "Delete the dat file to input new URL information: " & strFile
@@ -397,7 +397,7 @@ Function encrypt(StrText, key) 'Rafael Paran? - https://gallery.technet.microsof
   encrypt = Newstr 
 End Function 
   
-Function Decrypt(StrText,key) 'Rafael Paran√° - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
+Function Decrypt(StrText,key) 'Rafael Paran· - https://gallery.technet.microsoft.com/scriptcenter/e0d5d71c-313e-4ac1-81bf-0e016aad3cd2
   Dim lenKey, KeyPos, LenStr, x, Newstr 
    
   Newstr = "" 

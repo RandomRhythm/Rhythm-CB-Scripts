@@ -1,4 +1,4 @@
-# CB Feeds Dump - Pulls data from the Cb Response API and dumps to CSV. 
+# CB Feeds Dump
 
 ### This script will export two CSV files for each feed/watchlist/query. One CSV containing all data and a limited CSV containing unique entries.
 
@@ -21,10 +21,17 @@ Script runs addtional queries to identify vulnerable and patched components. Cur
 * MS16-051 KB3155533
 * Internet Explorer Major Version
 * MS17-010
+* BlueKeep
+* DejaBlue
 
-additional queries can be run via aq.txt in the current directory.
-name|query
+Additional queries can be run via aq.txt in the current directory. Input format is name|query where the name will be used as the file name for CSV output and the query will be used to pull down the results.
+
 Example:
+  
+	knowndll|observed_filename:known.dll&digsig_result:Unsigned
+	evasion_installutil|process_name:installutil.exe AND parent_name:cmd.exe
+
+To force a query to binary or process include "/api/v1/%type%?q=" before the query:
 
 	knowndll|/api/v1/binary?q=observed_filename:known.dll&digsig_result:Unsigned
 	evasion_installutil|/api/v1/process?q=process_name:installutil.exe AND parent_name:cmd.exe

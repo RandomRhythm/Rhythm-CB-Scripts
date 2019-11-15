@@ -1,4 +1,4 @@
-'CB Hash Dump v3.0 - Dumps hashes from CB (Carbon Black) Response
+'CB Hash Dump v3.1 - Dumps hashes from CB (Carbon Black) Response
 'Dumps CSV "MD5|Path|Publisher|Company|Product|CB Prevalence|Logical Size|Score
 
 'This script will write out hashes and some associated data via the CB Response (Carbon Black) API
@@ -48,6 +48,8 @@ Dim dictYARoutput: Set dictYARoutput = CreateObject("Scripting.Dictionary")
 Dim boolUseSocketTools
 Dim strLicenseKey
 Dim strIniPath
+Dim boolUseHashList
+Dim strReportPath
 Const forwriting = 2
 Const ForAppending = 8
 Const ForReading = 1
@@ -63,6 +65,7 @@ BoolExcludeSRSTRust = True 'Exclude trusted applications from the query
 strSensorID = "" 'sensor_id
 strHostFilter = "" 'computer name to filter to. Use uppercase, is case sensitive. If does not work try using sensor_id instead
 strqueryitem = "" 'feed or other query item to filter off of example:"alliance_score_srsthreat:* "
+strReportPath = "\Reports" 'directory to write report output
 boolOutputHosts = True ' Set to True to output hostnames for each binary
 boolOutputDateAdded = True ' Set to True to output the date that the file was added to Cb Response
 boolOutputDateSigned = True ' Set to True to output the date the binary was signed
@@ -71,6 +74,7 @@ boolOutputCopyright = True
 boolOutputComments = True
 boolOutputOrigFname = True 'Seems uncommon for this to be populated
 boolOutputFileDesc = True
+boolUseHashList = False 'Output only hashes found within input list
 boolEnableYARA = True'include yara
 expandYARA = False 'Adds a column for each rule. Set to false to put all YARA data in one column
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
@@ -99,12 +103,12 @@ if objFSO.FileExists(strIniPath) = True then
 	boolOutputOrigFname = ValueFromINI(strIniPath, "BooleanValues", "OutputOriginalName", boolOutputOrigFname)
 	boolEnableYARA = ValueFromINI(strIniPath, "BooleanValues", "YARA", boolEnableYARA)
 	expandYARA = ValueFromINI(strIniPath, "BooleanValues", "ExpandYARA", expandYARA)
-	BoolDebugTrace = ValueFromINI(strIniPath, "BooleanValues", "Debug", BoolDebugTrace)	
+	BoolDebugTrace = ValueFromINI(strIniPath, "BooleanValues", "Debug", BoolDebugTrace)
+	boolUseHashList	= ValueFromINI(strIniPath, "BooleanValues", "UseHashList", boolUseHashList)
 '---End ini loading section
 else
 	if BoolRunSilent = False then WScript.Echo strIniPath & " does not exist. Using script configured/default settings instead"
 end if
-
 
 if strHostFilter <> "" then 
   msgbox "filtering to host " & strHostFilter
@@ -134,7 +138,23 @@ elseif isnumeric(IntDayEndQuery) then
   strEndDateQuery = " AND server_added_timestamp:[ * TO " & FormatDate (strEndDateQuery) & "]"
 end if
 
-msgbox "Date query: " & right(strStartDateQuery & strEndDateQuery, len(strStartDateQuery & strEndDateQuery) - instr(strStartDateQuery & strEndDateQuery,"[") +1) 
+if boolUseHashList = True then 'only dump hashes specified in the input file
+	if objFSO.fileexists(CurrentDirectory & "\" & strInputPath) then
+	  strInputPath = CurrentDirectory & "\" & strInputPath
+	else
+		wscript.echo "Please open the text input list or CSV file"
+		strInputPath = SelectFile( )
+	end if
+	if strInputPath <> "" then
+		Msgbox "Dumping all hashes available in Cb Response that match the hash list in file " & Chr(34) & strInputPath & chr(34)
+	else
+		msgbox "No input path specified. Script will dump all hashes instead per the INI configuration"
+		boolUseHashList = False
+	end if
+end if
+if boolUseHashList = False then 'only used during full dump
+	msgbox "Date query: " & right(strStartDateQuery & strEndDateQuery, len(strStartDateQuery & strEndDateQuery) - instr(strStartDateQuery & strEndDateQuery,"[") +1) 
+end if
 
 strSRSTRustQuery = ""
 if BoolExcludeSRSTRust = True then
@@ -143,12 +163,21 @@ end if
 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug\"
-strSSfilePath = CurrentDirectory & "\CB_" & udate(now) & ".csv"
+if instr(strReportPath, ":") = 0 then 
+	strReportPath = CurrentDirectory & "\" & strReportPath
+end if
+
+strSSfilePath = strReportPath & "\CB_" & udate(now) & ".csv"
 
 strRandom = "4bv3nT9vrkJpj3QyueTvYFBMIvMOllyuKy3d401Fxaho6DQTbPafyVmfk8wj1bXF" 'encryption key. Change if you want but can only decrypt with same key
 Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 
+'create sub directories
+if objFSO.folderexists(strReportPath) = False then _
+objFSO.createfolder(strReportPath)
+if objFSO.folderexists(strDebugPath) = False then _
+objFSO.createfolder(strDebugPath)
 
 strFile= CurrentDirectory & "\cb.dat"
 strAPIproduct = "Carbon Black" 
@@ -228,7 +257,7 @@ strTempAPIKey = ""
 
 intTotalQueries = 50
 'get feed info
-DumbCbFeed 0, False, intTotalQueries, "/api/v1/feed"
+DumpCbFeed 0, False, intTotalQueries, "/api/v1/feed"
 'process yara
 if boolEnableYARA = True then 
 	wscript.sleep 10 
@@ -268,17 +297,22 @@ if BoolUseCarbonBlack = True then
 	end if
   strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
   logdata strSSfilePath, strTmpSSlout, False
-  intTotalQueries = 10
-  'loop through CB results
-  intTotalQueries = DumpCarBlack(0, False, intTotalQueries)
-  wscript.sleep 10
-  msgbox "Total number of items being retrieved : " & intTotalQueries
-  'DumpCarBlack 0, True, intTotalQueries 
-  intCBcount = 0
-  do while intCBcount < clng(intTotalQueries)
-    DumpCarBlack intCBcount, True, 10000 
-    intCBcount = intCBcount +10000
-  loop
+  
+  If boolUseHashList = False then
+	  intTotalQueries = 10
+	  'loop through CB results
+	  intTotalQueries = DumpCarBlack(0, False, intTotalQueries)
+	  wscript.sleep 10
+	  msgbox "Total number of items being retrieved : " & intTotalQueries
+	  'DumpCarBlack 0, True, intTotalQueries 
+	  intCBcount = 0
+	  do while intCBcount < clng(intTotalQueries)
+		DumpCarBlack intCBcount, True, 10000 
+		intCBcount = intCBcount +10000
+	  loop
+  else
+	RunHashLookup strInputPath'Run against input file
+  end if
 end if
 
 
@@ -331,7 +365,110 @@ else
         if instr(strCBresponseText, "total_results" & Chr(34) & ": ") then
           DumpCarBlack = getdata(strCBresponseText, ",", "total_results" & Chr(34) & ": ")
         elseif instr(strCBresponseText, "md5") and BoolProcessData = True then 
-          'DumpCarBlack = "Carbon Black has a copy of the file for hash " & strCarBlack_ScanItem
+			individualHashProcess strLineIn,CbOutput
+        end if
+      end if
+    end if
+	
+  next
+end if
+set objHTTP = nothing
+end function
+
+
+
+Function CbHTTPrequest(strURLQuery)
+strAVEurl = StrBaseCBURL & strURLQuery
+Set objHTTP = CreateObject("MSXML2.ServerXMLHTTP")
+
+if boolUseSocketTools = False then
+	objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
+	objHTTP.open "GET", strAVEurl, True
+
+	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
+	  
+
+	on error resume next
+	  objHTTP.send
+		If objHTTP.waitForResponse(intReceiveTimeout) Then 'response ready
+			'success!?
+			if err.number <> 0 then
+				logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+				logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " HTTP status code - " & objHTTP.status,False 
+				logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " strAVEurl - " & strAVEurl,False 
+				exit function 
+			end if
+		Else 'wait timeout exceeded
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Try limiting the date range and lowering the PagesToPull in the ini file. CarBlack lookup failed due to timeout: " & strAVEurl, False
+			exit function  
+		End If 
+		if objHTTP.status = 500 or objHTTP.status = 501 then
+			'failed query
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP status " & objHTTP.status & " - " & strAVEurl,False 
+			exit function
+		end if
+		if objHTTP.status = 405 then
+			'failed access
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP status " & objHTTP.status & " - This could indicate you do not have appropiate rights to query feeds",False 
+			msgbox "CarBlack lookup failed with HTTP status " & objHTTP.status & " - This could indicate you do not have appropiate rights to query feeds" 
+			exit function
+		end if
+		if objHTTP.status <> 200 and objHTTP.status <> 404 then
+			msgbox "Cb hash dump non-200 status code returned:" & objHTTP.status
+		end if
+	  if err.number <> 0 then
+		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
+		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " HTTP status code - " & objHTTP.status,False 
+		exit function 
+	  end if
+	on error goto 0  
+	'creates a lot of data. DOn't uncomment next line unless your going to disable it again
+	if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", objHTTP.responseText & vbcrlf & vbcrlf,BoolEchoLog 
+	strCBresponseText = objHTTP.responseText
+else
+	strCBresponseText = SocketTools_HTTP(strAVEurl, True)
+end if	
+CbHTTPrequest = strCBresponseText
+end function
+
+
+Sub RunHashLookup(strInputPath)
+	
+'Read list of items to query
+if not objFSO.fileexists(strInputPath) then
+  objFSO.CreateTextFile strInputPath, True
+   objShellComplete.run "notepad.exe " & chr(34) & strInputPath & chr(34)
+  msgbox "Input list (" & strInputPath & ") file was not found. The file has been created and opened in notepad. Please input the hashes or IP and domain addresses you want to scan and save the file." 
+end if
+Set oFile = objFSO.GetFile(strInputPath)
+
+	If oFile.Size = 0 Then
+    objFSO.CreateTextFile strInputPath, True
+   objShellComplete.run "notepad.exe " & chr(34) & strInputPath & chr(34)
+  msgbox "Input list (" & strInputPath & ") file was empty. The file has been opened in notepad. Please input hashes or IP addresses and domains you want to scan and save the file." 
+
+	End If
+
+boolHeaderWritten = False
+strHeaderImport = "" 'header from CSV file we are importing
+Set objRLfile = objFSO.OpenTextFile(strInputPath)
+Do While Not objRLfile.AtEndOfStream
+  if not objRLfile.AtEndOfStream then 'read file
+	  On Error Resume Next
+	  strLineIn = objRLfile.ReadLine 
+	  on error goto 0
+	CbOutput = CbHTTPrequest("/api/v1/binary/" & strLineIn & "/summary")
+	if ishash(strLineIn) then
+		individualHashProcess strLineIn,CbOutput
+	end if
+  end if
+loop
+end sub
+
+
+Sub individualHashProcess(strCarBlack_ScanItem, strCBresponseText)
+
+if len(strCBresponseText) > 0 then
 
           strCBfilePath = getdata(strCBresponseText, "]", "observed_filename" & Chr(34) & ": [")
           strCBfilePath = replace(strCBfilePath,chr(10),"")
@@ -404,57 +541,16 @@ else
 		if boolOutputFileDesc = True then 
 			strFileDesc = getdata(strCBresponseText, chr(34), "file_desc" & Chr(34) & ": " & Chr(34))
 		  end if
-          'RecordPathVendorStat strtmpCB_Fpath 'record path vendor statistics
-        end if
-      end if
+      strYaraLine = YaraLookup(StrCBMD5)
+	  outputHashCSV strCBVTScore,strDateTimeAdded, strDateTimeSigned,strInternalName,strcopyright,strComments,strOrigFname,strFileDesc,strYaraLine 'Logs the CSV output
     end if
-		
-	strYaraLine = ""
-	if boolEnableYARA = True then
-		if expandYARA = False then 
-			if dictYARA.exists(StrCBMD5) then
-				strYaraLine = "|" & dictYARA.item(StrCBMD5)
-			else
-				strYaraLine = "|" 
-			end if
-		else
-			strYaraLine = YARAEntryrow(StrCBMD5)
-		end if
-	end if
-	
-    if StrCBMD5 <> "" then
-      strCBfilePath = AddPipe(strCBfilePath) 'CB File Path
-      strCBdigSig = AddPipe(strCBdigSig) 'CB Digital Sig
-      strCBcompanyName = AddPipe(strCBcompanyName)'CB Company Name
-      strCBproductName = AddPipe(strCBproductName) 'Product Name        
-      strCBFileSize = AddPipe(strCBFileSize)  
-      strCBprevalence = AddPipe(strCBprevalence)
-      strCBVTScore = AddPipe(strCBVTScore)
-      strCBHostname = boolAddPipe(strCBHostname, boolOutputHosts)
-      strDateTimeAdded = boolAddPipe(strDateTimeAdded, boolOutputDateAdded)
-      strDateTimeSigned = boolAddPipe(strDateTimeSigned, boolOutputDateSigned)
-      strInternalName = boolAddPipe(strInternalName, boolOutputInternalName)
-      strcopyright = boolAddPipe(strcopyright, boolOutputCopyright)
-	  strComments = boolAddPipe(strComments, boolOutputComments)
-	  strOrigFname  = boolAddPipe(strOrigFname, boolOutputOrigFname)
-	  strFileDesc  = boolAddPipe(strFileDesc, boolOutputFileDesc)
-	  
-      strSSrow = StrCBMD5 & strCBfilePath & strCBdigSig & strCBcompanyName & strCBproductName & strOrigFname & strInternalName & strcopyright & strFileDesc & strComments & strCBprevalence & strCBFileSize & strCBVTScore & strDateTimeAdded & strDateTimeSigned & strCBHostname & strYaraLine
-	  strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
-      logdata strSSfilePath, strTmpSSlout, False
-    end if
-    strCBfilePath = ""
-    strCBdigSig = ""
-    strCBcompanyName = ""
-    strCBproductName = ""
-    strCBFileSize = ""
-    strCBprevalence = "" 
-    StrCBMD5 = "" 
-    strCBVTScore = ""
-  next
-end if
-set objHTTP = nothing
-end function
+  
+
+ 
+Set objHTTP = Nothing
+end Sub
+
+
 
 Function boolAddPipe(strPipeless, BooleanAddPipe)
 if BooleanAddPipe = True then
@@ -731,7 +827,7 @@ loop
 End function
 
 
-Function DumbCbFeed(intCBcount,BoolProcessData, intCBrows, strURLQuery)
+Function DumpCbFeed(intCBcount,BoolProcessData, intCBrows, strURLQuery)
 
 Set objHTTP = CreateObject("MSXML2.ServerXMLHTTP")
 Dim strAVEurl
@@ -784,7 +880,7 @@ for each strCBResponseText in strArrayCBresponse
       'hash not found
     else
       if instr(strCBresponseText, "total_results" & Chr(34) & ": ") > 0 then
-        DumbCbFeed = getdata(strCBresponseText, ",", "total_results" & Chr(34) & ": ")
+        DumpCbFeed = getdata(strCBresponseText, ",", "total_results" & Chr(34) & ": ")
       elseif instr(strCBresponseText, "provider_url" & Chr(34) & ": ") > 0 and instr(strCBresponseText, "id" & Chr(34) & ": ") > 0 then
         strTmpFeedID = getdata(strCBresponseText, ",", "id" & Chr(34) & ": ")
         strTmpFeedName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
@@ -1087,3 +1183,83 @@ End If
 objHttp.Disconnect
 objHttp.Uninitialize
 end function
+
+Function YaraLookup(StrCBMD5)
+if boolEnableYARA = True then
+	if expandYARA = False then 
+		if dictYARA.exists(StrCBMD5) then
+			strYaraLine = "|" & dictYARA.item(StrCBMD5)
+		else
+			strYaraLine = "|" 
+		end if
+	else
+		strYaraLine = YARAEntryrow(StrCBMD5)
+	end if
+end if
+YaraLookup = strYaraLine
+end function
+
+sub outputHashCSV(strCBVTScore,strDateTimeAdded, strDateTimeSigned,strInternalName,strcopyright,strComments,strOrigFname,strFileDesc,strYaraLine) 'Logs the CSV output
+if StrCBMD5 <> "" then
+  strCBfilePath = AddPipe(strCBfilePath) 'CB File Path
+  strCBdigSig = AddPipe(strCBdigSig) 'CB Digital Sig
+  strCBcompanyName = AddPipe(strCBcompanyName)'CB Company Name
+  strCBproductName = AddPipe(strCBproductName) 'Product Name        
+  strCBFileSize = AddPipe(strCBFileSize)  
+  strCBprevalence = AddPipe(strCBprevalence)
+  strCBVTScore = AddPipe(strCBVTScore)
+  strCBHostname = boolAddPipe(strCBHostname, boolOutputHosts)
+  strDateTimeAdded = boolAddPipe(strDateTimeAdded, boolOutputDateAdded)
+  strDateTimeSigned = boolAddPipe(strDateTimeSigned, boolOutputDateSigned)
+  strInternalName = boolAddPipe(strInternalName, boolOutputInternalName)
+  strcopyright = boolAddPipe(strcopyright, boolOutputCopyright)
+  strComments = boolAddPipe(strComments, boolOutputComments)
+  strOrigFname  = boolAddPipe(strOrigFname, boolOutputOrigFname)
+  strFileDesc  = boolAddPipe(strFileDesc, boolOutputFileDesc)
+  
+  strSSrow = StrCBMD5 & strCBfilePath & strCBdigSig & strCBcompanyName & strCBproductName & strOrigFname & strInternalName & strcopyright & strFileDesc & strComments & strCBprevalence & strCBFileSize & strCBVTScore & strDateTimeAdded & strDateTimeSigned & strCBHostname & strYaraLine
+  strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
+  logdata strSSfilePath, strTmpSSlout, False
+end if
+strCBfilePath = ""
+strCBdigSig = ""
+strCBcompanyName = ""
+strCBproductName = ""
+strCBFileSize = ""
+strCBprevalence = "" 
+StrCBMD5 = "" 
+strCBVTScore = ""
+end sub
+
+Function SelectFile( )
+    ' File Browser via HTA
+    ' Author:   Rudi Degrande, modifications by Denis St-Pierre and Rob van der Woude
+    ' Features: Works in Windows Vista and up (Should also work in XP).
+    '           Fairly fast.
+    '           All native code/controls (No 3rd party DLL/ XP DLL).
+    ' Caveats:  Cannot define default starting folder.
+    '           Uses last folder used with MSHTA.EXE stored in Binary in [HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32].
+    '           Dialog title says "Choose file to upload".
+    ' Source:   http://social.technet.microsoft.com/Forums/scriptcenter/en-US/a3b358e8-15&?lig;-4ba3-bca5-ec349df65ef6
+
+    Dim objExec, strMSHTA, wshShell
+
+    SelectFile = ""
+
+    ' For use in HTAs as well as "plain" VBScript:
+    strMSHTA = "mshta.exe ""about:" & "<" & "input type=file id=FILE>" _
+             & "<" & "script>FILE.click();new ActiveXObject('Scripting.FileSystemObject')" _
+             & ".GetStandardStream(1).WriteLine(FILE.value);close();resizeTo(0,0);" & "<" & "/script>"""
+    ' For use in "plain" VBScript only:
+    ' strMSHTA = "mshta.exe ""about:<input type=file id=FILE>" _
+    '          & "<script>FILE.click();new ActiveXObject('Scripting.FileSystemObject')" _
+    '          & ".GetStandardStream(1).WriteLine(FILE.value);close();resizeTo(0,0);</script>"""
+
+    Set wshShell = CreateObject( "WScript.Shell" )
+    Set objExec = wshShell.Exec( strMSHTA )
+
+    SelectFile = objExec.StdOut.ReadLine( )
+
+    Set objExec = Nothing
+    Set wshShell = Nothing
+End Function

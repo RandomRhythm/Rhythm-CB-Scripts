@@ -1,4 +1,4 @@
-'CB Feed Dump v4.8.7 - Fix watchlist ID duplication error. 
+'CB Feed Dump v4.8.8 - Add new aq.txt input format support: It is now optional to include "/api/v1/process?q=" and "/api/v1/binary?q=" before the query.
 'Pulls data from the Cb Response API via feeds, watchlists and additional queries. Results are written to CSV. Can also pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -45,6 +45,7 @@ Dim DictAdhocQuery: set DictAdhocQuery  = CreateObject("Scripting.Dictionary")'
 Dim DictChildQuery: set DictChildQuery  = CreateObject("Scripting.Dictionary")'
 Dim DictLimitedOut: set DictLimitedOut  = CreateObject("Scripting.Dictionary")'
 Dim DictAdditionalQueries: set DictAdditionalQueries  = CreateObject("Scripting.Dictionary")'
+Dim DictQueryType: set DictQueryType  = CreateObject("Scripting.Dictionary")'list if search paramters for processes
 Dim boolHeaderWritten
 Dim boolEchoInfo
 dim boolEnableabusech
@@ -297,8 +298,8 @@ else
   boolAdditionalQueries = False
 end if
 
-if boolAdditionalQueries = True then
-  'load additional queries
+if boolAdditionalQueries = True then'load additional queries
+  AddQueries 'Add query identifiers to DictQueryType
   if objFSO.fileexists(strAdditionalQueryPath) then
     Set objFile = objFSO.OpenTextFile(strAdditionalQueryPath)
     Do While Not objFile.AtEndOfStream
@@ -309,9 +310,22 @@ if boolAdditionalQueries = True then
             strTmpArrayAQ = split(strData, "|")
             if DictAdditionalQueries.exists(lcase(strTmpArrayAQ(0))) = False then 
 				if instr(strTmpArrayAQ(1), "?") > 0 and instr(strTmpArrayAQ(1), "/") > 0 and instr(strTmpArrayAQ(1), "q=") > 0 then
-					DictAdditionalQueries.add lcase(strTmpArrayAQ(0)), strTmpArrayAQ(1)
+					DictAdditionalQueries.add lcase(strTmpArrayAQ(0)), strTmpArrayAQ(1)	
 				else
-					msgbox "invalid additional query: " &  strData
+					for each QueryType in DictQueryType
+						if instr(strTmpArrayAQ(1), QueryType) then
+							if DictQueryType.item(QueryType) = "Process" then'query type identified as a process
+								DictAdditionalQueries.add lcase(strTmpArrayAQ(0)), "/api/v1/process?q=" & strTmpArrayAQ(1)
+								exit for
+							elseif DictQueryType.item(QueryType) = "File" then 'query type identified as a file
+								DictAdditionalQueries.add lcase(strTmpArrayAQ(0)), "/api/v1/binary?q=" & strTmpArrayAQ(1)
+								exit for								
+							end if
+						end if
+					next
+					if instr(strTmpArrayAQ(1), "?") > 0 and instr(strTmpArrayAQ(1), "/") > 0 and instr(strTmpArrayAQ(1), "q=") > 0 then
+						msgbox "invalid additional query: " &  strData
+					end if
 				end if
 			end if
           end if
@@ -1942,3 +1956,50 @@ End If
 objHttp.Disconnect
 objHttp.Uninitialize
 end function
+
+Sub AddQueries
+DictQueryType.add "process_md5:","Process"
+DictQueryType.add "process_name:","Process"
+DictQueryType.add "start:","Process"
+DictQueryType.add "last_update:","Process"
+DictQueryType.add "hostname:","Process"
+DictQueryType.add "modload_count:","Process"
+DictQueryType.add "regmod_count:","Process"
+DictQueryType.add "filemod_count:","Process"
+DictQueryType.add "netconn_count:","Process"
+DictQueryType.add "childproc_count:","Process"
+DictQueryType.add "crossproc_count:","Process"
+DictQueryType.add "group:","Process"
+DictQueryType.add "sensor_id:","Process"
+DictQueryType.add "id:","Process"
+DictQueryType.add "segment_id:","Process"
+DictQueryType.add "unique_id:","Process"
+'hash 
+DictQueryType.add "md5:","File"
+DictQueryType.add "server_added_timestamp:","File"
+DictQueryType.add "orig_mod_len:","File"
+DictQueryType.add "copied_mod_len:","File"
+DictQueryType.add "observed_filename:","File"
+DictQueryType.add "is_executable_image:","File"
+DictQueryType.add "is_64bit:","File"
+DictQueryType.add "product_version:","File"
+DictQueryType.add "product_name:","File"
+DictQueryType.add "file_Version:","File"
+DictQueryType.add "company_name:","File"
+DictQueryType.add "internal_name:","File"
+DictQueryType.add "legal_copyright:","File"
+DictQueryType.add "legal_trademark:","File"
+DictQueryType.add "file_desc:","File"
+DictQueryType.add "original_filename:","File"
+DictQueryType.add "private_build:","File"
+DictQueryType.add "special_build:","File"
+DictQueryType.add "signed:","File"
+DictQueryType.add "digsig_result:","File"
+DictQueryType.add "digsig_result_code:","File"
+DictQueryType.add "digsig_sign_time:","File"
+DictQueryType.add "digsig_prog_name:","File"
+DictQueryType.add "digsig_issuer:","File"
+DictQueryType.add "digsig_subject:","File"
+DictQueryType.add "alliance_score_virustotal:","File"
+DictQueryType.add "host_count:","File"
+end sub

@@ -1,4 +1,4 @@
-'CB Hash Dump v3.1 - Dumps hashes from CB (Carbon Black) Response
+'CB Hash Dump v3.2 - Dumps hashes from CB (Carbon Black) Response
 'Dumps CSV "MD5|Path|Publisher|Company|Product|CB Prevalence|Logical Size|Score
 
 'This script will write out hashes and some associated data via the CB Response (Carbon Black) API
@@ -365,7 +365,7 @@ else
         if instr(strCBresponseText, "total_results" & Chr(34) & ": ") then
           DumpCarBlack = getdata(strCBresponseText, ",", "total_results" & Chr(34) & ": ")
         elseif instr(strCBresponseText, "md5") and BoolProcessData = True then 
-			individualHashProcess strLineIn,CbOutput
+			individualHashProcess strCBresponseText
         end if
       end if
     end if
@@ -457,16 +457,17 @@ Do While Not objRLfile.AtEndOfStream
 	  On Error Resume Next
 	  strLineIn = objRLfile.ReadLine 
 	  on error goto 0
-	CbOutput = CbHTTPrequest("/api/v1/binary/" & strLineIn & "/summary")
-	if ishash(strLineIn) then
-		individualHashProcess strLineIn,CbOutput
-	end if
+    if ishash(strLineIn) then
+      CbOutput = CbHTTPrequest("/api/v1/binary/" & strLineIn & "/summary")
+
+      individualHashProcess CbOutput
+    end if
   end if
 loop
 end sub
 
 
-Sub individualHashProcess(strCarBlack_ScanItem, strCBresponseText)
+Sub individualHashProcess(strCBresponseText)
 
 if len(strCBresponseText) > 0 then
 

@@ -1,4 +1,4 @@
-'Cb Pull Events v1.4.6 - More baseline functionality
+'Cb Pull Events v1.4.7 - Add registry watchlist column output. Fix column allignment for cross proceess
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -67,6 +67,9 @@ Dim sensor_id
 Dim APIVersion
 Dim intClippingLevel
 Dim boolUseBaseline
+Dim BoolWatchLlistRegex
+Dim boolRegWatchlist 'use watchlist
+Dim DictRegWatchlist: Set DictRegWatchlist = CreateObject("Scripting.Dictionary")
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
@@ -85,6 +88,8 @@ boolReportUserName = True 'Include associated user name
 boolReportProcessName = True 'Include associated process name
 boolReportParentName = True 'Include parent name
 boolUseBaseline = True 'Exclude items in baseline from reporting
+BoolWatchLlistRegex = False 'use regex for matching
+boolRegWatchlist = True 'Use registry watchlist
 strCbQuery = "" 'Cb Response query to run. Can be passed as an argument to the script.
 intSleepDelay = 1000 'delay between queries
 intPagesToPull = 1000 'Number of alerts to retrieve at a time
@@ -92,6 +97,8 @@ intReceiveTimeout = 120 'number of seconds for timeout
 intClippingLevel = 40000 'Stop pulling results for query after hitting this amount.
 strReportPath = "\Reports" 'directory to write report output
 strBaselinePath = "\baselines" 'baseline save directory
+strWatchlistFolder = "\data" 'location to where watchlist are stored
+strRegWatchlist = "RegWatch.txt" 'Registry watchlist name
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'License key is required to use SocketTools 
 strIniPath="Cb_pe.ini"
@@ -102,13 +109,10 @@ if objFSO.FileExists(strIniPath) = false then
 		strIniPath = CurrentDirectory & "\" & strIniPath
 	End If
 End if		
-if instr(strReportPath, ":") = 0 then 
-	strReportPath = CurrentDirectory & "\" & strReportPath
-end if
 
-if instr(strBaselinePath, ":") = 0 then 
-	strBaselinePath = CurrentDirectory & "\" & strBaselinePath
-end if
+strReportPath = UpdatePath(strReportPath) 'add currentdirectory to path
+strBaselinePath = UpdatePath(strBaselinePath) 'add currentdirectory to path
+strRegWatchlist = UpdatePath(strWatchlistFolder & "\" & strRegWatchlist) 'add currentdirectory to path
 
 
 if objFSO.FileExists(strIniPath) = True then
@@ -123,6 +127,8 @@ boolModEnable = ValueFromINI(strIniPath, "BooleanValues", "Modules", boolModEnab
 boolChildEnable = ValueFromINI(strIniPath, "BooleanValues", "Child", boolChildEnable)
 boolFileEnable = ValueFromINI(strIniPath, "BooleanValues", "File", boolFileEnable)
 boolCrossEnable = ValueFromINI(strIniPath, "BooleanValues", "Cross", boolCrossEnable)
+boolRegEnable = ValueFromINI(strIniPath, "BooleanValues", "Registry", boolRegEnable)
+boolRegWatchlist = ValueFromINI(strIniPath, "BooleanValues", "RegistryWatch", boolRegWatchlist)
 pullAllSections = ValueFromINI(strIniPath, "BooleanValues", "AllSections", pullAllSections)
 boolReportUserName = ValueFromINI(strIniPath, "BooleanValues", "ReportUserName", boolReportUserName)
 boolReportProcessName = ValueFromINI(strIniPath, "BooleanValues", "ReportProcessName", boolReportProcessName)
@@ -147,6 +153,9 @@ if objFSO.folderexists(strDebugPath) = False then _
 objFSO.createfolder(strDebugPath)
 if objFSO.folderexists(strBaselinePath) = False then _
 objFSO.createfolder(strBaselinePath)
+if objFSO.folderexists(strWatchlistFolder) = False then _
+objFSO.createfolder(strWatchlistFolder)
+
 
 'RegMod field 0: operation type, an integer 1, 2, 4 or 8
 '1: Created the registry key
@@ -285,6 +294,9 @@ else
 		
 	next
 end if
+
+if boolRegWatchlist = True then LoadCustomDict strRegWatchlist, DictRegWatchlist
+
 msgbox "executing query: " & strCbQuery
 logdata strReportPath & "\Query_" & strUnique & ".txt",strCbQuery, false
 CbQuery strCbQuery
@@ -642,6 +654,7 @@ if boolRegEnable = True then
   if boolRegHeader = False then
 
 	outrow = "Action|Date Time|Registry Key|Sensor ID" & userNheader & processNheader
+	if boolRegWatchlist = True then outrow = outrow & "|Watchlist"
 	logdata strReportPath & "\Reg_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolRegHeader = True
   end if
@@ -651,10 +664,16 @@ if boolRegEnable = True then
 	if instr(EventEntry, "|") > 0 then 
 	  tmpEvent = replace(EventEntry,chr(34), "")
 	  ArrayEE = split(tmpEvent, "|")
-	  if ubound(arrayEE) > 3 then
+	  if ubound(arrayEE) > 2 then
 		strAction = ""
 		if dictRegAction.exists(arrayEE(0)) then strAction =  dictRegAction.item(arrayEE(0))
-	   strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
+		if boolRegWatchlist = True then 'replace the "\\" with \ in the registry event
+      strWatchResult = "," & Chr(34) & MatchWatchList(replace(arrayEE(2), "\\","\"), DictRegWatchlist) & Chr(34) 
+      
+    else
+      strWatchResult = ""
+    end if
+	   strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname & strWatchResult
 	   
 	  logdata strReportPath & "\Reg_out_" & strUnique & ".csv",strWriteLine, false
 	  end if
@@ -816,6 +835,10 @@ if boolCrossEnable = True then
 	  tmpEvent = replace(EventEntry,chr(34), "")
 	  ArrayEE = split(tmpEvent, "|")
 	  if ubound(arrayEE) > 1 then
+      if right(tmpEvent, 1) = "|" and ubound(arrayEE) >7 then 'not sure what this extra column is for 
+        tmpEvent = left(tmpEvent, len(tmpEvent) -1) 'remove extra column
+      end if
+      accessRequested = ArrayEE(6) '!need to add interpretation for the numbers in this variable
 	   strWriteLine = chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strTmp_ExePath & Chr(34) & "," & Chr(34) & strIDPath & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) & username & processname
       if boolBaselineCross = False then
 		if boolUseBaseline = False or dictBaselineCross.exists(strquery & "|" & arrayEE(3)) = false then
@@ -1339,3 +1362,63 @@ if objFSO.fileexists(strListPath) then
   loop
 end if
 end sub
+
+
+Sub LoadCustomDict(strListPath, dictToLoad)
+if objFSO.fileexists(strListPath) then
+  Set objFile = objFSO.OpenTextFile(strListPath)
+  Do While Not objFile.AtEndOfStream
+    if not objFile.AtEndOfStream then 'read file
+        On Error Resume Next
+        strData = objFile.ReadLine
+        if instr(strData, "|") then
+          strTmpArrayDDNS = split(strData, "|")
+          if dictToLoad.exists(lcase(strTmpArrayDDNS(0))) = False then _
+          dictToLoad.add lcase(strTmpArrayDDNS(0)), strTmpArrayDDNS(1)
+        else
+          if dictToLoad.exists(lcase(strData)) = False then _
+          dictToLoad.add lcase(strData), ""
+        end if
+        on error goto 0
+    end if
+  loop
+end if
+end sub
+
+
+Function MatchWatchList (strWLcheck, dictMatchWatchList) 
+Dim WLreturnValue
+WLreturnValue = ""
+'msgbox "strWLstoredResults=" & strWLstoredResults
+if dictMatchWatchList.count = 0 then exit function
+for each WatchItem in dictMatchWatchList
+	'msgbox "WatchItem=" & WatchItem
+  if BoolWatchLlistRegex = True then
+    Set re = new regexp  'Create the RegExp object 'more info at https://msdn.microsoft.com/en-us/library/ms974570.aspx
+
+    re.Pattern = WatchItem
+    re.IgnoreCase = true
+    WLRegXresult = re.Test(strWLcheck)
+	'msgbox "regex match=" & WLRegXresult & " for " & WatchItem
+    if WLRegXresult = True then
+      WLreturnValue = dictMatchWatchList.item(WatchItem)
+      exit for
+    end if
+  else
+    'msgbox strWLcheck & " | " & WatchItem
+    if instr(strWLcheck, WatchItem) > 0 then
+      'msgbox dictMatchWatchList.item(WatchItem)
+      WLreturnValue = dictMatchWatchList.item(WatchItem)
+      exit for
+    end if
+  end if
+next
+MatchWatchList = WLreturnValue
+end function
+
+Function UpdatePath(strPath)
+if instr(strPath, ":") = 0 then 
+	strPath = CurrentDirectory & "\" & strPath
+end if
+UpdatePath = strPath
+end function

@@ -179,8 +179,14 @@ DumpCarBlack 0, False, intTotalQueries, "/api/v1/watchlist"
 
 for each strCBFeedID in DictFeedInfo
   'msgbox "DictFeedExclude.exists(" & DictFeedInfo.item(strCBFeedID) & ")=" & DictFeedExclude.exists(strCBFeedID)
-  if DictFeedExclude.exists(DictFeedInfo.item(strCBFeedID)) = False then
-    strQueryFeed = "/api/v1/alert?q=feed_name:" & DictFeedInfo.item(strCBFeedID)  & strStartDateQuery & strEndDateQuery
+  if DictFeedExclude.exists(DictFeedInfo.item(strCBFeedID)) = False Then
+  	If InStr(strCBFeedID, "watchlist_id:") > 0 Then
+  		strTmpWatchName = DictFeedInfo.item(strCBFeedID)
+  		If InStr(strTmpWatchName," ") > 0 Then strTmpWatchName = Chr(34) & strTmpWatchName & Chr(34) 'contains whitespace
+  		strQueryFeed = "/api/v1/alert?q=" & strCBFeedID & strStartDateQuery & strEndDateQuery
+  	Else	
+    	strQueryFeed = "/api/v1/alert?q=feed_name:" & DictFeedInfo.item(strCBFeedID)  & strStartDateQuery & strEndDateQuery
+    End if	
    
     if strQueryFeed <> "" then
       wscript.sleep 10
@@ -261,10 +267,12 @@ if instr(strCBresponseText, "b Response Cloud is currently undergoing maintenanc
   exit function
 end if
 'msgbox strCBresponseText
-if instr(strCBresponseText, vblf & "    {") then
+if instr(strCBresponseText, vblf & "    {") Then 'response contains alert data
   strArrayCBresponse = split(strCBresponseText, vblf & "    {")
-else
+elseif instr(strCBresponseText, vblf & "  {") Then 'response contains feed data
   strArrayCBresponse = split(strCBresponseText, vblf & "  {")
+else  'response contains watchlist data or empty alert data
+  strArrayCBresponse = split(strCBresponseText, "{")
 end if
 for each strCBResponseEntry in strArrayCBresponse
 
@@ -275,20 +283,22 @@ for each strCBResponseEntry in strArrayCBresponse
         strTmpFeedID = getdata(strCBResponseEntry, ",", "id" & Chr(34) & ": ")
         strTmpFeedName = getdata(strCBResponseEntry, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
         If strTmpFeedID <> "" Then strTmpFeedID = "feed_name:" & strTmpFeedID
-        if DictFeedInfo.exists(strTmpFeedID) = false then DictFeedInfo.add strTmpFeedID, strTmpFeedName
+        if DictFeedInfo.exists(strTmpFeedID) = false then DictFeedInfo.add strTmpFeedID, lcase(strTmpFeedName)
       elseif instr(strCBresponseText, "search_query" & Chr(34) & ": ") > 0 and instr(strCBresponseText, "id" & Chr(34) & ": ") > 0 Then
-        strTmpwatchlistID = getdata(strCBresponseText, Chr(34), chr(34) & "id" & Chr(34) & ": " & Chr(34))
-        strTmpWLName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
-        strTmpActualWatchlistQuery = getdata(strCBresponseText, Chr(34), chr(34) & "search_query" & Chr(34) & ": " & Chr(34))
+        strTmpwatchlistID = getdata(strCBResponseEntry, Chr(34), chr(34) & "id" & Chr(34) & ": " & Chr(34))
+        strTmpWLName = getdata(strCBResponseEntry, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
+        strTmpActualWatchlistQuery = getdata(strCBResponseEntry, Chr(34), chr(34) & "search_query" & Chr(34) & ": " & Chr(34))
         strTmpWatchlistQuery = "/api/v1/process?q=watchlist_" & strTmpwatchlistID & ":*"
-      	If strTmpwatchlistID <> "" Then strTmpwatchlistID = "watchlist_id:" & strTmpwatchlistID
-      	If DictFeedInfo.exists(strTmpwatchlistID) = false then DictFeedInfo.add strTmpwatchlistID, strTmpWLName
+      	If strTmpwatchlistID <> "" Then 
+      		strTmpwatchlistID = "watchlist_id:" & strTmpwatchlistID
+      		If DictFeedInfo.exists(strTmpwatchlistID) = false then DictFeedInfo.add strTmpwatchlistID, strTmpWLName
+      	End if	
       elseif BoolProcessData = True then 
         if instr(strCBresponseText, "total_results" & Chr(34) & ": ") > 0 then
           DumpCarBlack = getdata(strCBresponseText, ",", "total_results" & Chr(34) & ": ")
         
-          if instr(strCBResponseEntry, "ioc_value") then
-            LogIOCdata strCBResponseEntry
+          if instr(strCBResponseEntry, "ioc_value") > 0 Or instr(strCBResponseEntry, "ioc_type") > 0 then
+            LogIOCdata strCBResponseEntry, True
           else
             logdata currentdirectory & "\ioc_value.log", "Debug - did not contain ioc_value: " & strCBResponseEntry, False
           end if
@@ -323,15 +333,21 @@ GetData = ""
 end Function
 
 
-Sub LogIOCdata(strCBresponseText)
+Sub LogIOCdata(strCBresponseText, boolLogAll)
 
-if instr(strCBresponseText, "ioc_value") then 
+if instr(strCBresponseText, "ioc_value") > 0 or instr(strCBresponseText, "ioc_type") > 0 then 
 
   strCBfilePath = getdata(strCBresponseText, chr(34), "process_path" & Chr(34) & ": " & chr(34))
   strioc_value = getdata(strCBresponseText, chr(34), "ioc_value" & Chr(34) & ": " & Chr(34))
   if strioc_value = "" then 
     strioc_value = getdata(strCBresponseText, "}", "ioc_value" & Chr(34) & ": " & Chr(34) & "{")
-  end if
+  end If
+  if strioc_value = "" then 
+  	strIOCval = getdata(strCBresponseText, chr(34), "ioc_type" & Chr(34) & ": " & Chr(34))
+  	If strIOCval = "query" Then
+  		strioc_value = getdata(strCBresponseText, "}", "ioc_attr" & Chr(34) & ": " & Chr(34) & "{")
+  	End If	
+  End if
   boolQueryIOC = False
   if strioc_value = "{\" then 'gets query string for alert (behavior)
 	strioc_value = getdata(strCBresponseText, "}", "ioc_value" & Chr(34) & ": " & Chr(34) & "{")
@@ -345,11 +361,15 @@ if instr(strCBresponseText, "ioc_value") then
   strCBprevalence = getdata(strCBresponseText, ",", "hostCount" & Chr(34) & ": ")
   strCBHostname = getdata(strCBresponseText, chr(34), "hostname" & Chr(34) & ": " & chr(34))
   strstatus = getdata(strCBresponseText, chr(34), "status" & Chr(34) & ": " & chr(34)) '"status": "Unresolved"
+  created_time = getdata(strCBresponseText, chr(34), "created_time" & Chr(34) & ": " & chr(34))
+  resolved_time= getdata(strCBresponseText, chr(34), "resolved_time" & Chr(34) & ": " & chr(34))
   process_name = getdata(strCBresponseText, chr(34), "process_name" & Chr(34) & ": " & chr(34))
+  process_id = getdata(strCBresponseText, chr(34), "process_id" & Chr(34) & ": " & chr(34))
+  segment_id = getdata(strCBresponseText, ",", "segment_id" & Chr(34) & ": " )
   netconn_count = getdata(strCBresponseText, ",", "netconn_count" & Chr(34) & ": ")
   unique_id = getdata(strCBresponseText, chr(34), "unique_id" & Chr(34) & ": " & chr(34))
   watchlist_id = getdata(strCBresponseText, chr(34), "watchlist_id" & Chr(34) & ": " & chr(34))
-  if instr(strCBresponseText,"ioc_attr") then
+  if instr(strCBresponseText,"ioc_attr") Then 'might want to add this And strIOCval <> "query"
     iocSection = getdata(strCBresponseText, "}", "ioc_attr" & Chr(34) & ": " & chr(34) & "{")
     strDirection = getdata(iocSection, "\", "direction\" & Chr(34) & ": \" & Chr(34))
     strprotocol = getdata(iocSection, "\", "protocol\" & Chr(34) & ": \" & Chr(34))
@@ -394,16 +414,16 @@ elseif IsIPaddress(strioc_value) = True then
 	logdata strReportPath & "\IOC_IP.txt", strioc_value, false
 elseif boolQueryIOC = True then
 	logdata strReportPath & "\IOC_Query.txt", strioc_value, false
-elseif instr(strioc_value, "$") = 0 then
+elseif instr(strioc_value, "$") = 0 And strioc_value <> "" then
 	logdata strReportPath & "\IOC_Domain.txt", strioc_value, false
-else
+ElseIf  strioc_value <> "" then
 	logdata strReportPath & "\IOCs.txt", strioc_value, false
 end if
 
 if strioc_value = "" and BoolDebugTrace = True then 
 	logdata strDebugPath & "\ioc_value.log", "Debug - did not contain ioc_value: " & strCBresponseText, False
 end if
-if strioc_value <> "" then
+if strioc_value <> ""  then
   strioc_value = replace(strioc_value, chr(34), "") 'value provided can contain characters that mess with CSV output
   strioc_value = replace(strioc_value, ",", "")
   strCBfilePath = AddPipe(strCBfilePath) 'CB File Path
@@ -431,8 +451,12 @@ if strioc_value <> "" then
     strport = AddPipe(strport)
     strremote_ip = AddPipe(strremote_ip)
     search_query = AddPipe(search_query)
-    IOC_Entries = strDirection & strprotocol & strlocal_port & strdns_name & strlocal_ip & strport & strremote_ip & search_query
-    IOC_Head = ",Direction, Protocol, Local Port, DNS Name, Local IP, Port, Report IP, search_query"
+    created_time = AddPipe(created_time)
+    resolved_time = AddPipe(resolved_time)
+    process_id = AddPipe(process_id)
+    segment_id = AddPipe(segment_id)
+    IOC_Entries = strDirection & strprotocol & strlocal_port & strdns_name & strlocal_ip & strport & strremote_ip & created_time & resolved_time & search_query & process_id & segment_id
+    IOC_Head = ",Direction, Protocol, Local Port, DNS Name, Local IP, Port, Report IP, Creation Time, Resolve Time, search_query, Process ID, Segment ID"
   end if
   endHead = ",Host Name"
   if boolOutputID = True then 
@@ -477,6 +501,7 @@ end sub
 
 function LogData(TextFileName, TextToWrite,EchoOn)
 Set fsoLogData = CreateObject("Scripting.FileSystemObject")
+If InStr(TextFileName, "/") > 0 Then TextFileName = Replace(TextFileName, "/", "_")
 if EchoOn = True then wscript.echo TextToWrite
   If fsoLogData.fileexists(TextFileName) = False Then
       'Creates a replacement text file 
@@ -563,7 +588,8 @@ if len(strTmpTLS) > 0 then
 end if
 
 RemoveTLS = strTmpTLS
-end function
+end Function
+
 Function AddPipe(strpipeless)
 dim strPipeAdded
 
@@ -900,3 +926,11 @@ Function IsIPv6(TestString)
     End If
     
 End Function
+
+function escapeSpecials(strSpecialQuery)
+newQuery = replace(strSpecialQuery, "*", "\*")
+newQuery = replace(newQuery, chr(34), "\" & chr(34))
+newQuery = replace(newQuery, "&", "\&")
+'need to perform encoding for pound sign
+escapeSpecials = newQuery
+end Function

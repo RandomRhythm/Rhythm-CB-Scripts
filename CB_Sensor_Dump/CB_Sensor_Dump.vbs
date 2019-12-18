@@ -1,4 +1,4 @@
-'CB Sensor Dump v2.5 - Remove requirement for period in console URL
+'CB Sensor Dump v2.6 - Include host uptime in csv output
 'This script will dump sensor information via the CB Response (Carbon Black) API
 
 'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
@@ -164,7 +164,7 @@ end if
 if BoolUseCarbonBlack = True then
   populateSensorID
   wscript.sleep 10
-  strTmpLogLine = chr(34) & "Computer|Operating System|Date Registered|Stored Bytes|Status|Health|Group ID|Group Name|Last Checkin|Event Log Bytes|Days Reporting In|Computer Name|Network|ID" & Chr(34)
+  strTmpLogLine = chr(34) & "Computer|Operating System|Date Registered|Stored Bytes|Status|Health|Group ID|Group Name|Last Checkin|Event Log Bytes|Days Reporting In|Computer Name|Network|ID|Host Uptime" & Chr(34)
   strTmpLogLine = replace(strTmpLogLine, "|", chr(34) & "," & chr(34))
   LogData strSSfilePath, strTmpLogLine, false
 
@@ -288,6 +288,7 @@ for each strCBResponseText in strArrayCBresponse
         strGroup = getdata(strCBresponseText, ",", "group_id" & Chr(34) & ": " )
         strTmpLastCheckIn = getdata(strCBresponseText, chr(34), "last_checkin_time" & Chr(34) & ": "& chr(34) )
         strTmpEvtBytes = getdata(strCBresponseText, chr(34), "num_eventlog_bytes" & Chr(34) & ": "& chr(34) )
+        strHostUptime = getdata(strCBresponseText, chr(34), "uptime" & Chr(34) & ": "& chr(34) )
         strCompName = getdata(strCBresponseText, chr(34), "computer_name" & Chr(34) & ": "& chr(34) )
 		strNetwork = getdata(strCBresponseText, chr(34), "network_adapters" & Chr(34) & ": "& chr(34) )
         if instr(strTmpLastCheckIn, ".") > 0 and instr(strTmpregistered, ".") > 0 then 
@@ -295,7 +296,7 @@ for each strCBResponseText in strArrayCBresponse
 		else
 			strDaysonline = "N/A"
 		end if
-        LogData strSSfilePath, chr(34) & strTmpName & chr(34) & "," & chr(34) & strTmpOS & chr(34) & "," & chr(34) & strTmpregistered & chr(34) & "," & chr(34) & strStoredBytes & chr(34) & "," & chr(34) & strStatusBytes & chr(34) & "," & chr(34) & strHealth & chr(34) & "," & chr(34) & strGroup & chr(34) & "," & chr(34) & DictGroupID.item(strGroup) & chr(34) & "," & chr(34) & strTmpLastCheckIn & chr(34) & "," & chr(34) & strTmpEvtBytes & chr(34) & "," & chr(34) & strDaysonline & chr(34) & "," & chr(34) & strCompName & chr(34) & "," & chr(34) & strNetwork & chr(34) & "," & chr(34) & strID & chr(34), False
+        LogData strSSfilePath, chr(34) & strTmpName & chr(34) & "," & chr(34) & strTmpOS & chr(34) & "," & chr(34) & strTmpregistered & chr(34) & "," & chr(34) & strStoredBytes & chr(34) & "," & chr(34) & strStatusBytes & chr(34) & "," & chr(34) & strHealth & chr(34) & "," & chr(34) & strGroup & chr(34) & "," & chr(34) & DictGroupID.item(strGroup) & chr(34) & "," & chr(34) & strTmpLastCheckIn & chr(34) & "," & chr(34) & strTmpEvtBytes & chr(34) & "," & chr(34) & strDaysonline & chr(34) & "," & chr(34) & strCompName & chr(34) & "," & chr(34) & strNetwork & chr(34) & "," & chr(34) & strID & chr(34) & "," & chr(34) & strHostUptime & chr(34), False
       end if
     end if
   end if

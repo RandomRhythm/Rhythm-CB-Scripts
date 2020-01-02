@@ -1,0 +1,139 @@
+system\currentcontrolset\control\session manager\bootexecute|persistence
+software\classes\htmlfile\shell\open\command|persistence
+software\classes\htmlfile\shell\open\command\(default)|persistence
+system\currentcontrolset\services|persistence
+software\microsoft\windows\currentversion\authentication\credential providers|persistence
+software\microsoft\windows\currentversion\authentication\credential provider filters|persistence
+software\microsoft\windows\currentversion\authentication\plap providers|persistence
+system\currentcontrolset\control\print\monitors|persistence
+system\currentcontrolset\control\securityproviders|persistence
+system\currentcontrolset\control\securityproviders\securityproviders|persistence
+system\currentcontrolset\control\lsa\authentication packages|persistence
+system\currentcontrolset\control\lsa\notification packages|persistence
+system\currentcontrolset\control\networkprovider\order|persistence
+system\currentcontrolset\services\winsock2\parameters\protocol_catalog9\catalog_entries|persistence
+system\currentcontrolset\services\winsock2\parameters\namespace_catalog5\catalog_entries|persistence
+system\currentcontrolset\services\winsock2\parameters\protocol_catalog9\catalog_entries64|persistence
+system\currentcontrolset\services\winsock2\parameters\namespace_catalog5\catalog_entries64|persistence
+system\currentcontrolset\control\terminal server\wds\rdpwd|persistence
+system\currentcontrolset\control\terminal server\wds\rdpwd\startupprograms|persistence
+software\microsoft\windows nt\currentversion\winlogon|persistence
+software\microsoft\windows nt\currentversion\winlogon\userinit|persistence
+software\microsoft\windows nt\currentversion\winlogon\vmapplet|persistence
+software\microsoft\windows nt\currentversion\winlogon\shell|persistence
+system\currentcontrolset\control\safeboot|persistence
+system\currentcontrolset\control\safeboot\alternateshell|persistence
+software\microsoft\windows\currentversion\run|persistence
+software\wow6432node\microsoft\windows\currentversion\run|persistence
+software\classes\protocols\filter|persistence
+software\classes\protocols\handler|persistence
+software\microsoft\active setup\installed components|persistence
+software\microsoft\windows nt\currentversion\windows|persistence
+software\microsoft\windows nt\currentversion\windows\iconservicelib|persistence
+software\wow6432node\microsoft\active setup\installed components|persistence
+software\microsoft\windows\currentversion\explorer\shellserviceobjects|persistence
+software\wow6432node\microsoft\windows\currentversion\explorer\shellserviceobjects|persistence
+software\microsoft\windows\currentversion\explorer\browser helper objects|persistence
+software\wow6432node\microsoft\windows\currentversion\explorer\browser helper objects|persistence
+software\classes\*\shellex\contextmenuhandlers|persistence
+software\wow6432node\classes\*\shellex\contextmenuhandlers|persistence
+software\classes\drive\shellex\contextmenuhandlers|persistence
+software\wow6432node\classes\drive\shellex\contextmenuhandlers|persistence
+software\classes\*\shellex\propertysheethandlers|persistence
+software\wow6432node\classes\*\shellex\propertysheethandlers|persistence
+software\classes\allfilesystemobjects\shellex\contextmenuhandlers|persistence
+software\wow6432node\classes\allfilesystemobjects\shellex\contextmenuhandlers|persistence
+software\classes\allfilesystemobjects\shellex\propertysheethandlers|persistence
+software\wow6432node\classes\allfilesystemobjects\shellex\propertysheethandlers|persistence
+software\classes\directory\shellex\contextmenuhandlers|persistence
+software\wow6432node\classes\directory\shellex\contextmenuhandlers|persistence
+software\classes\directory\shellex\dragdrophandlers|persistence
+software\wow6432node\classes\directory\shellex\dragdrophandlers|persistence
+software\classes\directory\shellex\propertysheethandlers|persistence
+software\wow6432node\classes\directory\shellex\propertysheethandlers|persistence
+software\classes\directory\shellex\copyhookhandlers|persistence
+software\wow6432node\classes\directory\shellex\copyhookhandlers|persistence
+software\classes\directory\background\shellex\contextmenuhandlers|persistence
+software\wow6432node\classes\directory\background\shellex\contextmenuhandlers|persistence
+software\classes\folder\shellex\contextmenuhandlers|persistence
+software\wow6432node\classes\folder\shellex\contextmenuhandlers|persistence
+software\classes\folder\shellex\dragdrophandlers|persistence
+software\wow6432node\classes\folder\shellex\dragdrophandlers|persistence
+software\classes\folder\shellex\propertysheethandlers|persistence
+software\wow6432node\classes\folder\shellex\propertysheethandlers|persistence
+software\microsoft\windows\currentversion\explorer\shelliconoverlayidentifiers|persistence
+software\wow6432node\microsoft\windows\currentversion\explorer\shelliconoverlayidentifiers|persistence
+software\microsoft\internet explorer\extensions|persistence
+software\wow6432node\microsoft\internet explorer\extensions|persistence
+software\microsoft\windows nt\currentversion\drivers32|persistence
+software\wow6432node\microsoft\windows nt\currentversion\drivers32|persistence
+software\classes\clsid\{083863f1-70de-11d0-bd40-00a0c911ce86}\instance|persistence
+software\wow6432node\classes\clsid\{083863f1-70de-11d0-bd40-00a0c911ce86}\instance|persistence
+software\classes\clsid\{7ed96837-96f0-4812-b211-f13c24117ed3}\instance|persistence
+software\wow6432node\classes\clsid\{7ed96837-96f0-4812-b211-f13c24117ed3}\instance|persistence
+software\microsoft\windows\currentversion\run|persistence
+software\classes\*\shellex\contextmenuhandlers|persistence
+software\classes\directory\shellex\contextmenuhandlers|persistence
+software\classes\directory\background\shellex\contextmenuhandlers|persistence
+software\microsoft\internet explorer\urlsearchhooks|persistence
+\software\microsoft\windows\currentversion\internet settings\wpad\|modifies_proxy_wpad
+\software\microsoft\windows\currentversion\internet settings\proxyoverride|modifies_proxy_override
+\software\microsoft\windows\currentversion\internet settings\autoconfigurl|modifies_proxy_autoconfig
+\software\microsoft\windows\currentversion\internet settings\proxyenable|disables_proxy
+\system\currentcontrolset\services\sharedaccess\parameters\firewallpolicy\|bypass_firewall
+\software\microsoft\internet explorer\privacy\enableinprivatemode|browser_security
+\software\microsoft\internet explorer\phishingfilter\|browser_security
+\software\microsoft\windows\currentversion\internet settings\zones\|browser_security
+\software\microsoft\windows\currentversion\internet settings\zonemap\domains\|browser_security
+\software\microsoft\windows\currentversion\internet settings\zonemap\escdomains\|browser_security
+\software\microsoft\windows\currentversion\internet settings\zonemap\escranges\|browser_security
+\software\microsoft\windows\currentversion\internet settings\zonemap\ieharden|browser_security
+\software\microsoft\windows\currentversion\internet settings\certificaterevocation|browser_security
+\software\microsoft\internet explorer\main\noupdatecheck|browser_security
+\software\microsoft\internet explorer\security\|browser_security
+\software\microsoft\internet explorer\main\featurecontrol\ |browser_security
+\software\microsoft\internet explorer\main\start page|browser_startpage
+\software\microsoft\windows\currentversion\internet settings\warnonbadcertrecving|disables_browser_warn
+\software\microsoft\windows\currentversion\internet settings\warnonbadcertsending|disables_browser_warn
+\software\microsoft\windows\currentversion\internet settings\warnonhttpstohttpredirect|disables_browser_warn
+\software\microsoft\windows\currentversion\internet settings\warnonzonecrossing|disables_browser_warn
+\software\microsoft\windows\currentversion\internet settings\warnonpostredirect|disables_browser_warn
+\software\microsoft\windows\currentversion\internet settings\iehardenienowarn|disables_browser_warn
+\software\microsoft\internet explorer\main\noprotectedmodebanner|disables_browser_warn
+\software\microsoft\internet explorer\main\ie9runonceperinstall|disables_browser_warn
+\software\microsoft\windows\currentversion\policies\system\enablelua|disables_security
+\software\microsoft\security center\antivirusoverride|disables_security
+\software\microsoft\security center\|modifies_security_center
+\software\microsoft\security center\antivirusdisablenotify|disables_security
+\software\microsoft\security center\firewalldisablenotify|disables_security
+\software\microsoft\security center\firewalloverride|disables_security
+\software\microsoft\security center\updatesdisablenotify|disables_security
+\software\microsoft\security center\uacdisablenotify|disables_security
+\system\controlset001\services\sharedaccess\parameters\firewallpolicy\standardprofile\enablefirewall|disables_security
+\system\controlset001\services\sharedaccess\parameters\firewallpolicy\standardprofile\donotallowexceptions|disables_security
+\system\controlset001\services\sharedaccess\parameters\firewallpolicy\standardprofile\disablenotifications|disables_security
+\software\windows defender\|disables_security
+\software\policies\microsoft\windows defender\|disables_security
+\system\currentcontrolset\services\windefend\|disables_security
+\software\microsoft\windows\currentversion\internet settings\zonemap\proxybypass|browser_setting_modify
+\software\microsoft\windows\currentversion\internet settings\zonemap\uncasintranet|browser_setting_modify
+\software\microsoft\windows\currentversion\internet settings\zonemap\intranetname|browser_setting_modify
+\software\microsoft\windows\currentversion\internet settings\zonemap\autodetect|browser_setting_modify
+\software\microsoft\windows nt\currentversion\systemrestore\disablesr|disables_system_restore
+\software\policies\microsoft\windows nt\systemrestore\disablesr|disables_system_restore
+\software\policies\microsoft\windows nt\systemrestore\disableconfig|disables_system_restore
+\software\microsoft\windows\windows error reporting\disabled|disables_wer
+\software\policies\microsoft\windows\windowsupdate\au\noautoupdate|disables_windowsupdate
+\software\policies\microsoft\windows\windowsupdate\auto update\auoptions|disables_windowsupdate
+\software\microsoft\systemcertificates\|modifies_certificates
+\software\microsoft\windows\currentversion\policies\system\|system_policies
+\control panel\desktop\wallpaper|modifies_desktop_wallpaper
+\internet explorer\desktop\general\wallpaper|modifies_desktop_wallpaper
+\software\microsoft\powershell\1\shellids\microsoft.powershell\executionpolicy|powershell_execution_policy
+\policies\microsoft\windows\powershell\|powershell_policies
+software\policies\microsoft\windows\bits|bitsadmin_policy_modification
+\software\microsoft\windows\currentversion\control panel\|modify_cpl_items
+system\currentcontrolset\control\lsa\|lsass
+\control\session manager\safedllsearchmode|dll_search_order
+\software\microsoft\windows nt\currentversion\appcompatflags|persistence_shim_database
+software\microsoft\windows nt\currentversion\schedule\taskcache\tree\|persistence_scheduledtask

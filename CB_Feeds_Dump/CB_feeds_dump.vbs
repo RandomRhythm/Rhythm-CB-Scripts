@@ -1,4 +1,4 @@
-'CB Feed Dump v4.8.8 - Add new aq.txt input format support: It is now optional to include "/api/v1/process?q=" and "/api/v1/binary?q=" before the query.
+'CB Feed Dump v5.0.0 - CVE-2020-0601 | Windows CryptoAPI Spoofing Vulnerability detection
 'Pulls data from the Cb Response API via feeds, watchlists and additional queries. Results are written to CSV. Can also pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -171,6 +171,7 @@ boolCVE_2017_11826 = True
 boolEnableAttackFramework = False 'disable this by default due to amount
 boolCVE_2019_0708 = True 'BlueKeep
 boolDejaBlue = True
+boolCVE_2020_0601 = True 'Windows CryptoAPI Spoofing Vulnerability
 strIniPath = "Cb_Feeds.ini"
 strStaticFPversion = "32.0.0.255"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
@@ -223,6 +224,7 @@ if objFSO.FileExists(strIniPath) = True then
 	boolCVE_2017_11826 = ValueFromINI(strIniPath, "BooleanValues", "CVE-2017-11826", boolCVE_2017_11826)
 	boolCVE_2019_0708 = ValueFromINI(strIniPath, "BooleanValues", "CVE-2019-0708", boolCVE_2019_0708)
 	boolDejaBlue = ValueFromINI(strIniPath, "BooleanValues", "DejaBlue", boolDejaBlue)
+	boolCVE_2020_0601 = ValueFromINI(strIniPath, "BooleanValues", "CVE-2020-0601", boolCVE_2020_0601)
 	boolOutputWatchLists = ValueFromINI(strIniPath, "BooleanValues", "WatchLists", boolOutputWatchLists)
 	strStaticFPversion = ValueFromINI(strIniPath, "StringValues", "FlashVersion", strStaticFPversion)
 	BoolDebugTrace = ValueFromINI(strIniPath, "BooleanValues", "Debug", BoolDebugTrace)	
@@ -398,9 +400,10 @@ if boolEnableSilverlightCheck = True then DictFeedInfo.Add "silverlight", "silve
 if boolEnableIexploreCheck = True then DictFeedInfo.Add "iexplore.exe", "iexplore.exe"
 if bool3155533Check = True then DictFeedInfo.Add "MS16-051", "vbscript.dll"
 if boolMS17010Check = true then DictFeedInfo.Add "MS17-070", "srv.sys"
-if boolCVE_2017_11826 = True then DictFeedInfo.Add "Microsoft Word", "winword.exe"
+if boolCVE_2017_11826 = True then DictFeedInfo.Add "Microsoft Word", "winword.exe" 'CVE-2017-11826
 if boolCVE_2019_0708 = True then DictFeedInfo.Add "BlueKeep", "termdd.sys"
 if boolDejaBlue = True then DictFeedInfo.Add "DejaBlue", "termsrv.dll"
+if boolCVE_2020_0601 = True then DictFeedInfo.Add "CVE-2020-0601", "crypt32.dll" 'CVE-2020-0601
 if boolAdditionalQueries = True Or boolOutputWatchLists = True then 
   for each strAquery in DictAdditionalQueries
     if DictFeedInfo.exists(DictAdditionalQueries.item(strAquery)) = False then DictFeedInfo.Add DictAdditionalQueries.item(strAquery), strAquery
@@ -486,6 +489,9 @@ for each strCBFeedID in DictFeedInfo
 	  strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "termdd.sys" & chr(34) '& "& digsig_publisher:Microsoft Corporation"
     Case "termsrv.dll" 'RDP Vulnerability DejaBlue
 	  strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "termsrv.dll" & chr(34) & "& digsig_publisher:Microsoft Corporation"
+    Case "crypt32.dll" 'CVE-2020-0601 | Windows CryptoAPI Spoofing Vulnerability
+	  strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "crypt32.dll" & chr(34) & "& digsig_publisher:Microsoft Corporation"
+
 	Case else
       if DictAdditionalQueries.exists(strCBFeedName) then 
         strQueryFeed = strCBFeedID
@@ -927,9 +933,13 @@ if StrCBMD5 <> "" then
   elseif strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "winword.exe" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
 	strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
   elseif instr(strQueryFeed, "/api/v1/binary?q=observed_filename:") > 0 and instr(strQueryFeed, "termdd.sys") > 0 or instr(strQueryFeed, "termsrv.dll") > 0 then 
-	If instr(lcase(strCBfilePath), "\windows\") > 0 Then
-		strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
-	End if	
+    If instr(lcase(strCBfilePath), "\windows\") > 0 Then
+      strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
+    End if	
+  elseif strQueryFeed = "/api/v1/binary?q=observed_filename:" & chr(34) & "crypt32.dll" & chr(34) & "& digsig_publisher:Microsoft Corporation" then
+    If instr(lcase(strCBfilePath), "\windows\") > 0 Then
+      strCBVuln = ParseVulns(replace(strCBfilePath,"\\","\"), strCBVersion)
+    End if
   end if
   'monitor for IP addresses in command lines
   if len(strCBcmdline) > 5 then
@@ -1521,7 +1531,52 @@ elseif instr(lcase(strVulnPath), "termsrv.dll") > 0 then 'dejablue
     else
       ParseVulns = "Windows missing patch for dejablue vulnerabilities"
     end if
+elseif instr(lcase(strVulnPath), "crypt32.dll") > 0 then 'CVE-2020-0601 
+	if FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, "10") = False then 'only Windows 10/2016 or greater are vulnerable
+    ParseVulns = "Windows version unaffected by CVE-2020-0601 vulnerability"
+		Exit function
+	elseif instr(StrVulnVersion, "10.0.10240.") > 0 then 'KB4534306 (Windows 10)
+		StrVersionCompare = "10.0.10240.18186"
+	elseif instr(StrVulnVersion, "10.0.14393.") > 0 then 'KB4534271 (Windows 10, version 1607 Windows Server 2016) 
+		StrVersionCompare = "10.0.14393.3442"
+	elseif instr(StrVulnVersion, "10.0.16299.") > 0 then 'KB4534276 (Windows 10, version 1709) 
+		StrVersionCompare = "10.0.16299.1622"
+	elseif instr(StrVulnVersion, "10.0.17134.") > 0 then 'KB4534293 (Windows 10, version 1803)
+		StrVersionCompare = "10.0.17134.1246"
+	elseif instr(StrVulnVersion, "10.0.17763.") > 0 then 'KB4534273 (Windows 10, version 1809 Windows Server version 1809 Windows Server 2019, all versions)
+		StrVersionCompare = "10.0.17763.678"
+	elseif instr(StrVulnVersion, "10.0.18362.") > 0 then 'KB4528760 (Windows 10, version 1903 Windows Server version 1903)
+		StrVersionCompare = "10.0.18362.592"
+	elseif instr(StrVulnVersion, "10.0.1909.") > 0 then 'KB4528760 (Windows 10, version 1909)
+		StrVersionCompare = "10.0.1909.592"
+	end if
+	if StrVersionCompare = "" then
+    if UnsupportedWin10(StrVulnVersion) = True then
+      ParseVulns = "Windows missing patch for CVE-2020-0601 vulnerability due to unsupported build version"
+      Exit function
+    end if
+	end if
+	if FirstVersionSupOrEqualToSecondVersion(StrVulnVersion, StrVersionCompare) then
+      ParseVulns = "Windows has been patched for CVE-2020-0601 vulnerability"
+    else
+      ParseVulns = "Windows missing patch for CVE-2020-0601 vulnerability"
+    end if
 end if
+end function
+
+Function UnsupportedWin10(strWin10Version)
+boolVersionUnsupported = False
+select case left(strWin10Version, 10)
+  case "10.0.10240"
+    boolVersionUnsupported = True
+  case "10.0.10586"
+    boolVersionUnsupported = True
+  case "10.0.14393"
+    boolVersionUnsupported = True
+  case "10.0.15063"
+    boolVersionUnsupported = True
+end select
+UnsupportedWin10 = boolVersionUnsupported
 end function
 
 Function removeInvalidVersion(strVersionNumber)

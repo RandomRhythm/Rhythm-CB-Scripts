@@ -518,6 +518,9 @@ if len(strCBresponseText) > 0 then
           strCBproductName = "|" &RemoveTLS(strCBproductName)
           StrCBMD5 = getdata(strCBresponseText, chr(34), "md5" & Chr(34) & ": " & Chr(34))
           strCBprevalence = getdata(strCBresponseText, ",", "host_count" & Chr(34) & ": ")
+          if instr(strCBprevalence, vblf) > 0 then
+            strCBprevalence = left(strCBprevalence, instr(strCBprevalence, vblf) -1)
+          end if
           strCBFileSize = getdata(strCBresponseText, ",", "orig_mod_len" & Chr(34) & ": ")
           strtmpCB_Fpath = getfilepath(strCBfilePath)
           strCBVTScore = getdata(strCBresponseText, ",", "alliance_score_virustotal" & Chr(34) & ": ")

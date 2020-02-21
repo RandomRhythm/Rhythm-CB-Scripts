@@ -78,9 +78,9 @@ if objFSO.fileexists(strFile) then
 end if
 
 if not objFSO.fileexists(strFile) and strData = "" then
-  strTempAPIKey = inputbox("Enter your " & strAPIproduct & " api key")
-  if strTempAPIKey <> "" then
-  strTempEncryptedAPIKey = strTempAPIKey
+  strCarBlackAPIKey = inputbox("Enter your " & strAPIproduct & " api key")
+  if strCarBlackAPIKey <> "" then
+  strTempEncryptedAPIKey = strCarBlackAPIKey
     strTempEncryptedAPIKey = encrypt(strTempEncryptedAPIKey,strRandom)
     logdata strFile,strTempEncryptedAPIKey,False
     strTempEncryptedAPIKey = ""
@@ -107,7 +107,15 @@ bQuery Chr(34) & "requested_status" & Chr(34) & ": " & Chr(34) & "Resolved" & Ch
 query = query & "}"
 
 StrResponse = HTTPPost(StrBaseCBURL & "/api/v1/alerts", query)
-msgbox StrResponse
+
+if instr(StrResponse, "<title>Maintenance - ") > 0 then
+  msgbox "The Cb Response server is under maintenance. Please check the web console and wait for maintenance to end before trying again"
+elseif instr(StrResponse, "<title>504 Gateway Time-out") > 0 then
+    msgbox "The HTTP response timed out. This often occurs when there are more alerts than what could be resolved within the timeout period. The Cb Response server is still processing the request so please wait some time before running again." 
+    
+else 
+  msgbox StrResponse  
+end if
 
 sub bQuery(queryAdd)
 if query <> "{" then 
@@ -428,7 +436,7 @@ end function
 
 Function HTTPPost(sUrl, sRequest)
 set oHTTP = CreateObject("MSXML2.ServerXMLHTTP")
-oHTTP.SetTimeouts 600000, 600000, 600000, 900000 
+oHTTP.SetTimeouts 600000, 600000, 600000, 1200000 
 oHTTP.open "POST", sUrl,false
 oHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
 oHTTP.send sRequest

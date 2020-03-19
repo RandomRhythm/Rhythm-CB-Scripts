@@ -839,6 +839,10 @@ if boolCrossEnable = True then
         tmpEvent = left(tmpEvent, len(tmpEvent) -1) 'remove extra column
       end if
       accessRequested = ArrayEE(6) '!need to add interpretation for the numbers in this variable
+      '2097151 - Opened handle with change access rights to
+      '0 - 	Injected new thread into
+      '64 - OpenProcess() API call requested PROCESS_DUP_HANDLE access rights. (Desired Access: 0x0040) 
+      '5114 - OpenProcess() API call requested PROCESS_VM_OPERATION access rights. (Desired Access: 0x1418)
 	   strWriteLine = chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) & "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strTmp_ExePath & Chr(34) & "," & Chr(34) & strIDPath & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) & username & processname
       if boolBaselineCross = False then
 		if boolUseBaseline = False or dictBaselineCross.exists(strquery & "|" & arrayEE(3)) = false then

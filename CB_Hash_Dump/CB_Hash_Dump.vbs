@@ -575,7 +575,7 @@ x= instr(contents, MatchString)
       GetData = Mid(contents, x + MatchStringLength, instr(strSubContents,EndOfStringChar) -1)
       exit function
     else
-      GetData = Mid(contents, x + MatchStringLength, len(contents) -x -1)
+      GetData = Mid(contents, x + MatchStringLength)
       exit function
     end if
   end if

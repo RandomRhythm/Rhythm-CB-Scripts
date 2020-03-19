@@ -637,7 +637,7 @@ if boolUseSocketTools = False then
 			exit function
 		end if
 		if objHTTP.status <> 200 then
-			msgbox "Cb feeds dump non-200 status code returned:" & objHTTP.status
+			msgbox "Cb feeds dump non-200 status code returned:" & objHTTP.status & vbCrLf & strURLQuery
 		end if
 	  if err.number <> 0 then
 		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 
@@ -729,7 +729,7 @@ x= instr(contents, MatchString)
       GetData = Mid(contents, x + MatchStringLength, instr(strSubContents,EndOfStringChar) -1)
       exit function
     else
-      GetData = Mid(contents, x + MatchStringLength, len(contents) -x -1)
+      GetData = Mid(contents, x + MatchStringLength)
       exit function
     end if
   end if

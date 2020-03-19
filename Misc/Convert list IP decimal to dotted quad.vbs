@@ -7,6 +7,7 @@ Const ForAppending = 8
 Const ForReading = 1
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
+boolConvertIP = False
 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strinFile = CurrentDirectory & "\dotquad.txt"
@@ -24,7 +25,7 @@ Do While Not objFile.AtEndOfStream
     strData = objFile.ReadLine
     strTmpIP = strData
     if isIPaddress(strData) = true then
-      if isIPv6(strData) = False then
+      if isIPv6(strData) = False and boolConvertIP = True then
         strTmpIP = Dotted2LongIP(strData)
         logdata CurrentDirectory & "\decout.txt", strTmpIP, false
       end if

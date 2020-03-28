@@ -182,6 +182,7 @@ if objFSO.FileExists(strIniPath) = True then
 	IntDayStartQuery = ValueFromINI(strIniPath, "IntegerValues", "StartTime", IntDayStartQuery)
 	IntDayEndQuery = ValueFromINI(strIniPath, "IntegerValues", "EndTime", IntDayEndQuery)
 	strTimeMeasurement = ValueFromINI(strIniPath, "StringValues", "TimeMeasurement", strTimeMeasurement)
+	strSensorID = ValueFromINI(strIniPath, "StringValues", "SensorID", strSensorID)
 	intSleepDelay = ValueFromINI(strIniPath, "IntegerValues", "SleepDelay", intSleepDelay)
 	intPagesToPull = ValueFromINI(strIniPath, "IntegerValues", "PagesToPull", intPagesToPull)
 	intReceiveTimeout = ValueFromINI(strIniPath, "IntegerValues", "ReceiveTimeout", intReceiveTimeout)
@@ -1741,9 +1742,9 @@ do while boolexit = False
           strRowOut = chr(34) & replace(strRowOut,"|",chr(34) & "," & Chr(34)) & chr(34)
           if tmpYaraUID = "" then 
             tmpYaraUID = udate(now)
-            logdata CurrentDirectory & "\" & strUniquefName & "_" & tmpYaraUID & ".csv","CB ID, YARA Rules, MD5" , false
+            logdata strReportPath & "\" & strUniquefName & "_" & tmpYaraUID & ".csv","CB ID, YARA Rules, MD5" , false
           end if
-          logdata CurrentDirectory & "\" & strUniquefName & "_" & tmpYaraUID & ".csv",strRowOut , false
+          logdata strReportPath & "\" & strUniquefName & "_" & tmpYaraUID & ".csv",strRowOut , false
         end if
 		next
 	end if

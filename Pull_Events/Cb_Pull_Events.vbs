@@ -7,7 +7,7 @@
 '/bmnc "m" - modules. "n" - network. "c" - cross process
 
 
-'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2020 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -68,8 +68,12 @@ Dim APIVersion
 Dim intClippingLevel
 Dim boolUseBaseline
 Dim BoolWatchLlistRegex
-Dim boolRegWatchlist 'use watchlist
+Dim boolRegWatchlist 'use registry watchlist
 Dim DictRegWatchlist: Set DictRegWatchlist = CreateObject("Scripting.Dictionary")
+Dim boolFileWatchlist 'use file watchlist
+Dim DictFileWatchlist: Set DictFileWatchlist = CreateObject("Scripting.Dictionary")
+Dim DictDomainWatchlist: Set DictDomainWatchlist = CreateObject("Scripting.Dictionary")
+Dim DictIPWatchlist: Set DictIPWatchlist = CreateObject("Scripting.Dictionary")
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
@@ -90,6 +94,9 @@ boolReportParentName = True 'Include parent name
 boolUseBaseline = True 'Exclude items in baseline from reporting
 BoolWatchLlistRegex = False 'use regex for matching
 boolRegWatchlist = True 'Use registry watchlist
+boolFileWatchlist = True 'Use file watchlist
+boolDomainWatchlist = True 'Use domain watchlist
+boolIPWatchlist = True ' Use IP address watchlist
 strCbQuery = "" 'Cb Response query to run. Can be passed as an argument to the script.
 intSleepDelay = 1000 'delay between queries
 intPagesToPull = 1000 'Number of alerts to retrieve at a time
@@ -99,6 +106,9 @@ strReportPath = "\Reports" 'directory to write report output
 strBaselinePath = "\baselines" 'baseline save directory
 strWatchlistFolder = "\data" 'location to where watchlist are stored
 strRegWatchlist = "RegWatch.txt" 'Registry watchlist name
+strFileWatchlist = "FileWatch.txt" 'File watchlist name
+strDomainWatchlist = "DomainWatch.txt" 'Domain watchlist name
+strIPWatchlist = "IPWatch.txt" 'IP address watchlist name
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'License key is required to use SocketTools 
 strIniPath="Cb_pe.ini"
@@ -113,7 +123,9 @@ End if
 strReportPath = UpdatePath(strReportPath) 'add currentdirectory to path
 strBaselinePath = UpdatePath(strBaselinePath) 'add currentdirectory to path
 strRegWatchlist = UpdatePath(strWatchlistFolder & "\" & strRegWatchlist) 'add currentdirectory to path
-
+strFileWatchlist = UpdatePath(strWatchlistFolder & "\" & strFileWatchlist) 'add currentdirectory to path
+strDomainWatchlist = UpdatePath(strWatchlistFolder & "\" & strDomainWatchlist)  'Domain watchlist name
+strIPWatchlist = UpdatePath(strWatchlistFolder & "\" & strIPWatchlist) 'IP address watchlist name
 
 if objFSO.FileExists(strIniPath) = True then
 '---Ini loading section
@@ -129,6 +141,9 @@ boolFileEnable = ValueFromINI(strIniPath, "BooleanValues", "File", boolFileEnabl
 boolCrossEnable = ValueFromINI(strIniPath, "BooleanValues", "Cross", boolCrossEnable)
 boolRegEnable = ValueFromINI(strIniPath, "BooleanValues", "Registry", boolRegEnable)
 boolRegWatchlist = ValueFromINI(strIniPath, "BooleanValues", "RegistryWatch", boolRegWatchlist)
+boolFileWatchlist = ValueFromINI(strIniPath, "BooleanValues", "FileWatch", boolFileWatchlist)
+boolDomainWatchlist = ValueFromINI(strIniPath, "BooleanValues", "DomainWatch", boolDomainWatchlist)
+boolIPWatchlist = ValueFromINI(strIniPath, "BooleanValues", "IPWatch", boolIPWatchlist)
 pullAllSections = ValueFromINI(strIniPath, "BooleanValues", "AllSections", pullAllSections)
 boolReportUserName = ValueFromINI(strIniPath, "BooleanValues", "ReportUserName", boolReportUserName)
 boolReportProcessName = ValueFromINI(strIniPath, "BooleanValues", "ReportProcessName", boolReportProcessName)
@@ -296,12 +311,20 @@ else
 end if
 
 if boolRegWatchlist = True then LoadCustomDict strRegWatchlist, DictRegWatchlist
+if boolFileWatchlist = True then loadWatchlist strCbQuery, "filemod:", DictFileWatchlist, strFileWatchlist
+if boolDomainWatchlist = True then loadWatchlist strCbQuery, "domain:", DictDomainWatchlist, strDomainWatchlist
+if boolIPWatchlist = True then loadWatchlist strCbQuery, "ipaddr:", DictIPWatchlist, strIPWatchlist
 
 msgbox "executing query: " & strCbQuery
 logdata strReportPath & "\Query_" & strUnique & ".txt",strCbQuery, false
 CbQuery strCbQuery
 
-
+Function loadWatchlist(cbQuery, queryItem, dictToLoad, pathToWatchlist)
+LoadCustomDict pathToWatchlist, dictToLoad
+if dictToLoad.count = 0 then'if no watchlist items loaded then populate watchlist from query
+  getQueryItems cbQuery, queryItem, dictToLoad
+end if
+end function
 
 Function CbQuery(strQuery)
 Dim intParseCount: intParseCount = 10
@@ -577,6 +600,7 @@ process_pid = getdata(StrTmpResponse,",", "process_pid" & CHr(34) & ": " )
 if boolNetworkEnable = True and APIVersion  > 1 and APIVersion < 5 then
   if boolNetworkHeader = False then
 	outrow = "Date Time|IP Address|Local Port|Remote Port|Protocol|Domain|Outbound|Sensor ID" & userNheader & processNheader
+  if boolIPWatchlist = True or boolDomainWatchlist = True then outrow = outrow & "|Watchlist"
 	logdata strReportPath & "\IP_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolNetworkHeader = True
   end if
@@ -591,15 +615,25 @@ if boolNetworkEnable = True and APIVersion  > 1 and APIVersion < 5 then
   strLport = getdata (IPinfo, ",", "local_port" & Chr(34) & ": " )
   strDirection = getdata (IPinfo, chr(34), "direction" & Chr(34) & ": " & chr(34))
   strRport = getdata (IPinfo, ",", "remote_port" & Chr(34) & ": ")
+  strRport = replace(strRport, "}","")
   strIP = getdata (IPinfo, chr(34), "remote_ip" & Chr(34) & ": " & chr(34))
   strDtime = getdata (IPinfo, chr(34), "timestamp" & Chr(34) & ": " & chr(34))
   if strDtime <> "" Then
     if APIVersion = 2 or APIVersion = 3 then
       strIP = IPDecToDotQuad(strIP)
     end if
+    
+    if boolDomainWatchlist = True then 
+      strWatchResult = "," & Chr(34) & MatchWatchList(strDomain, DictDomainWatchlist) & Chr(34) 
+    elseif boolIPWatchlist = True then 
+      strWatchResult = "," & Chr(34) & MatchWatchList(strIP, DictIPWatchlist) & Chr(34)       
+    else
+      strWatchResult = ""
+    end if
+    
     strWriteLine = Chr(34) & strDtime & chr(34) & "," & Chr(34) & strIP & chr(34) & "," & _
     Chr(34) & strLport & chr(34) & "," & Chr(34) & strRport & chr(34) & "," & Chr(34) & strProtocol & chr(34) & "," & _
-    Chr(34) & strDomain & chr(34) & "," & Chr(34) & strDirection & chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname
+    Chr(34) & strDomain & chr(34) & "," & Chr(34) & strDirection & chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname & strWatchResult
     if boolBaselineNetwork = False then
 	  if boolUseBaseline = False or dictBaselineNetwork.exists(strquery & "|" & strIP & "|" & strDomain & "|" & strDirection) = False then
 		logdata strReportPath & "\IP_out_" & strUnique & ".csv",strWriteLine, false
@@ -665,17 +699,17 @@ if boolRegEnable = True then
 	  tmpEvent = replace(EventEntry,chr(34), "")
 	  ArrayEE = split(tmpEvent, "|")
 	  if ubound(arrayEE) > 2 then
-		strAction = ""
-		if dictRegAction.exists(arrayEE(0)) then strAction =  dictRegAction.item(arrayEE(0))
-		if boolRegWatchlist = True then 'replace the "\\" with \ in the registry event
-      strWatchResult = "," & Chr(34) & MatchWatchList(replace(arrayEE(2), "\\","\"), DictRegWatchlist) & Chr(34) 
+      strAction = ""
+      if dictRegAction.exists(arrayEE(0)) then strAction =  dictRegAction.item(arrayEE(0))
+      if boolRegWatchlist = True then 'replace the "\\" with \ in the registry event
+        strWatchResult = "," & Chr(34) & MatchWatchList(replace(arrayEE(2), "\\","\"), DictRegWatchlist) & Chr(34) 
       
-    else
-      strWatchResult = ""
-    end if
-	   strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname & strWatchResult
-	   
-	  logdata strReportPath & "\Reg_out_" & strUnique & ".csv",strWriteLine, false
+      else
+        strWatchResult = ""
+      end if
+       strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & username & processname & strWatchResult
+       
+      logdata strReportPath & "\Reg_out_" & strUnique & ".csv",strWriteLine, false
 	  end if
 	end if
   next
@@ -790,6 +824,7 @@ if boolFileEnable = True then
   if boolFileHeader = False then
 
 	outrow = "Action|Date Time|File Path|Last Write MD5|File Type|Tamper Attempt|Sensor ID" & userNheader & processNheader
+	if boolFileWatchlist = True then outrow = outrow & "|Watchlist"
 	logdata strReportPath & "\File_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolFileHeader = True
   end if       
@@ -800,22 +835,28 @@ if boolFileEnable = True then
 	  tmpEvent = replace(EventEntry,chr(34), "")
 	  ArrayEE = split(tmpEvent, "|")
 	  if ubound(arrayEE) > 4 then
-		strAction = ""
-		if dictRegAction.exists(arrayEE(0)) then strAction =  dictFileAction.item(arrayEE(0))
-		strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34)  & "," & Chr(34) & arrayEE(3) & Chr(34)  & "," & Chr(34) & arrayEE(4) & Chr(34)  & "," & Chr(34) & arrayEE(5) & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) & username & processname
-	    if boolBaselineChild = False then
-			if boolUseBaseline = False or dictBaselineFile.exists(strquery & "|" & arrayEE(2) & "|" & arrayEE(3)) = false then
-				logdata strReportPath & "\File_out_" & strUnique & ".csv",strWriteLine, false
-			end if
-		elseif dictBaselineFile = True then
-			if dictBaselineFile.exists(strquery & "|" & arrayEE(2) & "|" & arrayEE(3)) = false then
-			  dictBaselineFile.add strquery & "|" & arrayEE(2) & "|" & arrayEE(3), ""
-			  logdata strReportPath & "\File_out_" & strUnique & ".csv",strWriteLine, false
-			  logdata strBaselinePath & "\File" & ".dat",strquery & "|" & arrayEE(3), false		
-			end if
-		end if
+      strAction = ""
+      if dictRegAction.exists(arrayEE(0)) then strAction =  dictFileAction.item(arrayEE(0))
+      if boolFileWatchlist = True then 'replace the "\\" with \ in the registry event
+        strWatchResult = "," & Chr(34) & MatchWatchList(replace(arrayEE(2), "\\","\"), DictFileWatchlist) & Chr(34) 
+      else
+        strWatchResult = ""
+      end if
+      strWriteLine = Chr(34) & strAction & Chr(34) & "," & Chr(34) & arrayEE(1) & Chr(34) & "," & Chr(34) & arrayEE(2) & Chr(34)  & "," & Chr(34) & arrayEE(3) & Chr(34)  & "," & Chr(34) & arrayEE(4) & Chr(34)  & "," & Chr(34) & arrayEE(5) & Chr(34)  & "," & Chr(34) & sensor_id & Chr(34) & username & processname & strWatchResult
+
+        if boolBaselineChild = False then
+          if boolUseBaseline = False or dictBaselineFile.exists(strquery & "|" & arrayEE(2) & "|" & arrayEE(3)) = false then
+            logdata strReportPath & "\File_out_" & strUnique & ".csv",strWriteLine, false
+          end if
+      elseif dictBaselineFile = True then
+        if dictBaselineFile.exists(strquery & "|" & arrayEE(2) & "|" & arrayEE(3)) = false then
+          dictBaselineFile.add strquery & "|" & arrayEE(2) & "|" & arrayEE(3), ""
+          logdata strReportPath & "\File_out_" & strUnique & ".csv",strWriteLine, false
+          logdata strBaselinePath & "\File" & ".dat",strquery & "|" & arrayEE(3), false		
+        end if
+      end if
 	  else
-		logdata CurrentDirectory & "\CB_Pull_Error.log", Date & " " & Time & " FileMod error splitting the value into an array size greater than four: " & tmpEvent,False 
+      logdata CurrentDirectory & "\CB_Pull_Error.log", Date & " " & Time & " FileMod error splitting the value into an array size greater than four: " & tmpEvent,False 
 	  end if
 	end if
   next
@@ -979,7 +1020,8 @@ Function Decrypt(StrText,key)
        Newstr=StrReverse(Newstr) 
        Decrypt = Newstr 
  End Function 
- Function GetData(contents, ByVal EndOfStringChar, ByVal MatchString)
+ 
+Function GetData(contents, ByVal EndOfStringChar, ByVal MatchString)
 MatchStringLength = Len(MatchString)
 x= instr(contents, MatchString)
 
@@ -1413,6 +1455,7 @@ for each WatchItem in dictMatchWatchList
     if instr(strWLcheck, WatchItem) > 0 then
       'msgbox dictMatchWatchList.item(WatchItem)
       WLreturnValue = dictMatchWatchList.item(WatchItem)
+      logdata strReportPath & "\Watchlist_out_" & strUnique & ".csv", strWLcheck & "|" & WatchItem & "|" & WLreturnValue, false
       exit for
     end if
   end if
@@ -1425,4 +1468,25 @@ if instr(strPath, ":") = 0 then
 	strPath = CurrentDirectory & "\" & strPath
 end if
 UpdatePath = strPath
+end function
+
+Function getQueryItems(query, matchType, dictWatchlist) 'retrieves query values and adds to dict
+Dim oRE, bMatch
+Set oRE = New RegExp
+oRE.Pattern = matchType
+oRE.Global = True
+
+Set oMatches = oRE.Execute(query)
+For Each oMatch In oMatches
+  matchText = mid(query, oMatch.FirstIndex +1)
+  matchText = replace(matchText, matchType, "")
+  if left(matchText,1) = chr(34) then
+    queryItem = getdata(matchText, chr(34), chr(34))
+  elseif instr(matchText, " ") > 0 then
+    queryItem = left(matchText, instr(matchText, " ") -1)
+  else
+    queryItem = matchText
+  end if
+  dictWatchlist.add lcase(queryItem), "Query_IOC"
+Next
 end function

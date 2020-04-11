@@ -1,4 +1,4 @@
-'Cb Pull Events v1.4.7 - Add registry watchlist column output. Fix column allignment for cross proceess
+'Cb Pull Events v1.4.8 - Add filemod, domain and IP address watchlist support
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -75,7 +75,7 @@ Dim DictFileWatchlist: Set DictFileWatchlist = CreateObject("Scripting.Dictionar
 Dim DictDomainWatchlist: Set DictDomainWatchlist = CreateObject("Scripting.Dictionary")
 Dim DictIPWatchlist: Set DictIPWatchlist = CreateObject("Scripting.Dictionary")
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
-
+Dim forceWatchlistInclusion 'Force the addition of query IOCs to watchlists even if external watchlist imported IOCs 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug"
 
@@ -97,6 +97,7 @@ boolRegWatchlist = True 'Use registry watchlist
 boolFileWatchlist = True 'Use file watchlist
 boolDomainWatchlist = True 'Use domain watchlist
 boolIPWatchlist = True ' Use IP address watchlist
+forceWatchlistInclusion = True 'Force the addition of query IOCs to watchlists even if external watchlist imported IOCs 
 strCbQuery = "" 'Cb Response query to run. Can be passed as an argument to the script.
 intSleepDelay = 1000 'delay between queries
 intPagesToPull = 1000 'Number of alerts to retrieve at a time
@@ -321,8 +322,9 @@ CbQuery strCbQuery
 
 Function loadWatchlist(cbQuery, queryItem, dictToLoad, pathToWatchlist)
 LoadCustomDict pathToWatchlist, dictToLoad
-if dictToLoad.count = 0 then'if no watchlist items loaded then populate watchlist from query
-  getQueryItems cbQuery, queryItem, dictToLoad
+if dictToLoad.count = 0 or forceWatchlistInclusion = True then'if no watchlist items loaded then populate watchlist from query
+  myNewQuery = nestedQuery(cbQuery) 'remove excluded items from query
+  getQueryItems myNewQuery, queryItem, dictToLoad 'add items from query into watchlist dict
 end if
 end function
 
@@ -863,14 +865,18 @@ if boolFileEnable = True then
 end if
 
 if boolCrossEnable = True then 
-  if boolCrossHeader = False then
 
-	outrow = "Action|Date Time|Target Unique ID|Target MD5|Target Path|Open Type|Access Requested|Tamper|Inbound Open|PID|Process Path|Unique ID|Sensor ID" & userNheader & processNheader
-	logdata strReportPath & "\Cross_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
-	boolCrossHeader = True
-  end if    
   strTmpText = getdata(StrTmpResponse,"]", "crossproc_complete" & CHr(34) & ": [")
   CbarrayEvents = split(strTmpText, ", ")
+  if boolCrossHeader = False then
+    if ubound(CbarrayEvents) > 8 then
+      outrow = "Action|Date Time|Target Unique ID|Target MD5|Target Path|Open Type|Access Requested|Tamper|Inbound Open|SHA256|PID|Process Path|Unique ID|Sensor ID" & userNheader & processNheader
+    else
+      outrow = "Action|Date Time|Target Unique ID|Target MD5|Target Path|Open Type|Access Requested|Tamper|Inbound Open|PID|Process Path|Unique ID|Sensor ID" & userNheader & processNheader
+    end if
+    logdata strReportPath & "\Cross_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+    boolCrossHeader = True
+  end if    
   for each EventEntry in CbarrayEvents
 	if instr(EventEntry, "|") > 0 then 
 	  tmpEvent = replace(EventEntry,chr(34), "")
@@ -1452,8 +1458,23 @@ for each WatchItem in dictMatchWatchList
     end if
   else
     'msgbox strWLcheck & " | " & WatchItem
-    if instr(strWLcheck, WatchItem) > 0 then
+    if instr(WatchItem, "*") > 0 then 'handle wild card matching
+      splitWatchItem = split(WatchItem, "*")
+      boolMatchWatch = True
+      tmpCompare = strWLcheck
+      for each wlItem in splitWatchItem
+        if instr(tmpCompare, wlItem) = 0 then
+          boolMatchWatch = False
+          exit for
+        else 'remove matched text from further comparison
+          tmpCompare = mid(tmpCompare, instr(tmpCompare, wlItem) + len(wlItem))
+        end if
+      next
+    elseif instr(strWLcheck, WatchItem) > 0 then
       'msgbox dictMatchWatchList.item(WatchItem)
+      boolMatchWatch = True
+    end if
+    if boolMatchWatch = True then
       WLreturnValue = dictMatchWatchList.item(WatchItem)
       logdata strReportPath & "\Watchlist_out_" & strUnique & ".csv", strWLcheck & "|" & WatchItem & "|" & WLreturnValue, false
       exit for
@@ -1470,6 +1491,51 @@ end if
 UpdatePath = strPath
 end function
 
+Function nestedQuery(query) 'removes excluded group from the Cb Response query 
+Dim oRE, bMatch
+Set oRE = New RegExp
+newQuery = query
+oRE.Pattern = "-\("
+oRE.Global = True
+Set oMatches = oRE.Execute(query)
+For Each oMatch In oMatches
+
+  subText = mid(query,oMatch.FirstIndex +1)
+  textGroup = mid(query,oMatch.FirstIndex +1, instr(subText, ")")) 'get group
+  
+  'msgbox "textgroup:" & textGroup
+  
+  nestReturn = recursiveNested(query, oMatch.FirstIndex, textGroup) 'return group/extended group
+  'msgbox "return Nested: " & nestReturn
+  If nestReturn <> "" And instr(nestReturn, "-(") > 0 then
+	  nestReturn = mid(nestReturn, instr(nestReturn, "-(")) 'get excluded group only
+	  'msgbox "modified Nested: " & nestReturn
+	  newQuery = replace(newQuery, nestReturn, "") 'modify query to only include non-excluded values
+  End if
+next
+  nestedQuery = newQuery 'return only included items
+end function
+
+function recursiveNested(query, matchLength, textGroup)
+'msgbox "recursiveNested:" & query & "|" & matchLength & "|" & textGroup
+  'recursive function
+  if instr(textGroup, "(") > 1 then 'another group is excluded within this group
+    captureLength = matchLength + len(textGroup)
+    tmpSection = mid(query,captureLength)
+    endLoc = instr(tmpSection, ")")
+    groupAppend = mid(query,captureLength + endLoc)
+  else
+    groupAppend = textGroup
+  end if
+  'end recursive function
+if instr(groupAppend, "(") > 1 then 'another group is excluded within this group
+  'msgbox "groupAppend: " & groupAppend
+  recursiveNested = recursiveNested(query, captureLength, groupAppend)
+end if
+recursiveNested = groupAppend
+end function
+
+
 Function getQueryItems(query, matchType, dictWatchlist) 'retrieves query values and adds to dict
 Dim oRE, bMatch
 Set oRE = New RegExp
@@ -1478,15 +1544,27 @@ oRE.Global = True
 
 Set oMatches = oRE.Execute(query)
 For Each oMatch In oMatches
-  matchText = mid(query, oMatch.FirstIndex +1)
-  matchText = replace(matchText, matchType, "")
-  if left(matchText,1) = chr(34) then
-    queryItem = getdata(matchText, chr(34), chr(34))
-  elseif instr(matchText, " ") > 0 then
-    queryItem = left(matchText, instr(matchText, " ") -1)
-  else
-    queryItem = matchText
+  if oMatch.FirstIndex = 0 then
+    matchIdex = oMatch.FirstIndex +1
+  Else
+  	matchIdex = oMatch.FirstIndex
+  End if
+  if mid(query, matchIdex, 1) <> "-" then 'if not excluded item
+    matchText = mid(query, oMatch.FirstIndex +1)
+    matchText = replace(matchText, matchType, "")
+    if left(matchText,1) = chr(34) then
+      queryItem = getdata(matchText, chr(34), chr(34))
+    elseif instr(matchText, " ") > 0 then
+      queryItem = left(matchText, instr(matchText, " ") -1)
+    else
+      queryItem = matchText
+    end if
+    if right(queryItem, 1) = ")" and right(queryItem, 2) <> "\)" then 'parentheses are valid characters allowed in file name so check if it is escaped before removing
+      queryItem = left(queryItem, len(queryItem) -1)
+    end if
+    if dictWatchlist.exists(lcase(queryItem)) = False then
+      dictWatchlist.add lcase(queryItem), "Query_IOC"
+    end if
   end if
-  dictWatchlist.add lcase(queryItem), "Query_IOC"
 Next
 end function

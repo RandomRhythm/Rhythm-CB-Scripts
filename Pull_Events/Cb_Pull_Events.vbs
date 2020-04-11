@@ -148,6 +148,7 @@ boolIPWatchlist = ValueFromINI(strIniPath, "BooleanValues", "IPWatch", boolIPWat
 pullAllSections = ValueFromINI(strIniPath, "BooleanValues", "AllSections", pullAllSections)
 boolReportUserName = ValueFromINI(strIniPath, "BooleanValues", "ReportUserName", boolReportUserName)
 boolReportProcessName = ValueFromINI(strIniPath, "BooleanValues", "ReportProcessName", boolReportProcessName)
+forceWatchlistInclusion = ValueFromINI(strIniPath, "BooleanValues", "IncludeQueryInWatchlist", forceWatchlistInclusion)
 boolDebug = ValueFromINI(strIniPath, "BooleanValues", "Debug", boolDebug)	
 '---End ini loading section
 else

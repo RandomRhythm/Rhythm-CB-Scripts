@@ -1,6 +1,6 @@
 'Cb Response Alert Dump
 
-'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2020 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -44,9 +44,11 @@ Dim boolUseSocketTools
 Dim strLicenseKey
 Dim boolOutputID
 Dim boolOutputWID
+Dim strAPIVersion
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 '---Config Section
+APIVersion = 2
 strReportPath = "\Reports" 'directory to write report output
 boolOutputID = True 'Alert ID
 boolOutputWID = True 'Watchlist ID
@@ -83,7 +85,8 @@ if objFSO.FileExists(strIniPath) = True then
 	intSizeLimit = ValueFromINI(strIniPath, "IntegerValues", "SizeLimit", intSizeLimit)
 	intReceiveTimeout = ValueFromINI(strIniPath, "IntegerValues", "ReceiveTimeout", intReceiveTimeout)
 	boolUseSocketTools = ValueFromINI(strIniPath, "BooleanValues", "UseSocketTools", boolUseSocketTools)
-	BoolDebugTrace = ValueFromINI(strIniPath, "BooleanValues", "Debug", BoolDebugTrace)	
+	BoolDebugTrace = ValueFromINI(strIniPath, "BooleanValues", "Debug", BoolDebugTrace)
+	APIVersion = ValueFromINI(strIniPath, "IntegerValues", "APIVersion", APIVersion)	
 '---End ini loading section
 else
 	if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured/default settings instead"
@@ -102,6 +105,10 @@ if isnumeric(IntDayStartQuery) then
   end if
 end if
 
+if cint(APIVersion) > 2 then
+  msgbox "API version " & APIVersion & " is not supported. Changing to V2"
+  APIVersion = 2
+end if
 
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug\"
@@ -183,9 +190,9 @@ for each strCBFeedID in DictFeedInfo
   	If InStr(strCBFeedID, "watchlist_id:") > 0 Then
   		strTmpWatchName = DictFeedInfo.item(strCBFeedID)
   		If InStr(strTmpWatchName," ") > 0 Then strTmpWatchName = Chr(34) & strTmpWatchName & Chr(34) 'contains whitespace
-  		strQueryFeed = "/api/v1/alert?q=" & strCBFeedID & strStartDateQuery & strEndDateQuery
+  		strQueryFeed = "/api/v" & APIVersion & "/alert?q=" & strCBFeedID & strStartDateQuery & strEndDateQuery
   	Else	
-    	strQueryFeed = "/api/v1/alert?q=feed_name:" & DictFeedInfo.item(strCBFeedID)  & strStartDateQuery & strEndDateQuery
+    	strQueryFeed = "/api/v" & APIVersion & "/alert?q=feed_name:" & DictFeedInfo.item(strCBFeedID)  & strStartDateQuery & strEndDateQuery
     End if	
    
     if strQueryFeed <> "" then
@@ -265,7 +272,8 @@ if instr(strCBresponseText, "b Response Cloud is currently undergoing maintenanc
   wscript.sleep 240000 
   DumpCarBlack = DumpCarBlack(intCBcount,BoolProcessData, intCBrows, strURLQuery)
   exit function
-end if
+end If
+boolNoSpaces = False
 'msgbox strCBresponseText
 if instr(strCBresponseText, vblf & "    {") Then 'response contains alert data
   strArrayCBresponse = split(strCBresponseText, vblf & "    {")
@@ -273,21 +281,24 @@ elseif instr(strCBresponseText, vblf & "  {") Then 'response contains feed data
   strArrayCBresponse = split(strCBresponseText, vblf & "  {")
 else  'response contains watchlist data or empty alert data
   strArrayCBresponse = split(strCBresponseText, "{")
+  boolNoSpaces = True
 end if
 for each strCBResponseEntry in strArrayCBresponse
 
-  if len(strCBResponseEntry) > 0 then
+  if len(strCBResponseEntry) > 1 then
     'logdata strDebugPath & "cbresponse.log", strCBResponseEntry, True
 
-      if instr(strCBResponseEntry, "provider_url" & Chr(34) & ": ") and instr(strCBresponseText, "id" & Chr(34) & ": ") then
+      if instr(strCBResponseEntry, "provider_url" & Chr(34) & ":") > 0 and instr(strCBresponseText, "id" & Chr(34) & ":") > 0 Then
         strTmpFeedID = getdata(strCBResponseEntry, ",", "id" & Chr(34) & ": ")
         strTmpFeedName = getdata(strCBResponseEntry, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
         If strTmpFeedID <> "" Then strTmpFeedID = "feed_name:" & strTmpFeedID
         if DictFeedInfo.exists(strTmpFeedID) = false then DictFeedInfo.add strTmpFeedID, lcase(strTmpFeedName)
-      elseif instr(strCBresponseText, "search_query" & Chr(34) & ": ") > 0 and instr(strCBresponseText, "id" & Chr(34) & ": ") > 0 Then
-        strTmpwatchlistID = getdata(strCBResponseEntry, Chr(34), chr(34) & "id" & Chr(34) & ": " & Chr(34))
-        strTmpWLName = getdata(strCBResponseEntry, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
-        strTmpActualWatchlistQuery = getdata(strCBResponseEntry, Chr(34), chr(34) & "search_query" & Chr(34) & ": " & Chr(34))
+      elseif instr(strCBresponseText, "search_query" & Chr(34) & ":") > 0 And instr(strCBresponseText, "id" & Chr(34) & ":") > 0 Then
+        spaceOrNone = ""
+        If boolNoSpaces = False Then spaceOrNone = " "
+        strTmpwatchlistID = getdata(strCBResponseEntry, Chr(34), chr(34) & "id" & Chr(34) & ":" & spaceOrNone & Chr(34))
+        strTmpWLName = getdata(strCBResponseEntry, Chr(34), chr(34) & "name" & Chr(34) & ":" & spaceOrNone & Chr(34))
+        strTmpActualWatchlistQuery = getdata(strCBResponseEntry, Chr(34), chr(34) & "search_query" & Chr(34) & ":" & spaceOrNone & Chr(34))
         strTmpWatchlistQuery = "/api/v1/process?q=watchlist_" & strTmpwatchlistID & ":*"
       	If strTmpwatchlistID <> "" Then 
       		strTmpwatchlistID = "watchlist_id:" & strTmpwatchlistID

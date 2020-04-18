@@ -7,7 +7,7 @@
 'knowndll|/api/v1/binary?q=observed_filename:known.dll&digsig_result:Unsigned
 
 
-'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2020 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -956,7 +956,9 @@ if StrCBMD5 <> "" then
     if WLRegXresult = True then
 		 boolLogIP = True
 	end if
-  end if
+  end If
+  strCBcmdline = Replace(strCBcmdline, ",", "") 'remove special character
+  strCBcmdline = Replace(strCBcmdline, Chr(34), "")'remove special character
   strCBfilePath = AddPipe(strCBfilePath) 'CB File Path
   strCBdigSig = AddPipe(strCBdigSig) 'CB Digital Sig
   strCBcompanyName = AddPipe(strCBcompanyName)'CB Company Name

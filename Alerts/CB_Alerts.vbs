@@ -205,8 +205,9 @@ for each strCBFeedID in DictFeedInfo
       logdata CurrentDirectory & "\CB_Alerts.log", date & " " & time & ": " & "Total number of items being retrieved for feed " & DictFeedInfo.item(strCBFeedID) & ": " & intTotalQueries ,boolEchoInfo
       
       if clng(intTotalQueries) > 0 then
-        
-        do while intCBcount < clng(intTotalQueries) and intCBcount < intSizeLimit
+        				'still have pages to pull    OR   initial amount is less than intCBcount
+        do while (intCBcount < clng(intTotalQueries) Or clng(intTotalQueries) < intCBcount And intCBcount < CLng(intPagesToPull)) and intCBcount < intSizeLimit
+
           If BoolDebugTrace = True Then logdata strDebugPath & "\follow_queries.log" , date & " " & time & " " & DictFeedInfo.item(strCBFeedID) & ": " & intCBcount & " < " & intTotalQueries & " and " & intCBcount & " < " & intSizeLimit, false
           DumpCarBlack intCBcount, True, intPagesToPull, strQueryFeed
           intCBcount = intCBcount + intPagesToPull
@@ -290,15 +291,15 @@ for each strCBResponseEntry in strArrayCBresponse
 
       if instr(strCBResponseEntry, "provider_url" & Chr(34) & ":") > 0 and instr(strCBresponseText, "id" & Chr(34) & ":") > 0 Then
         strTmpFeedID = getdata(strCBResponseEntry, ",", "id" & Chr(34) & ": ")
-        strTmpFeedName = getdata(strCBResponseEntry, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
+        strTmpFeedName = getdata(strCBResponseEntry, Chr(34), Chr(34) & "name" & Chr(34) & ": " & Chr(34))
         If strTmpFeedID <> "" Then strTmpFeedID = "feed_name:" & strTmpFeedID
         if DictFeedInfo.exists(strTmpFeedID) = false then DictFeedInfo.add strTmpFeedID, lcase(strTmpFeedName)
       elseif instr(strCBresponseText, "search_query" & Chr(34) & ":") > 0 And instr(strCBresponseText, "id" & Chr(34) & ":") > 0 Then
         spaceOrNone = ""
         If boolNoSpaces = False Then spaceOrNone = " "
-        strTmpwatchlistID = getdata(strCBResponseEntry, Chr(34), chr(34) & "id" & Chr(34) & ":" & spaceOrNone & Chr(34))
-        strTmpWLName = getdata(strCBResponseEntry, Chr(34), chr(34) & "name" & Chr(34) & ":" & spaceOrNone & Chr(34))
-        strTmpActualWatchlistQuery = getdata(strCBResponseEntry, Chr(34), chr(34) & "search_query" & Chr(34) & ":" & spaceOrNone & Chr(34))
+        strTmpwatchlistID = getdata(strCBResponseEntry, Chr(34), Chr(34) & "id" & Chr(34) & ":" & spaceOrNone & Chr(34))
+        strTmpWLName = getdata(strCBResponseEntry, Chr(34), Chr(34) & "name" & Chr(34) & ":" & spaceOrNone & Chr(34))
+        strTmpActualWatchlistQuery = getdata(strCBResponseEntry, Chr(34), Chr(34) & "search_query" & Chr(34) & ":" & spaceOrNone & Chr(34))
         strTmpWatchlistQuery = "/api/v1/process?q=watchlist_" & strTmpwatchlistID & ":*"
       	If strTmpwatchlistID <> "" Then 
       		strTmpwatchlistID = "watchlist_id:" & strTmpwatchlistID
@@ -309,12 +310,12 @@ for each strCBResponseEntry in strArrayCBresponse
           DumpCarBlack = getdata(strCBresponseText, ",", "total_results" & Chr(34) & ": ")
         
           if instr(strCBResponseEntry, "ioc_value") > 0 Or instr(strCBResponseEntry, "ioc_type") > 0 then
-            LogIOCdata strCBResponseEntry, True
+            LogIOCdata strCBResponseEntry, True, boolNoSpaces
           else
-            logdata currentdirectory & "\ioc_value.log", "Debug - did not contain ioc_value: " & strCBResponseEntry, False
+            If BoolDebugTrace = True Then LogData currentdirectory & "\ioc_value.log", "Debug - did not contain ioc_value: " & strCBResponseEntry, False
           end if
         else
-             logdata currentdirectory & "\total_results.log" , "Debug - did not contain total_results: " & strCBresponseText, False
+             If BoolDebugTrace = True Then logdata currentdirectory & "\total_results.log" , "Debug - did not contain total_results: " & strCBresponseText, False
         end if
       end if
 
@@ -344,17 +345,18 @@ GetData = ""
 end Function
 
 
-Sub LogIOCdata(strCBresponseText, boolLogAll)
-
+Sub LogIOCdata(strCBresponseText, boolLogAll, boolNoSpaces)
+spaceValue = ""
+If boolNoSpaces = True Then spaceValue = " "
 if instr(strCBresponseText, "ioc_value") > 0 or instr(strCBresponseText, "ioc_type") > 0 then 
 
-  strCBfilePath = getdata(strCBresponseText, chr(34), "process_path" & Chr(34) & ": " & chr(34))
-  strioc_value = getdata(strCBresponseText, chr(34), "ioc_value" & Chr(34) & ": " & Chr(34))
+  strCBfilePath = getdata(strCBresponseText, Chr(34), "process_path" & Chr(34) & ": " & Chr(34))
+  strioc_value = getdata(strCBresponseText, Chr(34), "ioc_value" & Chr(34) & ": " & Chr(34))
   if strioc_value = "" then 
     strioc_value = getdata(strCBresponseText, "}", "ioc_value" & Chr(34) & ": " & Chr(34) & "{")
   end If
   if strioc_value = "" then 
-  	strIOCval = getdata(strCBresponseText, chr(34), "ioc_type" & Chr(34) & ": " & Chr(34))
+  	strIOCval = getdata(strCBresponseText, Chr(34), "ioc_type" & Chr(34) & ": " & Chr(34))
   	If strIOCval = "query" Then
   		strioc_value = getdata(strCBresponseText, "}", "ioc_attr" & Chr(34) & ": " & Chr(34) & "{")
   	End If	
@@ -364,40 +366,40 @@ if instr(strCBresponseText, "ioc_value") > 0 or instr(strCBresponseText, "ioc_ty
 	strioc_value = getdata(strCBresponseText, "}", "ioc_value" & Chr(34) & ": " & Chr(34) & "{")
 	boolQueryIOC = True
   end if
-  interface_ip = getdata(strCBresponseText, chr(34), "interface_ip" & Chr(34) & ": " & Chr(34))
-  sensor_id = getdata(strCBresponseText, chr(34), "sensor_id" & Chr(34) & ": " & Chr(34))
-  strdescription = getdata(strCBresponseText, chr(34), "description" & Chr(34) & ": " & Chr(34))
-  search_query = getdata(strCBresponseText, chr(34), "search_query" & Chr(34) & ": " & Chr(34))
-  StrCBMD5 = getdata(strCBresponseText, chr(34), "md5" & Chr(34) & ": " & Chr(34))
+  interface_ip = getdata(strCBresponseText, Chr(34), "interface_ip" & Chr(34) & ": " & Chr(34))
+  sensor_id = getdata(strCBresponseText, Chr(34), "sensor_id" & Chr(34) & ": " & Chr(34))
+  strdescription = getdata(strCBresponseText, Chr(34), "description" & Chr(34) & ": " & Chr(34))
+  search_query = getdata(strCBresponseText, Chr(34), "search_query" & Chr(34) & ": " & Chr(34))
+  StrCBMD5 = getdata(strCBresponseText, Chr(34), "md5" & Chr(34) & ": " & Chr(34))
   strCBprevalence = getdata(strCBresponseText, ",", "hostCount" & Chr(34) & ": ")
-  strCBHostname = getdata(strCBresponseText, chr(34), "hostname" & Chr(34) & ": " & chr(34))
-  strstatus = getdata(strCBresponseText, chr(34), "status" & Chr(34) & ": " & chr(34)) '"status": "Unresolved"
-  created_time = getdata(strCBresponseText, chr(34), "created_time" & Chr(34) & ": " & chr(34))
-  resolved_time= getdata(strCBresponseText, chr(34), "resolved_time" & Chr(34) & ": " & chr(34))
-  process_name = getdata(strCBresponseText, chr(34), "process_name" & Chr(34) & ": " & chr(34))
-  process_id = getdata(strCBresponseText, chr(34), "process_id" & Chr(34) & ": " & chr(34))
+  strCBHostname = getdata(strCBresponseText, Chr(34), "hostname" & Chr(34) & ": " & Chr(34))
+  strstatus = getdata(strCBresponseText, Chr(34), "status" & Chr(34) & ": " & Chr(34)) '"status": "Unresolved"
+  created_time = getdata(strCBresponseText, Chr(34), "created_time" & Chr(34) & ": " & Chr(34))
+  resolved_time= getdata(strCBresponseText, Chr(34), "resolved_time" & Chr(34) & ": " & Chr(34))
+  process_name = getdata(strCBresponseText, Chr(34), "process_name" & Chr(34) & ": " & Chr(34))
+  process_id = getdata(strCBresponseText, Chr(34), "process_id" & Chr(34) & ": " & Chr(34))
   segment_id = getdata(strCBresponseText, ",", "segment_id" & Chr(34) & ": " )
   netconn_count = getdata(strCBresponseText, ",", "netconn_count" & Chr(34) & ": ")
-  unique_id = getdata(strCBresponseText, chr(34), "unique_id" & Chr(34) & ": " & chr(34))
-  watchlist_id = getdata(strCBresponseText, chr(34), "watchlist_id" & Chr(34) & ": " & chr(34))
+  unique_id = getdata(strCBresponseText, Chr(34), "unique_id" & Chr(34) & ": " & Chr(34))
+  watchlist_id = getdata(strCBresponseText, Chr(34), "watchlist_id" & Chr(34) & ": " & Chr(34))
   if instr(strCBresponseText,"ioc_attr") Then 'might want to add this And strIOCval <> "query"
-    iocSection = getdata(strCBresponseText, "}", "ioc_attr" & Chr(34) & ": " & chr(34) & "{")
-    strDirection = getdata(iocSection, "\", "direction\" & Chr(34) & ": \" & Chr(34))
-    strprotocol = getdata(iocSection, "\", "protocol\" & Chr(34) & ": \" & Chr(34))
-    strlocal_port = getdata(iocSection, "\", "local_port\" & Chr(34) & ": \" & Chr(34))
-    strdns_name = getdata(iocSection, "\", "dns_name\" & Chr(34) & ": \" & Chr(34))
-    strlocal_ip = getdata(iocSection, "\", "local_ip\" & Chr(34) & ": \" & Chr(34))
-    strport = getdata(iocSection, "\", "remote_port\" & Chr(34) & ": \" & Chr(34))
-    strremote_ip = getdata(iocSection, "\", "remote_ip\" & Chr(34) & ": \" & Chr(34))
+    iocSection = getdata(strCBresponseText, "}", "ioc_attr" & Chr(34) & ": " & Chr(34) & "{")
+    strDirection = getdata(iocSection, "\", "direction\" & Chr(34) & ":" & spaceValue & "\" & Chr(34))
+    strprotocol = getdata(iocSection, "\", "protocol\" & Chr(34) & ":" & spaceValue & "\" & Chr(34))
+    strlocal_port = getdata(iocSection, "\", "local_port\" & Chr(34) & ":" & spaceValue & "\" & Chr(34))
+    strdns_name = getdata(iocSection, "\", "dns_name\" & Chr(34) & ":" & spaceValue & "\" & Chr(34))
+    strlocal_ip = getdata(iocSection, "\", "local_ip\" & Chr(34) & ":" & spaceValue & "\" & Chr(34))
+    strport = getdata(iocSection, "\", "remote_port\" & Chr(34) & ":" & spaceValue & "\" & Chr(34))
+    strremote_ip = getdata(iocSection, "\", "remote_ip\" & Chr(34) & ":" & spaceValue & "\" & Chr(34))
   end if  
   if strCBHostname = "" then
-    strTmpCBHostname = getdata(strCBresponseText, "]", "hostnames" & Chr(34) & ": [" & vblf & "        " & chr(34))
+    strTmpCBHostname = getdata(strCBresponseText, "]", "hostnames" & Chr(34) & ": [" & vblf & "        " & Chr(34))
     if instr(strTmpCBHostname, "|") then
       arrayCBHostName = split(strTmpCBHostname, "|")
       for each CBNames in arrayCBHostName
         arrayCBnames = split(CBNames, vbLf)
         for each CBhostName in arrayCBnames
-          strTmpCBHostname = replace(CBhostName, chr(34), "")
+          strTmpCBHostname = replace(CBhostName, Chr(34), "")
           strTmpCBHostname = replace(strTmpCBHostname, " ","" )
           if isnumeric(strTmpCBHostname) = False and strTmpCBHostname <> "" then
             'msgbox strTmpCBHostname
@@ -433,9 +435,10 @@ end if
 
 if strioc_value = "" and BoolDebugTrace = True then 
 	logdata strDebugPath & "\ioc_value.log", "Debug - did not contain ioc_value: " & strCBresponseText, False
-end if
-if strioc_value <> ""  then
-  strioc_value = replace(strioc_value, chr(34), "") 'value provided can contain characters that mess with CSV output
+end If
+If strIOCval = "query" Then strioc_value = "query"
+If strioc_value <> "" then
+  strioc_value = replace(strioc_value, Chr(34), "") 'value provided can contain characters that mess with CSV output
   strioc_value = replace(strioc_value, ",", "")
   strCBfilePath = AddPipe(strCBfilePath) 'CB File Path
   process_name = AddPipe(process_name) 'CB Digital Sig
@@ -491,7 +494,7 @@ if strioc_value <> ""  then
   END IF
 
   strSSrow = strioc_value & StrCBMD5 & strCBfilePath & process_name & netconn_count & strstatus & strCBprevalence & interface_ip  & sensor_id & strdescription & alert_severity & IOC_Entries & strCBHostname & unique_id & watchlist_id
-  strTmpSSlout = chr(34) & replace(strSSrow, "|",chr(34) & "," & Chr(34)) & chr(34)
+  strTmpSSlout = Chr(34) & replace(strSSrow, "|",Chr(34) & "," & Chr(34)) & Chr(34)
   logdata strHashOutPath, strTmpSSlout, False
 end if
 strCBfilePath = ""
@@ -630,7 +633,7 @@ Function encrypt(StrText, key)
   LenStr = Len(StrText) 
   StrText = StrReverse(StrText) 
   For x = 1 To LenStr 
-       Newstr = Newstr & chr(asc(Mid(StrText,x,1)) + Asc(Mid(key,KeyPos,1))) 
+       Newstr = Newstr & Chr(asc(Mid(StrText,x,1)) + Asc(Mid(key,KeyPos,1))) 
        KeyPos = keypos+1 
        If KeyPos > lenKey Then KeyPos = 1 
        'if x = 4 then msgbox "error with char " & Chr(34) & asc(Mid(StrText,x,1)) - Asc(Mid(key,KeyPos,1)) & Chr(34) & " At position " & KeyPos & vbcrlf & Mid(StrText,x,1) & Mid(key,KeyPos,1) & vbcrlf & asc(Mid(StrText,x,1)) & asc(Mid(key,KeyPos,1))
@@ -649,7 +652,7 @@ Function Decrypt(StrText,key)
   StrText=StrReverse(StrText) 
   For x = LenStr To 1 Step -1 
        on error resume next
-       Newstr = Newstr & chr(asc(Mid(StrText,x,1)) - Asc(Mid(key,KeyPos,1))) 
+       Newstr = Newstr & Chr(asc(Mid(StrText,x,1)) - Asc(Mid(key,KeyPos,1))) 
        if err.number <> 0 then
         msgbox "error with char " & Chr(34) & asc(Mid(StrText,x,1)) - Asc(Mid(key,KeyPos,1)) & Chr(34) & " At position " & KeyPos & vbcrlf & Mid(StrText,x,1) & Mid(key,KeyPos,1) & vbcrlf & asc(Mid(StrText,x,1)) & asc(Mid(key,KeyPos,1))
         wscript.quit(011)
@@ -940,7 +943,7 @@ End Function
 
 function escapeSpecials(strSpecialQuery)
 newQuery = replace(strSpecialQuery, "*", "\*")
-newQuery = replace(newQuery, chr(34), "\" & chr(34))
+newQuery = replace(newQuery, Chr(34), "\" & Chr(34))
 newQuery = replace(newQuery, "&", "\&")
 'need to perform encoding for pound sign
 escapeSpecials = newQuery

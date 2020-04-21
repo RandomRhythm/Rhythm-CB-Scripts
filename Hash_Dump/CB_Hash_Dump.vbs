@@ -1,9 +1,9 @@
-'CB Hash Dump v3.2 - Dumps hashes from CB (Carbon Black) Response
+'CB Hash Dump v3.3 - Dumps hashes from CB (Carbon Black) Response
 'Dumps CSV "MD5|Path|Publisher|Company|Product|CB Prevalence|Logical Size|Score
 
 'This script will write out hashes and some associated data via the CB Response (Carbon Black) API
 
-'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2020 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -50,6 +50,7 @@ Dim strLicenseKey
 Dim strIniPath
 Dim boolUseHashList
 Dim strReportPath
+Dim strCBHostname
 Const forwriting = 2
 Const ForAppending = 8
 Const ForReading = 1
@@ -491,7 +492,8 @@ if len(strCBresponseText) > 0 then
           if boolOutputHosts = True then
             strCBHostname = getdata(strCBresponseText, ",", "hostname" & Chr(34) & ": ")
             if strCBHostname = "" then
-              strTmpCBHostname = getdata(strCBresponseText, "]", "endpoint" & Chr(34) & ": [" & vblf & "        " & chr(34))
+              strTmpCBHostname = getdata(strCBresponseText, "]", "endpoint" & Chr(34) & ": [" & vblf & "    ")
+            end if               
               if instr(strTmpCBHostname, "|") then
                 arrayCBHostName = split(strTmpCBHostname, "|")
                 for each CBNames in arrayCBHostName
@@ -510,7 +512,7 @@ if len(strCBresponseText) > 0 then
                   next
                 next
               end if
-            end if 
+
           end if
           strCBcompanyName = getdata(strCBresponseText, chr(34), "company_name" & Chr(34) & ": " & Chr(34))
           strCBcompanyName = "|" & RemoveTLS(strCBcompanyName)
@@ -570,7 +572,7 @@ MatchStringLength = Len(MatchString)
 x= instr(contents, MatchString)
 
   if X >0 then
-    strSubContents = Mid(contents, x + MatchStringLength, len(contents) - MatchStringLength - x +1)
+    strSubContents = Mid(contents, x + MatchStringLength)
     if instr(strSubContents,EndOfStringChar) > 0 then
       GetData = Mid(contents, x + MatchStringLength, instr(strSubContents,EndOfStringChar) -1)
       exit function

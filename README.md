@@ -32,7 +32,7 @@ SocetTools requires that it only be used in compiled code. However, compiling VB
 
 
 ### Configuring the INI file
-INI files are provided in each script or EXE directory. The settings in the INI files will override the default settings in the script/executable. The INI is broken down into three sections:
+INI files are provided in each script directory. The settings in the INI files will override the default settings in the script/executable. The INI is broken down into three sections:
 ##### [IntegerValues]
 These values should be numeric. Only the StartTime and EndTime can be negative numbers. The StartTime and EndTime are asterisks (*) by default, which will pull all events. Time is evaluated at the current time, so negative numbers are required to filter to events in the past. 
 * SleepDelay - milliseconds to sleep between queries

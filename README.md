@@ -1,7 +1,7 @@
 # Rhythm-CB-Scripts
 #### Collection of scripts for working with Carbon Black Cb Response API
 
-This repository contains a folder for each script's purpose. The Alerts folder contains scripts for working with alerts found in the Cb Response console. 
+This repository contains a folder for each script's purpose.
 
 #### Alerts
 The Cb_Alerts script will export alerts from the console in CSV files for each of the feeds and watchlists. The Alerts folder also contains the Cb_Resolve script to resolve alerts within the console.

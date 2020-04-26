@@ -30,6 +30,8 @@ Do While Not objFile.AtEndOfStream
         logdata CurrentDirectory & "\decout.txt", strTmpIP, false
       end if
       strType = "ipaddr"
+    elseif instr(strData, ".") = 0 then
+      strType = "md5"
     else
       strType = "domain"
     end if

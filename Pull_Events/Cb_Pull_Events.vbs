@@ -1,4 +1,4 @@
-'Cb Pull Events v1.4.8 - Add filemod, domain and IP address watchlist support
+'Cb Pull Events v1.5.0 - Watchlist CSV output
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -34,6 +34,7 @@ Dim boolModHeader: boolModHeader = False
 Dim boolChildHeader: boolChildHeader = False
 Dim boolFileHeader: boolFileHeader = False
 Dim boolCrossHeader: boolCrossHeader = False
+Dim boolWatchlistHeader: boolWatchlistHeader = False
 Dim boolNetworkEnable
 Dim boolRegEnable
 Dim boolModEnable
@@ -1444,6 +1445,13 @@ Dim WLreturnValue
 WLreturnValue = ""
 'msgbox "strWLstoredResults=" & strWLstoredResults
 if dictMatchWatchList.count = 0 then exit function
+
+  if boolWatchlistHeader = False then
+    outrow = "Event Item Match|Watchlist Match|Watchlist Note"
+    logdata strReportPath & "\Watchlist_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+    boolWatchlistHeader = True
+  end if 
+
 for each WatchItem in dictMatchWatchList
 	'msgbox "WatchItem=" & WatchItem
   if BoolWatchLlistRegex = True then
@@ -1477,7 +1485,9 @@ for each WatchItem in dictMatchWatchList
     end if
     if boolMatchWatch = True then
       WLreturnValue = dictMatchWatchList.item(WatchItem)
-      logdata strReportPath & "\Watchlist_out_" & strUnique & ".csv", strWLcheck & "|" & WatchItem & "|" & WLreturnValue, false
+      strWatchLout = strWLcheck & "|" & WatchItem & "|" & WLreturnValue
+      strWatchLout = replace(strWatchLout, "|", chr(34) & "," & Chr(34))
+      logdata strReportPath & "\Watchlist_out_" & strUnique & ".csv", chr(34) & strWatchLout & chr(34) , false
       exit for
     end if
   end if

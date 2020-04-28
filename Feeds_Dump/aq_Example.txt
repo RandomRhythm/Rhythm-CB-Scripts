@@ -1,0 +1,10 @@
+evasion_installutil|process_name:installutil.exe AND parent_name:cmd.exe
+exploit_Notepad_MemCorrupt|parent_name:notepad.exe and -process_name:splwow64.exe
+Slingshot_1|/api/v1/binary?q=scesrv.dll -digsig_publisher:Microsoft  corporation
+Slingshot_2|/api/v1/binary?q=spoolsv.exe -digsig_publisher:Microsoft  corporation
+netcat|/api/v1/binary?q=observed_filename:nc.exe 
+IP_Scan|product_name:"advanced IP scanner"
+Wireshark_File|product_name:"Wireshark"
+Wireshark_Process|/api/v1/process?q=product_name:"Wireshark"
+Winexe|/api/v1/binary?q=winexesvc.exe
+APN|/api/v1/binary?q=digsig_publisher:APN*

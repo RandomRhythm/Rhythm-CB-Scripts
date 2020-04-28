@@ -1,8 +1,8 @@
-'Cb Event Sampler v1.0.0
+'Cb Event Sampler v1.0.1
 'Queries IOCs in Cb Response event data and provides a sampling CSV output
 
 
-'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2020 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -286,9 +286,9 @@ Do While Not objRLfile.AtEndOfStream
 			returnValues = commaOut
     end if
 		if strHeaderImport <> "" then
-			logdata strReportPath & "\Query_" & strUnique & ".txt",strLineIn & strDelimiter & returnValues, false
+			logdata strReportPath & "\Query_" & strUnique & ".csv",strLineIn & strDelimiter & returnValues, false
 		else
-			logdata strReportPath & "\Query_" & strUnique & ".txt",returnValues, false
+			logdata strReportPath & "\Query_" & strUnique & ".csv",returnValues, false
 		end if
 
 
@@ -557,16 +557,21 @@ end if
 strTmp_host_type = getdata(StrTmpResponse, Chr(34), "host_type" & CHr(34) & ": " & Chr(34))
 strTmp_group = getdata(StrTmpResponse, Chr(34), "group" & CHr(34) & ": " & Chr(34))
 strTmp_fork_children_count = getdata(StrTmpResponse,",", "fork_children_count" & CHr(34) & ": " )
-strTmp_processblock_count = getdata(StrTmpResponse,",", "processblock_count" & CHr(34) & ": " )
+If strTmp_fork_children_count = "" Then strTmp_fork_children_count = getdata(StrTmpResponse,",", "childproc_count" & CHr(34) & ": " )
+strTmp_fork_children_count = getdata(StrTmpResponse,",", "childproc_count" & CHr(34) & ": " )
+regmod_count = getdata(StrTmpResponse,",", "regmod_count" & CHr(34) & ": " )
+filemod_count  = getdata(StrTmpResponse,",", "filemod_count" & CHr(34) & ": " )
+modload_count  = getdata(StrTmpResponse,",", "modload_count" & CHr(34) & ": " )
+crossproc_count = getdata(StrTmpResponse,",", "crossproc_count" & CHr(34) & ": " )
 if boolEventHeader = False then
-  outHeadrow = "Item|Network|Suspicious Indicators|Host Type|sensorID|Group|Children|Blocked Process|CMD|User Name|Process Name"
+  outHeadrow = "Item|Registry Modification|File Modification|Module Load|Network|Children|Cross Process|Suspicious Indicators|Host Type|sensorID|Group|Blocked Process|CMD|User Name|Process Name"
   boolEventHeader = True
 end if
 process_pid = getdata(StrTmpResponse,",", "process_pid" & CHr(34) & ": " )
-
-strOutLine = Chr(34) & strIOC & Chr(34) & "," & chr(34) & strTmp_netconn_count & Chr(34) & "," & chr(34) & _
+tmpCountValues = chr(34) & regmod_count & Chr(34) & "," & chr(34) & filemod_count & Chr(34) & "," & chr(34) & modload_count & Chr(34) & "," & chr(34) & strTmp_netconn_count & Chr(34) & "," & chr(34) & strTmp_fork_children_count & Chr(34) & "," & chr(34) & crossproc_count & Chr(34) 
+strOutLine = Chr(34) & strIOC & Chr(34) & "," & tmpCountValues & "," & chr(34) & _
 strTmp_alliance_score_bit9suspiciousindicators & Chr(34) & "," & chr(34) & strTmp_host_type & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & "," & chr(34) & strTmp_group & Chr(34) & "," & chr(34) & _
-strTmp_fork_children_count & Chr(34) & ","& chr(34) & strTmp_processblock_count & Chr(34) & ","& chr(34) & strTmpCmd & Chr(34) & username & processname 
+ strTmp_processblock_count & Chr(34) & ","& chr(34) & strTmpCmd & Chr(34) & username & processname 
 
 
 
@@ -679,7 +684,7 @@ end if
 if boolModEnable = True then
   if boolModHeader = False then
 
-	outHeadrow = outHeadrow & "|Mod Date Time|MD5|File Path"
+	outHeadrow = outHeadrow & "|Module Date Time|Module MD5|Module File Path|Module SHA256"
 	boolModHeader = True
   end if
    strTmpText = getdata(StrTmpResponse,"]", "modload_complete" & CHr(34) & ": [")
@@ -690,7 +695,8 @@ if boolModEnable = True then
 	  tmpEvent = replace(EventEntry,chr(34), "")
 	  if right(tmpEvent,1) = "|" then tmpEvent = left(tmpEvent, len(tmpEvent) -1) 'remove end pipe as have not seen any values after it.
 	  ArrayEE = split(tmpEvent, "|")
-	  if ubound(arrayEE) > 1 then
+	  if ubound(arrayEE) = 2 Then tmpEvent = tmpEvent & "|"
+	  If ubound(arrayEE) > 1 then
 	   strOutLine = strOutLine & "," & chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) 
 		exit for
 
@@ -705,7 +711,7 @@ end if
 if boolChildEnable = True and APIVersion  >= 3 then 
   dictChild.RemoveAll
   if boolChildHeader = False then
-	outHeadrow = outHeadrow & "|Start Time|End Time|Unique ID|MD5|File Path|PID|Suppressed|Parent PID|Parent Unique ID|Sensor ID|Child Command Line" 
+	outHeadrow = outHeadrow & "|Child Start Time|Child End Time|Child Unique ID|Child MD5|Child File Path|Child PID|Suppressed|Parent PID|Parent Unique ID|Sensor ID|Child Command Line" 
 	boolChildHeader = True
   end if    
   strTmpText = getdata(StrTmpResponse,"]", "childproc_complete" & CHr(34) & ": [")
@@ -741,7 +747,7 @@ end if
 if boolFileEnable = True then 
   if boolFileHeader = False then
 
-	outHeadrow = outHeadrow & "|Action|Date Time|File Path|Last Write MD5|File Type|Tamper Attempt"
+	outHeadrow = outHeadrow & "|File Action|File Date Time|File Path|Last Write MD5|File Type|Tamper Attempt"
 	boolFileHeader = True
   end if       
   strTmpText = getdata(StrTmpResponse,chr(34) & "], ", "filemod_complete" & CHr(34) & ": [")
@@ -769,7 +775,7 @@ end if
 if boolCrossEnable = True then 
   if boolCrossHeader = False then
 
-	outHeadrow = outHeadrow & "|Action|Date Time|Target Unique ID|Target MD5|Target Path|Open Type|Access Requested|Tamper|Inbound Open|PID|Process Path|Unique ID"
+	outHeadrow = outHeadrow & "|Cross Process Action|Date Time|Target Unique ID|Target MD5|Target Path|Open Type|Access Requested|Tamper|Inbound Open|PID|Process Path|CrossProc Unique ID"
 	boolCrossHeader = True
   end if    
   strTmpText = getdata(StrTmpResponse,"]", "crossproc_complete" & CHr(34) & ": [")
@@ -799,7 +805,7 @@ end if
 'Date Time|IP Address|Remote Port|Protocol|Domain|Outbound|Sensor ID" & userNheader & processNheader|EMET|Execute|Network|Suspicious Indicators|SegmentID|Host Type|Group|Children|Blocked Process|CMD"
 if boolWriteHeader = False then
 	if strCsvHeader <> "" then strCsvHeader = strCsvHeader & ","
-	logdata strReportPath & "\Query_" & strUnique & ".txt", strCsvHeader & chr(34) & replace(outHeadrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
+	logdata strReportPath & "\Query_" & strUnique & ".csv", strCsvHeader & chr(34) & replace(outHeadrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	intHeaderCount = ubound(split(outHeadrow, "|"))
 end if
 CBEventData =  strOutLine

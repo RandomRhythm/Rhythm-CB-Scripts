@@ -1,4 +1,4 @@
-'Cb Pull Events v1.5.0 - Watchlist CSV output
+'Cb Pull Events v1.5.1 - ipport watchlist support
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -75,8 +75,10 @@ Dim boolFileWatchlist 'use file watchlist
 Dim DictFileWatchlist: Set DictFileWatchlist = CreateObject("Scripting.Dictionary")
 Dim DictDomainWatchlist: Set DictDomainWatchlist = CreateObject("Scripting.Dictionary")
 Dim DictIPWatchlist: Set DictIPWatchlist = CreateObject("Scripting.Dictionary")
+Dim DictPortWatchlist: Set DictPortWatchlist = CreateObject("Scripting.Dictionary")
 Dim objFSO: Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim forceWatchlistInclusion 'Force the addition of query IOCs to watchlists even if external watchlist imported IOCs 
+Dim strPortWatchlist
 CurrentDirectory = GetFilePath(wscript.ScriptFullName)
 strDebugPath = CurrentDirectory & "\Debug"
 
@@ -111,6 +113,7 @@ strRegWatchlist = "RegWatch.txt" 'Registry watchlist name
 strFileWatchlist = "FileWatch.txt" 'File watchlist name
 strDomainWatchlist = "DomainWatch.txt" 'Domain watchlist name
 strIPWatchlist = "IPWatch.txt" 'IP address watchlist name
+strPortWatchlist = "PortWatch.txt" 'Network port watchlist name
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'License key is required to use SocketTools 
 strIniPath="Cb_pe.ini"
@@ -128,6 +131,7 @@ strRegWatchlist = UpdatePath(strWatchlistFolder & "\" & strRegWatchlist) 'add cu
 strFileWatchlist = UpdatePath(strWatchlistFolder & "\" & strFileWatchlist) 'add currentdirectory to path
 strDomainWatchlist = UpdatePath(strWatchlistFolder & "\" & strDomainWatchlist)  'Domain watchlist name
 strIPWatchlist = UpdatePath(strWatchlistFolder & "\" & strIPWatchlist) 'IP address watchlist name
+strPortWatchlist = UpdatePath(strWatchlistFolder & "\" & strPortWatchlist) 'Port watchlist name
 
 if objFSO.FileExists(strIniPath) = True then
 '---Ini loading section
@@ -146,6 +150,7 @@ boolRegWatchlist = ValueFromINI(strIniPath, "BooleanValues", "RegistryWatch", bo
 boolFileWatchlist = ValueFromINI(strIniPath, "BooleanValues", "FileWatch", boolFileWatchlist)
 boolDomainWatchlist = ValueFromINI(strIniPath, "BooleanValues", "DomainWatch", boolDomainWatchlist)
 boolIPWatchlist = ValueFromINI(strIniPath, "BooleanValues", "IPWatch", boolIPWatchlist)
+boolPortWatchlist = ValueFromINI(strIniPath, "BooleanValues", "PortWatch", boolPortWatchlist)
 pullAllSections = ValueFromINI(strIniPath, "BooleanValues", "AllSections", pullAllSections)
 boolReportUserName = ValueFromINI(strIniPath, "BooleanValues", "ReportUserName", boolReportUserName)
 boolReportProcessName = ValueFromINI(strIniPath, "BooleanValues", "ReportProcessName", boolReportProcessName)
@@ -317,6 +322,7 @@ if boolRegWatchlist = True then LoadCustomDict strRegWatchlist, DictRegWatchlist
 if boolFileWatchlist = True then loadWatchlist strCbQuery, "filemod:", DictFileWatchlist, strFileWatchlist
 if boolDomainWatchlist = True then loadWatchlist strCbQuery, "domain:", DictDomainWatchlist, strDomainWatchlist
 if boolIPWatchlist = True then loadWatchlist strCbQuery, "ipaddr:", DictIPWatchlist, strIPWatchlist
+if boolPortWatchlist = True then loadWatchlist strCbQuery, "ipport:", DictPortWatchlist, strPortWatchlist
 
 msgbox "executing query: " & strCbQuery
 logdata strReportPath & "\Query_" & strUnique & ".txt",strCbQuery, false
@@ -604,7 +610,7 @@ process_pid = getdata(StrTmpResponse,",", "process_pid" & CHr(34) & ": " )
 if boolNetworkEnable = True and APIVersion  > 1 and APIVersion < 5 then
   if boolNetworkHeader = False then
 	outrow = "Date Time|IP Address|Local Port|Remote Port|Protocol|Domain|Outbound|Sensor ID" & userNheader & processNheader
-  if boolIPWatchlist = True or boolDomainWatchlist = True then outrow = outrow & "|Watchlist"
+  if boolIPWatchlist = True or boolDomainWatchlist = True or boolPortWatchlist = True then outrow = outrow & "|Watchlist"
 	logdata strReportPath & "\IP_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolNetworkHeader = True
   end if
@@ -627,10 +633,17 @@ if boolNetworkEnable = True and APIVersion  > 1 and APIVersion < 5 then
       strIP = IPDecToDotQuad(strIP)
     end if
     
-    if boolDomainWatchlist = True then 
-      strWatchResult = "," & Chr(34) & MatchWatchList(strDomain, DictDomainWatchlist) & Chr(34) 
-    elseif boolIPWatchlist = True then 
-      strWatchResult = "," & Chr(34) & MatchWatchList(strIP, DictIPWatchlist) & Chr(34)       
+    if boolDomainWatchlist = True or boolIPWatchlist = True or boolPortWatchlist = True then 
+      if boolDomainWatchlist = True then  strWatchResult = "," & Chr(34) & MatchWatchList(strDomain, DictDomainWatchlist) & Chr(34) 'check domain
+      if boolIPWatchlist = True and strWatchResult = "," & Chr(34) & Chr(34) then 
+        strWatchResult = "," & Chr(34) & MatchWatchList(strIP, DictIPWatchlist) & Chr(34) 'check IP
+        if strWatchResult = "," & Chr(34) & Chr(34) then
+          strWatchResult = "," & Chr(34) & MatchWatchList(strRport, DictPortWatchlist) & Chr(34)   'check remote port
+        end if
+        if strWatchResult = "," & Chr(34) & Chr(34) then
+          strWatchResult = "," & Chr(34) & MatchWatchList(strLport, DictPortWatchlist) & Chr(34)   'check local port
+        end if
+      end if
     else
       strWatchResult = ""
     end if

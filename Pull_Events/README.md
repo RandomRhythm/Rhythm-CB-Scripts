@@ -11,7 +11,7 @@ Will take the provided query and attempt to pull the following associated event 
 Example:
 `Cb_Pull_Events.vbs query`
 
-If providing multiple statements within the query you must quote the whole query. Remove drive letters from file paths. Query time frame can be restricted using last_update. 
+If providing multiple statements within the query you must quote the whole query. Query time frame can be restricted using last_update. 
 
 Example:
-`AND last_update:-10080m`
+`Cb_Pull_Events.vbs "sensor_id:123 AND last_update:-10080m"`

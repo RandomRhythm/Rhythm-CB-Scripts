@@ -27,8 +27,8 @@ The extract_CB_zips script will utilize 7z to extract File_Download zip files. F
 #### Event_Sampler
 The Event_Sampler is a branch of the Pull_Events script. Instead of outputting CSV files for the various event categories, the script will output a sampling from each event category into one CSV file.
 
-#### SocetTools
-SocetTools requires that it only be used in compiled code. However, compiling VBScript causes many antimalware vendors to detect the resulting executable file. The antimalware detections were causing problems with downloading this repo and thus were removed. If you would like compiled versions, please let me know as currently, that doesn't appear to be a problem these days.  
+#### SocketTools
+SocketTools requires that it only be used in compiled code. However, compiling VBScript causes many antimalware vendors to detect the resulting executable file. The antimalware detections were causing problems with downloading this repo and thus were removed. If you would like compiled versions, please let me know as currently, that doesn't appear to be a problem these days.  
 
 
 ### Configuring the INI file

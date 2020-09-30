@@ -756,7 +756,8 @@ if boolFileEnable = True then
   end if       
   strTmpText = getdata(StrTmpResponse,chr(34) & "], ", "filemod_complete" & CHr(34) & ": [")
   If strTmpText = "" then strTmpText = ", "
-  CbarrayEvents = split(strTmpText, ", ")
+
+  CbarrayEvents = split(strTmpText, chr(34) & ", ")
   for each EventEntry in CbarrayEvents
 	if instr(EventEntry, "|") > 0 then 
 	  tmpEvent = replace(EventEntry,chr(34), "")

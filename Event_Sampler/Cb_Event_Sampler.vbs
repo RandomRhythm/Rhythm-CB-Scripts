@@ -40,6 +40,7 @@ Dim boolCrossEnable
 Dim dictRegAction: Set dictRegAction = CreateObject("Scripting.Dictionary")
 Dim dictChild: Set dictChild = CreateObject("Scripting.Dictionary")
 Dim dictFileAction: Set dictFileAction = CreateObject("Scripting.Dictionary")
+Dim dictProcAction: Set dictProcAction = CreateObject("Scripting.Dictionary")
 Dim dictUID: Set dictUID = CreateObject("Scripting.Dictionary")
 Dim boolDebug: boolDebug = false
 Dim boolReportUserName
@@ -706,7 +707,7 @@ if boolModEnable = True then
 
 	  end if
 	else
-	    strOutLine = strOutLine & "," & Chr(34) & Chr(34) & "," & Chr(34) & Chr(34) & "," & Chr(34) & chr(34)
+	    strOutLine = strOutLine & "," & Chr(34) & Chr(34) & "," & Chr(34) & Chr(34) & "," & Chr(34) & chr(34) & "," & Chr(34) & chr(34)
 	    Exit for
 	end if
   Next

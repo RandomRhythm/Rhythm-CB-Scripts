@@ -609,7 +609,7 @@ process_pid = getdata(StrTmpResponse,",", "process_pid" & CHr(34) & ": " )
 
 if boolNetworkEnable = True and APIVersion  > 1 and APIVersion < 5 then
   if boolNetworkHeader = False then
-	outrow = "Date Time|IP Address|Local Port|Remote Port|Protocol|Domain|Outbound|Sensor ID" & userNheader & processNheader
+	outrow = "Date Time|Remote IP Address|Local Port|Remote Port|Protocol|Domain|Outbound|Local Sensor ID" & userNheader & processNheader
   if boolIPWatchlist = True or boolDomainWatchlist = True or boolPortWatchlist = True then outrow = outrow & "|Watchlist"
 	logdata strReportPath & "\IP_out_" & strUnique & ".csv", chr(34) & replace(outrow, "|", chr(34) & "," & Chr(34)) & Chr(34), false
 	boolNetworkHeader = True

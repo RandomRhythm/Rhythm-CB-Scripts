@@ -216,7 +216,7 @@ if objFSO.fileexists(CurrentDirectory & "\" & strInputPath) then
   strInputPath = CurrentDirectory & "\" & strInputPath
 else
 
-	wscript.echo "Please open the text input list or CSV file"
+	wscript.echo "Please open the text file input list or CSV file"
 	strInputPath = SelectFile( )
 end if
 
@@ -741,12 +741,15 @@ if boolChildEnable = True and APIVersion  >= 3 then
    "," & Chr(34) & process_pid & Chr(34) & "," & Chr(34) & strIDPath & Chr(34) & "," & Chr(34) & sensor_id & Chr(34) & "," & Chr(34) & childCommandLine & Chr(34)
    if dictChild.exists(strWriteLine) = False then 
 	dictChild.add strWriteLine, childDateEndTime
-   else		
+   else	
 	strOutLine = strOutLine & "," & Chr(34) & childDateStartTime & Chr(34) & "," & Chr(34) & dictChild.item(strWriteLine) & Chr(34) & "," & strWriteLine
 	exit for
    end if	
 
   next
+  if ubound(CbarrayEvents) = 1 then
+    strOutLine = strOutLine & "," & Chr(34) & childDateStartTime & Chr(34) & "," & Chr(34) & dictChild.item(strWriteLine) & Chr(34) & "," & strWriteLine
+  end if
 end if
 
 if boolFileEnable = True then 

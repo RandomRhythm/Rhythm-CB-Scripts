@@ -1,4 +1,4 @@
-'Cb Event Sampler v1.0.1
+'Cb Event Sampler v1.0.2
 'Queries IOCs in Cb Response event data and provides a sampling CSV output
 
 
@@ -541,6 +541,8 @@ strTmp_netconn_count = getdata(StrTmpResponse,",", "netconn_count" & CHr(34) & "
 strTmp_alliance_score_bit9suspiciousindicators = getdata(StrTmpResponse,",", "alliance_score_bit9suspiciousindicators" & CHr(34) & ": " )
 strTmp_id = getdata(StrTmpResponse,Chr(34), chr(34) & "id" & CHr(34) & ": " )
 strTmp_ExePath = getdata(StrTmpResponse,",", chr(34) & "path" & CHr(34) & ": " )
+if instr(strTmp_ExePath, chr(34)) > 0 then strTmp_ExePath = replace(strTmp_ExePath, chr(34), "") 'remove quotes
+ 
 strTmp_segment_id = getdata(StrTmpResponse,",", "segment_id" & CHr(34) & ": " )
 sensor_id = getdata(StrTmpResponse,",", "sensor_id" & CHr(34) & ": " )
 if boolReportUserName = True then 
@@ -697,8 +699,10 @@ if boolModEnable = True then
 	  ArrayEE = split(tmpEvent, "|")
 	  if ubound(arrayEE) = 2 Then tmpEvent = tmpEvent & "|"
 	  If ubound(arrayEE) > 1 then
-	   strOutLine = strOutLine & "," & chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) 
-		exit for
+      if arrayEE(2) <> strTmp_ExePath then
+        strOutLine = strOutLine & "," & chr(34) & replace(tmpEvent, "|", chr(34) & "," & Chr(34)) & Chr(34) 
+        exit for
+      end if
 
 	  end if
 	else

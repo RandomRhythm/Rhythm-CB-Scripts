@@ -167,6 +167,10 @@ dictFileAction.add "2", "First Written"
 dictFileAction.add "4", "Deleted"
 dictFileAction.add "8", "Last Writen"
 
+dictProcAction.add "0", "Injected new thread into"
+dictProcAction.add "64", "OpenProcess() API call requested PROCESS_DUP_HANDLE access rights. (Desired Access: 0x0040)"
+dictProcAction.add "5114", "OpenProcess() API call requested PROCESS_VM_OPERATION access rights. (Desired Access: 0x1418)"
+dictProcAction.add "2097151", "Opened handle with change access rights to"
 
 strFile = CurrentDirectory & "\cb.dat"
 strData = ""
@@ -743,11 +747,12 @@ if boolChildEnable = True and APIVersion  >= 3 then
 	dictChild.add strWriteLine, childDateEndTime
    else	
 	strOutLine = strOutLine & "," & Chr(34) & childDateStartTime & Chr(34) & "," & Chr(34) & dictChild.item(strWriteLine) & Chr(34) & "," & strWriteLine
+	dictChild.RemoveAll
 	exit for
    end if	
 
   next
-  if ubound(CbarrayEvents) = 1 then
+  if ubound(CbarrayEvents) = 1 and dictChild.count > 0 then
     strOutLine = strOutLine & "," & Chr(34) & childDateStartTime & Chr(34) & "," & Chr(34) & dictChild.item(strWriteLine) & Chr(34) & "," & strWriteLine
   end if
 end if

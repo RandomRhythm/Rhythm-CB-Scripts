@@ -101,6 +101,7 @@ DIm boolQueryParent
 Dim boolUseSocketTools
 Dim strLicenseKey
 Dim strReportPath
+Dim StrClientCert 'Path to client certificate
 DIm objShell: Set objShell = WScript.CreateObject("WScript.Shell") 
 
 'debug
@@ -128,6 +129,7 @@ boolQueryParent = False 'Query parent processes of alerts in feeds
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'License key is required to use SocketTools 
 strIniPath="Cb_Feeds.ini"
+StrClientCert = "" 'client certificate path: "CURRENT_USER\My\ServerXMLHTTP" would be the path if you used the following command to create the certificate - New-SelfSignedCertificate -DnsName "ServerXMLHTTP", "ServerXMLHTTP" -CertStoreLocation "cert:\CurrentUser\My"
 '---End Query Config Section
 
 
@@ -608,7 +610,9 @@ if BoolDebugTrace = True then logdata strDebugPath & "\CarBlack" & "" & ".txt", 
 if boolUseSocketTools = False then
 	objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
 	objHTTP.open "GET", strAVEurl, True
-
+  if StrClientCert <> "" then 'provide client certificate to the web server
+    objHTTP.SetOption(3, StrClientCert)
+  end if
 	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
 	  
 

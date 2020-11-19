@@ -185,6 +185,7 @@ if objFSO.FileExists(strIniPath) = True then
 	IntDayEndQuery = ValueFromINI(strIniPath, "IntegerValues", "EndTime", IntDayEndQuery)
 	strTimeMeasurement = ValueFromINI(strIniPath, "StringValues", "TimeMeasurement", strTimeMeasurement)
 	strSensorID = ValueFromINI(strIniPath, "StringValues", "SensorID", strSensorID)
+	StrClientCert = ValueFromINI(strIniPath, "StringValues", "ClientCertPath", StrClientCert)
 	intSleepDelay = ValueFromINI(strIniPath, "IntegerValues", "SleepDelay", intSleepDelay)
 	intPagesToPull = ValueFromINI(strIniPath, "IntegerValues", "PagesToPull", intPagesToPull)
 	intReceiveTimeout = ValueFromINI(strIniPath, "IntegerValues", "ReceiveTimeout", intReceiveTimeout)
@@ -611,7 +612,7 @@ if boolUseSocketTools = False then
 	objHTTP.SetTimeouts 600000, 600000, 600000, 900000 
 	objHTTP.open "GET", strAVEurl, True
   if StrClientCert <> "" then 'provide client certificate to the web server
-    objHTTP.SetOption(3, StrClientCert)
+    objHTTP.SetOption 3, StrClientCert
   end if
 	objHTTP.setRequestHeader "X-Auth-Token", strCarBlackAPIKey 
 	  

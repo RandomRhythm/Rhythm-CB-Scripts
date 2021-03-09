@@ -1,8 +1,8 @@
 'Spreadsheet OS Parser for CB_Sensor_Dump csv output
 'requires Microsoft Excel
-'v2.0 - Remove duplicate computers from reporting
+'v2.1 - Support for additional spreadsheet column names. Support for Ubuntu and Windows Server 2019.
 
-'Copyright (c) 2019 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2021 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -66,7 +66,10 @@ mycolumncounter = 1
 Do Until objExcel.Cells(1,mycolumncounter).Value = ""
     
   if objExcel.Cells(1,mycolumncounter).Value = "Computer" then int_hostname_location = mycolumncounter
-  if objExcel.Cells(1,mycolumncounter).Value = "Operating System" then int_vuln_location = mycolumncounter
+  if objExcel.Cells(1,mycolumncounter).Value = "Hostname" or objExcel.Cells(1,mycolumncounter).Value = "FQDN" then int_hostname_location = mycolumncounter
+  if objExcel.Cells(1,mycolumncounter).Value = "Operating System" or objExcel.Cells(1,mycolumncounter).Value = "OS" then int_vuln_location = mycolumncounter
+  if objExcel.Cells(1,mycolumncounter).Value = "OS Version" or objExcel.Cells(1,mycolumncounter).Value = "OS version" then int_vuln_location = mycolumncounter
+
   
   mycolumncounter = mycolumncounter +1
 loop
@@ -83,21 +86,21 @@ Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null valu
   strCompName = objExcel.Cells(intRowCounter,int_hostname_location).Value
   if boolUniqueOnly = False or (boolUniqueOnly = True and DictCompName.exists(strCompName) = False) then 
 	  strTmpVulnInfo = objExcel.Cells(intRowCounter,int_vuln_location).Value
-	  if instr(strTmpVulnInfo, "Server") > 0 or instr(strTmpVulnInfo, "Linux CentOS") > 0 then
-		if DictOSServversion.exists(strTmpVulnInfo) = False then 
-			DictOSServversion.add strTmpVulnInfo, 1
-			if Instr(strTmpVulnInfo, "Windows") > 0 and DictOSServversionWindows.exists(strTmpVulnInfo) = False then _
-			  DictOSServversionWindows.add strTmpVulnInfo, 1
-			if instr(strTmpVulnInfo, "Linux") > 0 and DictOSServversionLinux.exists(ShortenOSname(strTmpVulnInfo)) = False then _
-			  DictOSServversionLinux.add ShortenOSname(strTmpVulnInfo), 1
-		  
-		else
-		  DictOSServversion.item(strTmpVulnInfo) = DictOSServversion.item(strTmpVulnInfo) + 1
-		  if Instr(strTmpVulnInfo, "Windows") > 0  then _
-		  DictOSServversionWindows.item(strTmpVulnInfo) = DictOSServversionWindows.item(strTmpVulnInfo) + 1
-		  if Instr(strTmpVulnInfo, "Linux") > 0  then _
-		  DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) = DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) + 1	 	  
-		end if  
+	  if instr(strTmpVulnInfo, "Server") > 0 or instr(strTmpVulnInfo, "CentOS") > 0 or instr(strTmpVulnInfo, "Ubuntu") > 0 then
+      if DictOSServversion.exists(strTmpVulnInfo) = False then 
+        DictOSServversion.add strTmpVulnInfo, 1
+        if Instr(strTmpVulnInfo, "Windows") > 0 and DictOSServversionWindows.exists(strTmpVulnInfo) = False then _
+          DictOSServversionWindows.add strTmpVulnInfo, 1
+        if (instr(strTmpVulnInfo, "Linux") > 0 or instr(strTmpVulnInfo, "Ubuntu") > 0) and DictOSServversionLinux.exists(ShortenOSname(strTmpVulnInfo)) = False then _
+          DictOSServversionLinux.add ShortenOSname(strTmpVulnInfo), 1
+        
+      else
+        DictOSServversion.item(strTmpVulnInfo) = DictOSServversion.item(strTmpVulnInfo) + 1
+        if Instr(strTmpVulnInfo, "Windows") > 0  then _
+        DictOSServversionWindows.item(strTmpVulnInfo) = DictOSServversionWindows.item(strTmpVulnInfo) + 1
+        if Instr(strTmpVulnInfo, "Linux") > 0  then _
+        DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) = DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) + 1	 	  
+      end if  
 	  else 
 		if DictOSWorkversion.exists(strTmpVulnInfo) = False then
 			DictOSWorkversion.add strTmpVulnInfo, 1
@@ -125,17 +128,19 @@ Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null valu
 		strConsolidated = "Windows 2012"
 	  elseif instr(strTmpVulnInfo, "2016") then
 		strConsolidated = "Windows 2016"
+	  elseif instr(strTmpVulnInfo, "2019") then
+		strConsolidated = "Windows 2019"
 	  elseif instr(strTmpVulnInfo, "Windows XP") then
 		strConsolidated = "Windows XP"
 	  elseif instr(strTmpVulnInfo, "Vista") then
 		strConsolidated = "Windows Vista"
-	  elseif instr(strTmpVulnInfo, "Windows 7") then
+	  elseif instr(strTmpVulnInfo, "Windows 7") > 0 or instr(strTmpVulnInfo, "6.1.7601") > 0 then
 		strConsolidated = "Windows 7"
 	  elseif instr(strTmpVulnInfo, "Windows 8.1") then
 		strConsolidated = "Windows 8.1"
 	  elseif instr(strTmpVulnInfo, "Windows 8") then
 		strConsolidated = "Windows 8"
-	  elseif instr(strTmpVulnInfo, "Windows 10") then
+	  elseif instr(strTmpVulnInfo, "Windows 10") >0  or instr(strTmpVulnInfo, "10.0.18363") >0  then
 		if instr(strTmpVulnInfo, "Server") then
 			strConsolidated = "Windows 2016"
 		else

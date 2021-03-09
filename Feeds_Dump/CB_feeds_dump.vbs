@@ -129,7 +129,7 @@ boolQueryParent = False 'Query parent processes of alerts in feeds
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'License key is required to use SocketTools 
 strIniPath="Cb_Feeds.ini"
-StrClientCert = "" 'client certificate path: "CURRENT_USER\My\ServerXMLHTTP" would be the path if you used the following command to create the certificate - New-SelfSignedCertificate -DnsName "ServerXMLHTTP", "ServerXMLHTTP" -CertStoreLocation "cert:\CurrentUser\My"
+StrClientCert = "" 'client certificate path: "CURRENT_USER\My\COMPUTERNAME" would be the path if you used the following command to create the certificate - New-SelfSignedCertificate -DnsName "COMPUTERNAME", "COMPUTERNAME.EXAMPLE.COM" -CertStoreLocation "cert:\CurrentUser\My"
 '---End Query Config Section
 
 
@@ -170,7 +170,7 @@ boolAdditionalQueries = True
 boolEnableCbInspection = True
 boolMS17010Check = True
 boolCVE_2017_11826 = True
-boolEnableAttackFramework = True 'disable this by default via the INI due to amount
+boolEnableAttackFramework = True
 boolCVE_2019_0708 = True 'BlueKeep
 boolDejaBlue = True
 boolCVE_2020_0601 = True 'Windows CryptoAPI Spoofing Vulnerability

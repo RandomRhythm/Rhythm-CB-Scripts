@@ -55,6 +55,7 @@ boolOutputWID = True 'Watchlist ID
 IntDayStartQuery = "-9" 'days to go back for start date of query. Set to * to query all 
 IntDayEndQuery = "*" 'days to go back for end date of query. Set to * for no end date
 strTimeMeasurement = "d" '"h" for hours "d" for days
+strSensorID = "" 'sensor_id
 'DictFeedExclude.add "SRSThreat", 0 'exclude feed
 'DictFeedExclude.add "NVD", 0 'exclude feed
 'DictFeedExclude.add "SRSTrust", 0 'exclude feed
@@ -80,6 +81,7 @@ if objFSO.FileExists(strIniPath) = True then
 	IntDayStartQuery = ValueFromINI(strIniPath, "IntegerValues", "StartTime", IntDayStartQuery)
 	IntDayEndQuery = ValueFromINI(strIniPath, "IntegerValues", "EndTime", IntDayEndQuery)
 	strTimeMeasurement = ValueFromINI(strIniPath, "StringValues", "TimeMeasurement", strTimeMeasurement)
+	strSensorID = ValueFromINI(strIniPath, "StringValues", "SensorID", strSensorID)
 	intSleepDelay = ValueFromINI(strIniPath, "IntegerValues", "SleepDelay", intSleepDelay)
 	intPagesToPull = ValueFromINI(strIniPath, "IntegerValues", "PagesToPull", intPagesToPull)
 	intSizeLimit = ValueFromINI(strIniPath, "IntegerValues", "SizeLimit", intSizeLimit)
@@ -90,6 +92,11 @@ if objFSO.FileExists(strIniPath) = True then
 '---End ini loading section
 else
 	if BoolRunSilent = False then WScript.Echo strFilePath & " does not exist. Using script configured/default settings instead"
+end if
+
+if strSensorID <> "" then 
+  msgbox "filtering to sensor ID " & strSensorID
+  strHostFilter = " AND sensor_id:" & strSensorID
 end if
 
 if isnumeric(IntDayStartQuery) then
@@ -200,7 +207,7 @@ for each strCBFeedID in DictFeedInfo
       intCBcount = 10
       boolHeaderWritten = False
       strHashOutPath = strReportPath & "\CBalert_" & DictFeedInfo.item(strCBFeedID) & "_" & udate(now) & ".csv"
-      intTotalQueries = DumpCarBlack(0, True, intCBcount, strQueryFeed)
+      intTotalQueries = DumpCarBlack(0, True, intCBcount, strQueryFeed & strHostFilter)
       wscript.sleep intSleepDelay
       logdata CurrentDirectory & "\CB_Alerts.log", date & " " & time & ": " & "Total number of items being retrieved for feed " & DictFeedInfo.item(strCBFeedID) & ": " & intTotalQueries ,boolEchoInfo
       
@@ -209,7 +216,7 @@ for each strCBFeedID in DictFeedInfo
         do while (intCBcount < clng(intTotalQueries) Or clng(intTotalQueries) < intCBcount And intCBcount < CLng(intPagesToPull)) and intCBcount < intSizeLimit
 
           If BoolDebugTrace = True Then logdata strDebugPath & "\follow_queries.log" , date & " " & time & " " & DictFeedInfo.item(strCBFeedID) & ": " & intCBcount & " < " & intTotalQueries & " and " & intCBcount & " < " & intSizeLimit, false
-          DumpCarBlack intCBcount, True, intPagesToPull, strQueryFeed
+          DumpCarBlack intCBcount, True, intPagesToPull, strQueryFeed & strHostFilter
           intCBcount = intCBcount + intPagesToPull
           wscript.sleep intSleepDelay
         loop

@@ -1,6 +1,6 @@
 'Spreadsheet OS Parser for CB_Sensor_Dump csv output
 'requires Microsoft Excel
-'v2.1 - Support for additional spreadsheet column names. Support for Ubuntu and Windows Server 2019.
+'v2.2 - Support for additional spreadsheet column names.
 
 'Copyright (c) 2021 Ryan Boyle randomrhythm@rhythmengineering.com.
 
@@ -65,11 +65,11 @@ Set objWorkbook = objExcel.Workbooks.Open _
 mycolumncounter = 1
 Do Until objExcel.Cells(1,mycolumncounter).Value = ""
     
-  if objExcel.Cells(1,mycolumncounter).Value = "Computer" then int_hostname_location = mycolumncounter
+  if objExcel.Cells(1,mycolumncounter).Value = "Computer" or objExcel.Cells(1,mycolumncounter).Value = "computer_dns_name" then int_hostname_location = mycolumncounter
   if objExcel.Cells(1,mycolumncounter).Value = "Hostname" or objExcel.Cells(1,mycolumncounter).Value = "FQDN" then int_hostname_location = mycolumncounter
   if objExcel.Cells(1,mycolumncounter).Value = "Operating System" or objExcel.Cells(1,mycolumncounter).Value = "OS" then int_vuln_location = mycolumncounter
   if objExcel.Cells(1,mycolumncounter).Value = "OS Version" or objExcel.Cells(1,mycolumncounter).Value = "OS version" then int_vuln_location = mycolumncounter
-
+  if objExcel.Cells(1,mycolumncounter).Value = "os_environment_display_string" then int_vuln_location = mycolumncounter
   
   mycolumncounter = mycolumncounter +1
 loop

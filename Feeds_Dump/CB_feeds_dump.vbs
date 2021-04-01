@@ -1,4 +1,4 @@
-'CB Feed Dump v5.0.0 - CVE-2020-0601 | Windows CryptoAPI Spoofing Vulnerability detection
+'CB Feed Dump v5.0.1 - Fix YARA lookups
 'Pulls data from the Cb Response API via feeds, watchlists and additional queries. Results are written to CSV. Can also pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -7,7 +7,7 @@
 'knowndll|/api/v1/binary?q=observed_filename:known.dll&digsig_result:Unsigned
 
 
-'Copyright (c) 2020 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2021 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -1019,8 +1019,8 @@ if StrCBMD5 <> "" then
   if left(lcase(strQueryFeed), 15) = "/api/v1/binary?" then
 	strYaraLine = ""
 	if boolAddYARAtoReports = True then
-		if dictYARA.exists(StrCBMD5) then
-			strYaraLine = "|" & dictYARA.item(StrCBMD5)
+		if dictYARA.exists(lcase(StrCBMD5)) then
+			strYaraLine = "|" & dictYARA.item(lcase(StrCBMD5))
 		else
 			strYaraLine = "|" 
 		end if
@@ -1742,7 +1742,7 @@ do while boolexit = False
 
         if strTitle <> "" then
           if instr(strTitle, "Matched yara rules: ") and ishash(strItem) then
-            dictYARA.add strItem, replace(right(strTitle,len(strTitle) -20), ",", "^")
+            dictYARA.add lcase(strItem), replace(right(strTitle,len(strTitle) -20), ",", "^")
             strTitle = right(strTitle, len(strTitle)-20)
           end if
           strRowOut = strCBid & "|" & strTitle & "|" & strItem

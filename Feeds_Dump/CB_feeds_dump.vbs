@@ -1,4 +1,4 @@
-'CB Feed Dump v5.0.2 - Fix JSON parsing for watchlists
+'CB Feed Dump v5.0.3 - Change some message boxes to popups. Log non-200 errors
 'Pulls data from the Cb Response API via feeds, watchlists and additional queries. Results are written to CSV. Can also pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -639,11 +639,12 @@ if boolUseSocketTools = False then
 		if objHTTP.status = 405 then
 			'failed access
 			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP status " & objHTTP.status & " - This could indicate you do not have appropiate rights to query feeds",False 
-			msgbox "CarBlack lookup failed with HTTP status " & objHTTP.status & " - This could indicate you do not have appropiate rights to query feeds" 
+			objShell.Popup "CarBlack lookup failed with HTTP status " & objHTTP.status & " - This could indicate you do not have appropiate rights to query feeds", 15
 			exit function
 		end if
 		if objHTTP.status <> 200 then
-			msgbox "Cb feeds dump non-200 status code returned:" & objHTTP.status & vbCrLf & strURLQuery
+			logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " Cb feeds dump non-200 status code returned:" & objHTTP.status & vbCrLf & strURLQuery
+			objShell.Popup "Cb feeds dump non-200 status code returned:" & objHTTP.status & vbCrLf & strURLQuery,15
 		end if
 	  if err.number <> 0 then
 		logdata CurrentDirectory & "\CB_Error.log", Date & " " & Time & " CarBlack lookup failed with HTTP error. - " & err.description,False 

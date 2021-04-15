@@ -1,4 +1,4 @@
-'CB Feed Dump v5.0.1 - Fix YARA lookups
+'CB Feed Dump v5.0.2 - Fix JSON parsing for watchlists
 'Pulls data from the Cb Response API via feeds, watchlists and additional queries. Results are written to CSV. Can also pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -674,7 +674,9 @@ for each strCBResponseText in strArrayCBresponse
     'logdata strDebugPath & "cbresponse.log", strCBresponseText, True
     if instr(strCBresponseText, "Sample not found by hash ") > 0 then
       'hash not found
-    else
+    Else
+      colonSpace = ": "
+      If instr(strCBresponseText, ": " & Chr(34)) = 0 Then colonSpace = ":" 'support both formats seen in JSON
       if instr(strCBresponseText, "total_results" & Chr(34) & ": ") > 0 then
         DumpCarBlack = getdata(strCBresponseText, ",", "total_results" & Chr(34) & ": ")
       elseif instr(strCBresponseText, "provider_url" & Chr(34) & ": ") > 0 and instr(strCBresponseText, "id" & Chr(34) & ": ") > 0 then
@@ -682,10 +684,10 @@ for each strCBResponseText in strArrayCBresponse
         strTmpFeedName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
 		if strTmpFeedName = "yara" then yaraFeedID = strTmpFeedID
         if DictFeedInfo.exists(strTmpFeedID) = false then DictFeedInfo.add strTmpFeedID, strTmpFeedName
-      elseif instr(strCBresponseText, "search_query" & Chr(34) & ": ") > 0 and instr(strCBresponseText, "id" & Chr(34) & ": ") > 0 Then
-        strTmpwatchlistID = getdata(strCBresponseText, Chr(34), chr(34) & "id" & Chr(34) & ": " & Chr(34))
-        strTmpWLName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & ": " & Chr(34))
-        strTmpActualWatchlistQuery = getdata(strCBresponseText, Chr(34), chr(34) & "search_query" & Chr(34) & ": " & Chr(34))
+      ElseIf instr(strCBresponseText, "search_query" & Chr(34) & colonSpace) > 0  and instr(strCBresponseText, "id" & Chr(34) & colonSpace) > 0 Then
+        strTmpwatchlistID = getdata(strCBresponseText, Chr(34), chr(34) & "id" & Chr(34) & colonSpace & Chr(34))
+        strTmpWLName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & colonSpace & Chr(34))
+        strTmpActualWatchlistQuery = getdata(strCBresponseText, Chr(34), chr(34) & "search_query" & Chr(34) & colonSpace & Chr(34))
 	        strTmpWatchlistQuery = "/api/v1/process?q=watchlist_" & strTmpwatchlistID & ":*"
       	if DictAdditionalQueries.exists(strTmpWLName) = False then
 			DictAdditionalQueries.add strTmpWLName, strTmpWatchlistQuery

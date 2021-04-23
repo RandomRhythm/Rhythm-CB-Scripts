@@ -1,4 +1,4 @@
-'Cb Pull Events v1.5.1 - ipport watchlist support
+'Cb Pull Events v1.5.2 - Fix file baseline
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -865,7 +865,7 @@ if boolFileEnable = True then
           if boolUseBaseline = False or dictBaselineFile.exists(strquery & "|" & arrayEE(2) & "|" & arrayEE(3)) = false then
             logdata strReportPath & "\File_out_" & strUnique & ".csv",strWriteLine, false
           end if
-      elseif dictBaselineFile = True then
+      elseif boolBaselineFile = True then
         if dictBaselineFile.exists(strquery & "|" & arrayEE(2) & "|" & arrayEE(3)) = false then
           dictBaselineFile.add strquery & "|" & arrayEE(2) & "|" & arrayEE(3), ""
           logdata strReportPath & "\File_out_" & strUnique & ".csv",strWriteLine, false

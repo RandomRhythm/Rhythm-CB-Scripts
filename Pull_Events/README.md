@@ -15,3 +15,8 @@ If providing multiple statements within the query you must quote the whole query
 
 Example:
 `Cb_Pull_Events.vbs "sensor_id:123 AND last_update:-10080m"`
+
+Optional arguments:
+* `/a` argument to auto accept pulling down all results.
+* `'/b` to baseline. Add letters after the "b" to tell it what to baseline: 
+	* `/bmnc`  `"m"` - modules. `"n"` - network. `"c"` - cross process

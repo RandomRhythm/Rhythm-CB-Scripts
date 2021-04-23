@@ -1,4 +1,4 @@
-'CB Feed Dump v5.0.3 - Change some message boxes to popups. Log non-200 errors
+'CB Feed Dump v5.0.4 - Fix JSON parsing for watchlists. Add option to output watchlist information via boolOutputWatchListDescription.
 'Pulls data from the Cb Response API via feeds, watchlists and additional queries. Results are written to CSV. Can also pull parent and child data for the process alerts in the feeds.
 
 'additional queries can be run via aq.txt in the current directory.
@@ -103,6 +103,7 @@ Dim strLicenseKey
 Dim strReportPath
 Dim StrClientCert 'Path to client certificate
 DIm objShell: Set objShell = WScript.CreateObject("WScript.Shell") 
+Dim boolOutputWatchListDescription
 
 'debug
 BoolDebugTrace = False
@@ -177,6 +178,7 @@ boolCVE_2020_0601 = True 'Windows CryptoAPI Spoofing Vulnerability
 strIniPath = "Cb_Feeds.ini"
 strStaticFPversion = "32.0.0.255"
 'strLTSFlashVersion = "18.0.0.383" 'support ended October 11, 2016 with version 18.0.0.382 
+boolOutputWatchListDescription = True
 '---End script settings section
 
 if objFSO.FileExists(strIniPath) = True then
@@ -666,7 +668,9 @@ if instr(strCBresponseText, vblf & "    {") > 0 then
   strArrayCBresponse = split(strCBresponseText, vblf & "    {")
 ElseIf instr(strCBresponseText, vblf & "  {") > 0 then
   strArrayCBresponse = split(strCBresponseText, vblf & "  {")
-Else 
+ElseIf instr(strCBresponseText, ",{") > 0 then
+  strArrayCBresponse = split(strCBresponseText, ",{")
+Else 'If instr(strCBresponseText, vblf & ", {") > 0 then
   strArrayCBresponse = split(strCBresponseText, ", {")
 End If	
 for each strCBResponseText in strArrayCBresponse
@@ -688,8 +692,12 @@ for each strCBResponseText in strArrayCBresponse
       ElseIf instr(strCBresponseText, "search_query" & Chr(34) & colonSpace) > 0  and instr(strCBresponseText, "id" & Chr(34) & colonSpace) > 0 Then
         strTmpwatchlistID = getdata(strCBresponseText, Chr(34), chr(34) & "id" & Chr(34) & colonSpace & Chr(34))
         strTmpWLName = getdata(strCBresponseText, Chr(34), chr(34) & "name" & Chr(34) & colonSpace & Chr(34))
+        strTmpWLDescription = getdata(strCBresponseText, Chr(34), chr(34) & "description" & Chr(34) & colonSpace & Chr(34))
         strTmpActualWatchlistQuery = getdata(strCBresponseText, Chr(34), chr(34) & "search_query" & Chr(34) & colonSpace & Chr(34))
 	        strTmpWatchlistQuery = "/api/v1/process?q=watchlist_" & strTmpwatchlistID & ":*"
+	    If boolOutputWatchListDescription = True Then
+	    	logdata strReportPath & "\" & udate(now) & "_watchlists.txt", strTmpwatchlistID & "|" & strTmpWLName & "|" & strTmpWLDescription , false
+	    End if
       	if DictAdditionalQueries.exists(strTmpWLName) = False then
 			DictAdditionalQueries.add strTmpWLName, strTmpWatchlistQuery
 		end if

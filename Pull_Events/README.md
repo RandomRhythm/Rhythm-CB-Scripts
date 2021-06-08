@@ -19,4 +19,4 @@ Example:
 Optional arguments:
 * `/a` argument to auto accept pulling down all results.
 * `/b` to baseline. Add letters after the "b" to tell it what to baseline: 
-	* `/bmnc`  `"m"` - modules. `"n"` - network. `"c"` - cross process
+	* `/bmncp`  `"m"` - modules. `"n"` - network. `"c"` - cross process. `"p"` - child process

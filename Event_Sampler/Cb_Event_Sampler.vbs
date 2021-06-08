@@ -1,8 +1,8 @@
-'Cb Event Sampler v1.0.2
+'Cb Event Sampler v1.0.3
 'Queries IOCs in Cb Response event data and provides a sampling CSV output
 
 
-'Copyright (c) 2020 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2021 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -602,6 +602,7 @@ if boolNetworkEnable = True and APIVersion  > 1 and APIVersion < 5 then
   strLport = getdata (IPinfo, ",", "local_port" & Chr(34) & ": " )
   strDirection = getdata (IPinfo, chr(34), "direction" & Chr(34) & ": " & chr(34))
   strRport = getdata (IPinfo, ",", "remote_port" & Chr(34) & ": ")
+  if right(strRport,1) = "}" then strRport = left(strRport, len(strRport)-1)'cleanup port string
   strIP = getdata (IPinfo, chr(34), "remote_ip" & Chr(34) & ": " & chr(34))
   strDtime = getdata (IPinfo, chr(34), "timestamp" & Chr(34) & ": " & chr(34))
   if strDtime <> "" Then

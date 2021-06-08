@@ -1,4 +1,4 @@
-'Cb Pull Events v1.5.2 - Fix file baseline
+'Cb Pull Events v1.5.3 - Support reading query from file
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -7,7 +7,7 @@
 '/bmnc "m" - modules. "n" - network. "c" - cross process
 
 
-'Copyright (c) 2020 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2021 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -117,13 +117,17 @@ strPortWatchlist = "PortWatch.txt" 'Network port watchlist name
 boolUseSocketTools = False 'Uses external library from SocketTools (needed when using old OS that does not support latest TLS standards)
 strLicenseKey = "" 'License key is required to use SocketTools 
 strIniPath="Cb_pe.ini"
+queryFile = "" ' text file containing query to run
 'end config section
 
 if objFSO.FileExists(strIniPath) = false then
 	If InStr(strIniPath, "\") = 0 Then 
 		strIniPath = CurrentDirectory & "\" & strIniPath
 	End If
-End if		
+End If
+
+
+
 
 strReportPath = UpdatePath(strReportPath) 'add currentdirectory to path
 strBaselinePath = UpdatePath(strBaselinePath) 'add currentdirectory to path
@@ -156,6 +160,7 @@ boolReportUserName = ValueFromINI(strIniPath, "BooleanValues", "ReportUserName",
 boolReportProcessName = ValueFromINI(strIniPath, "BooleanValues", "ReportProcessName", boolReportProcessName)
 forceWatchlistInclusion = ValueFromINI(strIniPath, "BooleanValues", "IncludeQueryInWatchlist", forceWatchlistInclusion)
 boolDebug = ValueFromINI(strIniPath, "BooleanValues", "Debug", boolDebug)	
+queryFile = ValueFromINI(strIniPath, "StringValues", "QueryFilePath", queryFile)		
 '---End ini loading section
 else
 	if BoolRunSilent = False then WScript.Echo strIniPath & " does not exist. Using script configured/default settings instead"
@@ -247,12 +252,15 @@ end if
 strCarBlackAPIKey = strTempAPIKey
 
 
-if WScript.Arguments.count < 1 then
+if WScript.Arguments.count < 1 And queryFile = "" then
   wscript.echo "No query parameter passed. Pass a CB query to the script as a argument"
   wscript.quit
 end if
 
-if WScript.Arguments(0) = "" and strCbQuery = "" then
+If queryFile <> "" Then
+	'we will use the query in the file instead of arguments.
+
+ElseIf WScript.Arguments(0) = "" and strCbQuery = "" then
   wscript.echo "No query parameter passed. Pass a CB query to the script as a argument"
   wscript.quit
 else
@@ -317,6 +325,13 @@ else
 		
 	next
 end if
+
+
+If queryFile <> "" And strCbQuery = "" Then 
+	queryFile  = CurrentDirectory & "\" & queryFile
+	  set readfilePath = objFSO.OpenTextFile(queryFile, 1, false)
+  if not readfilePath.AtEndOfStream then strCbQuery = readfilepath.readall
+End If	
 
 if boolRegWatchlist = True then LoadCustomDict strRegWatchlist, DictRegWatchlist
 if boolFileWatchlist = True then loadWatchlist strCbQuery, "filemod:", DictFileWatchlist, strFileWatchlist

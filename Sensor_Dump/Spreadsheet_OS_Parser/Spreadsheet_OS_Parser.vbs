@@ -1,6 +1,6 @@
 'Spreadsheet OS Parser for CB_Sensor_Dump csv output
 'requires Microsoft Excel
-'v2.2 - Support for additional spreadsheet column names.
+'v2.3 - Support for SUSE.
 
 'Copyright (c) 2021 Ryan Boyle randomrhythm@rhythmengineering.com.
 
@@ -118,7 +118,7 @@ Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null valu
 	  end if
 	  if instr(strTmpVulnInfo, "OSX") then
 		strConsolidated = "Mac OS X"
-	  elseif instr(strTmpVulnInfo, "Linux") > 0 and instr(strTmpVulnInfo, "release") > 0 and instr(strTmpVulnInfo, ".") > 0 then
+	  elseif instr(strTmpVulnInfo, "Linux") > 0 and (instr(strTmpVulnInfo, "release") > 0 Or instr(strTmpVulnInfo, "SUSE") > 0) and instr(strTmpVulnInfo, ".") > 0 then
 		strConsolidated = ShortenOSname(strTmpVulnInfo)
 	  elseif instr(strTmpVulnInfo, "2003") then
 		strConsolidated = "Windows 2003"
@@ -256,6 +256,12 @@ if instr(strReturnShort, "Linux") > 0 and instr(strReturnShort, "release") > 0 a
     strReturnShort = Left(strReturnShort, instr(strReturnShort, ".") + 1)
 	strReturnShort = replace(strReturnShort, "release","")
 	strReturnShort = replace(strReturnShort, "Red Hat Enterprise Linux Server","RHEL")
+
+ElseIf instr(strReturnShort, "SUSE") > 0 Then
+	strReturnShort = replace(strReturnShort, "SUSE Linux Enterprise Server","SUSE")
+	if instr(strReturnShort, "SUSE") > 0 and instr(strReturnShort, "\n") > 0 then
+    strReturnShort = left(strReturnShort, instr(strReturnShort, "\n") - 1)  
+    End if
 end if
 boolServer = False
 if instr(strReturnShort, "Server ") > 0 then
@@ -281,7 +287,7 @@ if boolServer = True then
 end if
 strReturnShort = replace(strReturnShort, "Microsoft ", "")
 strReturnShort = replace(strReturnShort, "(Evaluation)", "(Eval)")
-if instr(strReturnShort, "Linux") > 0 and (instr(strReturnShort, "CentOS") > 0 or instr(strReturnShort, "RHEL") > 0) then
+if instr(strReturnShort, "Linux") > 0 and (instr(strReturnShort, "CentOS") > 0 or instr(strReturnShort, "RHEL") > 0 Or instr(strReturnShort, "SUSE") > 0) then
     strReturnShort = replace(strReturnShort, "Linux ","")
 end if
 ShortenOSname = strReturnShort

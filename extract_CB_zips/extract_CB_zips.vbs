@@ -1,7 +1,7 @@
-'Extract CB Zips v1.4 (works with CB_File_Downloader) 
+'Extract CB Zips v1.5 (works with CB_File_Downloader) 
 'parameter is the folder path containing the zip files to extract (prompt for folder path if not provided. )
 
-'Copyright (c) 2018 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2021 Ryan Boyle randomrhythm@rhythmengineering.com.
 'All rights reserved.
 
 'This program is free software: you can redistribute it and/or modify
@@ -28,6 +28,9 @@ Dim objShell
 Dim BoolSilent
 Dim strFDname
 Dim strExtension
+Const WshRunning = 0
+Const WshFinished = 1
+
 
 'Config section
 strExtension = "zip"
@@ -76,11 +79,11 @@ For Each f1 in fc
             strOutputdir = CurrentDirectory & "\" & f1.name
           end if
         end if
-        objShell.Run chr(34) & str7zPath & Chr(34) & " x -y -o" & Chr(34) & strOutputdir & Chr(34) & " " & Chr(34) & ProcessDirectory & "\" & f1.name & Chr(34)
+        set execResults = objShell.Exec(chr(34) & str7zPath & Chr(34) & " x -y -o" & Chr(34) & strOutputdir & Chr(34) & " " & Chr(34) & ProcessDirectory & "\" & f1.name & Chr(34))
         wscript.sleep 700
         intExistLoop = 0
         'wait for file to be created
-        Do while exitFileExistsLoop = False
+        Do while exitFileExistsLoop = False and WshRunning = execResults.Status
           if objFSO.FileExists(CurrentDirectory & "\filedata") = True then 
             exitFileExistsLoop = True
           else
@@ -91,9 +94,18 @@ For Each f1 in fc
         loop
         wscript.Sleep 800
         if objFSO.FileExists(CurrentDirectory & "\filedata") = False then 
-          if BoolSilent = False then msgbox "failed extraction: " & ProcessDirectory & "\" & f1.name
-          logdata CurrentDirectory & "\extract.log", "failed extraction: " & ProcessDirectory & "\" & f1.name, False
-          if BoolSilent = False then msgbox CurrentDirectory & "\" & ReturnFnameNoExt(f1.name)
+          if execResults.Status = WshRunning then
+            logdata CurrentDirectory & "\extract.log", "7z is still running and extraction was not verified: " & ProcessDirectory & "\" & f1.name, False
+          elseif execResults.ExitCode <> 0 then
+            if BoolSilent = False then msgbox "failed extraction with exit code " & str(execResults.ExitCode) & ": " & ProcessDirectory & "\" & f1.name
+            logdata CurrentDirectory & "\extract.log", "failed extraction with exit code " & cstr(execResults.ExitCode) & ": " & ProcessDirectory & "\" & f1.name, False
+            if BoolSilent = False then msgbox CurrentDirectory & "\" & ReturnFnameNoExt(f1.name)
+          else
+            if BoolSilent = False then msgbox "7z did not error but extraction was not verified: " & ProcessDirectory & "\" & f1.name
+            logdata CurrentDirectory & "\extract.log", "7z did not error but extraction was not verified: " & ProcessDirectory & "\" & f1.name, False
+            if BoolSilent = False then msgbox CurrentDirectory & "\" & ReturnFnameNoExt(f1.name)
+
+          end if
         else
             logdata CurrentDirectory & "\extract.log", "Successful extraction: " & ProcessDirectory & "\" & f1.name, False
             if objFSO.FolderExists(CurrentDirectory & "\" & ReturnFnameNoExt(f1.name)) = True then

@@ -1,4 +1,4 @@
-'Cb Pull Events v1.5.3 - Support reading query from file
+'Cb Pull Events v1.5.4 - Truncate display of query when too long.
 'Pulls event data from the Cb Response API and dumps to CSV. 
 'Pass the query as a parameter to the script.
 'Enclose entire query in double quotes (")
@@ -455,7 +455,9 @@ do while boolexit = False
 		end if
 		strMessageText = ". Do you want to pull the rest down?"
 		if intClippingLevel < clng(intResultCount) then strMessageText = ". Do you want to pull the rest down (up to clipping level " & intClippingLevel & ")?"
-		if intAnswer = "" then intAnswer = msgbox (intParseCount & " items have been pulled down for query " & chr(34) & strCbQuery & Chr(34) & strMessageText & " There are a total of " & intResultCount & " items to retrieve. Selecting no will pull down " & intPagesToPull & " more",vbYesNoCancel, "Cb Scripts")
+		strDisplayQuery = strCbQuery
+		if len(strCbQuery) > 800 then strDisplayQuery = left(strCbQuery, 800) & "..."
+		if intAnswer = "" then intAnswer = msgbox (intParseCount & " items have been pulled down for query " & chr(34) & strDisplayQuery & Chr(34) & strMessageText & " There are a total of " & intResultCount & " items to retrieve. Selecting no will pull down " & intPagesToPull & " more",vbYesNoCancel, "Cb Scripts")
 		if intAnswer <> vbCancel and intParseCount < clng(intResultCount) and intClippingLevel > clng(intParseCount) then
 			if intAnswer = vbNo then intAnswer = ""
 			strAppendQuery = "&start=" & intParseCount & "&rows=" & intPagesToPull

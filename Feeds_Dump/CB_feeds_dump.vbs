@@ -1594,6 +1594,12 @@ select case left(strWin10Version, 10)
     boolVersionUnsupported = True
   case "10.0.15063"
     boolVersionUnsupported = True
+  case "10.0.16299"
+    boolVersionUnsupported = True
+  case "10.0.17134"
+    boolVersionUnsupported = True
+  case "10.0.18362"
+    boolVersionUnsupported = True
 end select
 UnsupportedWin10 = boolVersionUnsupported
 end function

@@ -1,6 +1,7 @@
 'Spreadsheet OS Parser for CB_Sensor_Dump csv output
 'requires Microsoft Excel
-'v2.5 - Identify CentOS as Linux even if it does not mention Linux.
+'v2.5 - Identify CentOS, SLES, and RHEL as Linux even if it does not mention Linux. MAC
+'v2.4 - Support for 365 Defender device export.
 
 'Copyright (c) 2022 Ryan Boyle randomrhythm@rhythmengineering.com.
 
@@ -91,74 +92,76 @@ intNonEmpty = int_hostname_location 'need to point at a column that is always po
 Do Until objExcel.Cells(intRowCounter,intNonEmpty).Value = "" 'loop till you hit null value (end of rows)
   strCompName = objExcel.Cells(intRowCounter,int_hostname_location).Value
   if boolUniqueOnly = False or (boolUniqueOnly = True and DictCompName.exists(strCompName) = False) then 
-	  strTmpVulnInfo = objExcel.Cells(intRowCounter,int_vuln_location).Value
-	  if instr(strTmpVulnInfo, "Server") > 0 or instr(strTmpVulnInfo, "CentOS") > 0 or instr(strTmpVulnInfo, "Ubuntu") > 0 then
-      if DictOSServversion.exists(strTmpVulnInfo) = False then 
-        DictOSServversion.add strTmpVulnInfo, 1
-        if Instr(strTmpVulnInfo, "Windows") > 0 and DictOSServversionWindows.exists(strTmpVulnInfo) = False then _
-          DictOSServversionWindows.add strTmpVulnInfo, 1
-        if (instr(strTmpVulnInfo, "Linux") > 0 or instr(strTmpVulnInfo, "Ubuntu") > 0 or instr(strTmpVulnInfo, "CentOS") > 0) and DictOSServversionLinux.exists(ShortenOSname(strTmpVulnInfo)) = False then _
-          DictOSServversionLinux.add ShortenOSname(strTmpVulnInfo), 1
+	  cellValue = objExcel.Cells(intRowCounter,int_vuln_location).Value
+	  if instr(cellValue, "Server") > 0 or linuxStringCheck(cellValue) = True then
+      if DictOSServversion.exists(cellValue) = False then 
+        DictOSServversion.add cellValue, 1
+        if Instr(cellValue, "Windows") > 0 and DictOSServversionWindows.exists(cellValue) = False then _
+          DictOSServversionWindows.add cellValue, 1
+        if linuxStringCheck(cellValue) = True and DictOSServversionLinux.exists(ShortenOSname(cellValue)) = False then _
+          DictOSServversionLinux.add ShortenOSname(cellValue), 1
         
       else
-        DictOSServversion.item(strTmpVulnInfo) = DictOSServversion.item(strTmpVulnInfo) + 1
-        if Instr(strTmpVulnInfo, "Windows") > 0  then _
-        DictOSServversionWindows.item(strTmpVulnInfo) = DictOSServversionWindows.item(strTmpVulnInfo) + 1
-        if Instr(strTmpVulnInfo, "Linux") > 0  then _
-        DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) = DictOSServversionLinux.item(ShortenOSname(strTmpVulnInfo)) + 1	 	  
+        DictOSServversion.item(cellValue) = DictOSServversion.item(cellValue) + 1
+        if Instr(cellValue, "Windows") > 0  then _
+        DictOSServversionWindows.item(cellValue) = DictOSServversionWindows.item(cellValue) + 1
+        if linuxStringCheck(cellValue) = True then _
+        DictOSServversionLinux.item(ShortenOSname(cellValue)) = DictOSServversionLinux.item(ShortenOSname(cellValue)) + 1	 	  
       end if  
 	  else 
-		if DictOSWorkversion.exists(strTmpVulnInfo) = False then
-			DictOSWorkversion.add strTmpVulnInfo, 1
-			if (Instr(strTmpVulnInfo, "Mac") > 0 or Instr(strTmpVulnInfo, "mac") > 0) and DictOSWorkversionMac.exists(strTmpVulnInfo) = False then _
-			  DictOSWorkversionMac.add strTmpVulnInfo, 1
-			if instr(strTmpVulnInfo, "Windows") > 0 and DictOSWorkversionWindows.exists(strTmpVulnInfo) = False then _
-			  DictOSWorkversionWindows.add strTmpVulnInfo, 1
+		if DictOSWorkversion.exists(cellValue) = False then
+			DictOSWorkversion.add cellValue, 1
+			if (Instr(cellValue, "Mac") > 0 or Instr(cellValue, "mac") > 0 or Instr(cellValue, "MAC OS") > 0) and DictOSWorkversionMac.exists(cellValue) = False then _
+			  DictOSWorkversionMac.add cellValue, 1
+			if instr(cellValue, "Windows") > 0 and DictOSWorkversionWindows.exists(cellValue) = False then _
+			  DictOSWorkversionWindows.add cellValue, 1
 		else
-		  DictOSWorkversion.item(strTmpVulnInfo) = DictOSWorkversion.item(strTmpVulnInfo) + 1
-		  if Instr(strTmpVulnInfo, "Mac") > 0  or  Instr(strTmpVulnInfo, "mac") > 0 then _
-		  DictOSWorkversionMac.item(strTmpVulnInfo) = DictOSWorkversionMac.item(strTmpVulnInfo) + 1
-		  if Instr(strTmpVulnInfo, "Windows") > 0  then _
-		  DictOSWorkversionWindows.item(strTmpVulnInfo) = DictOSWorkversionWindows.item(strTmpVulnInfo) + 1	  
+		  DictOSWorkversion.item(cellValue) = DictOSWorkversion.item(cellValue) + 1
+		  if Instr(cellValue, "Mac") > 0  or  Instr(cellValue, "mac") > 0  or  Instr(cellValue, "MAC OS") > 0 then _
+		  DictOSWorkversionMac.item(cellValue) = DictOSWorkversionMac.item(cellValue) + 1
+		  if Instr(cellValue, "Windows") > 0  then _
+		  DictOSWorkversionWindows.item(cellValue) = DictOSWorkversionWindows.item(cellValue) + 1	  
 		end if
 	  end if
-	  if instr(strTmpVulnInfo, "OSX") > 0 or instr(strTmpVulnInfo, "macOS") > 0 then
+	  strConsolidated = ""
+	  if instr(cellValue, "OSX") > 0 or instr(cellValue, "macOS") > 0 then
 		strConsolidated = "Mac OS X"
-	  elseif instr(strTmpVulnInfo, "Linux") > 0 and (instr(strTmpVulnInfo, "release") > 0 Or instr(strTmpVulnInfo, "SUSE") > 0) and instr(strTmpVulnInfo, ".") > 0 then
-		strConsolidated = ShortenOSname(strTmpVulnInfo)
-	  elseif instr(strTmpVulnInfo, "2003") then
+	  elseif instr(cellValue, "Linux") > 0 and (instr(cellValue, "release") > 0 Or instr(cellValue, "SUSE") > 0) and instr(cellValue, ".") > 0 then
+		strConsolidated = ShortenOSname(cellValue)
+	  elseif instr(cellValue, "2003") then
 		strConsolidated = "Windows 2003"
-	  elseif instr(strTmpVulnInfo, "2008") then
+	  elseif instr(cellValue, "2008") then
 		strConsolidated = "Windows 2008"
-	  elseif instr(strTmpVulnInfo, "2012") then
+	  elseif instr(cellValue, "2012") then
 		strConsolidated = "Windows 2012"
-	  elseif instr(strTmpVulnInfo, "2016") then
+	  elseif instr(cellValue, "2016") then
 		strConsolidated = "Windows 2016"
-	  elseif instr(strTmpVulnInfo, "2019") then
+	  elseif instr(cellValue, "2019") then
 		strConsolidated = "Windows 2019"
-	  elseif instr(strTmpVulnInfo, "Windows XP") then
+	  elseif instr(cellValue, "Windows XP") then
 		strConsolidated = "Windows XP"
-	  elseif instr(strTmpVulnInfo, "Vista") then
+	  elseif instr(cellValue, "Vista") then
 		strConsolidated = "Windows Vista"
-	  elseif instr(strTmpVulnInfo, "Windows 7") > 0 or instr(strTmpVulnInfo, "Windows7") > 0 or instr(strTmpVulnInfo, "6.1.7601") > 0 then
+	  elseif instr(cellValue, "Windows 7") > 0 or instr(cellValue, "Windows7") > 0 or instr(cellValue, "6.1.7601") > 0 then
 		strConsolidated = "Windows 7"
-	  elseif instr(strTmpVulnInfo, "Windows 8.1") then
+	  elseif instr(cellValue, "Windows 8.1") then
 		strConsolidated = "Windows 8.1"
-	  elseif instr(strTmpVulnInfo, "Windows 8") then
+	  elseif instr(cellValue, "Windows 8") then
 		strConsolidated = "Windows 8"
-	  elseif instr(strTmpVulnInfo, "Windows 10") >0  or instr(strTmpVulnInfo, "Windows10") >0  or instr(strTmpVulnInfo, "10.0.18363") >0  then
-		if instr(strTmpVulnInfo, "Server") then
+	  elseif instr(cellValue, "Windows 10") >0  or instr(cellValue, "Windows10") >0  or instr(cellValue, "10.0.18363") >0  then
+		if instr(cellValue, "Server") then
 			strConsolidated = "Windows 2016"
 		else
 			strConsolidated = "Windows 10"
 		end if
 	  end if
-	  if DictOSconsolidated.exists(strConsolidated) = False then
-		DictOSconsolidated.add strConsolidated, 1
-	  else
-		DictOSconsolidated.item(strConsolidated) = DictOSconsolidated.item(strConsolidated) + 1
-	  end if
-
+	  if strConsolidated <> "" Then
+      if DictOSconsolidated.exists(strConsolidated) = False then
+      DictOSconsolidated.add strConsolidated, 1
+      else
+      DictOSconsolidated.item(strConsolidated) = DictOSconsolidated.item(strConsolidated) + 1
+      end if
+    end if
 	DictCompName.add strCompName, ""
   end if
   
@@ -615,3 +618,11 @@ on error goto 0
 End With
 objExcel.ActiveWindow.FreezePanes = True
 end sub
+
+Function linuxStringCheck(strToCheck)
+if (instr(strToCheck, "Linux") > 0 or instr(strToCheck, "Ubuntu") > 0 or instr(strToCheck, "CentOS") > 0 or instr(strToCheck, "RHEL") > 0 or instr(strToCheck, "SLES") > 0 or instr(strToCheck, "Oracle") > 0) then
+  linuxStringCheck=True
+else
+  linuxStringCheck=False
+end if
+end function

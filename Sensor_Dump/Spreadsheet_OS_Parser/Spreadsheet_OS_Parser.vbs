@@ -1,8 +1,8 @@
 'Spreadsheet OS Parser for CB_Sensor_Dump csv output
 'requires Microsoft Excel
-'v2.3 - Support for SUSE.
+'v2.5 - Identify CentOS as Linux even if it does not mention Linux.
 
-'Copyright (c) 2021 Ryan Boyle randomrhythm@rhythmengineering.com.
+'Copyright (c) 2022 Ryan Boyle randomrhythm@rhythmengineering.com.
 
 'This program is free software: you can redistribute it and/or modify
 'it under the terms of the GNU General Public License as published by
@@ -65,12 +65,17 @@ Set objWorkbook = objExcel.Workbooks.Open _
 mycolumncounter = 1
 Do Until objExcel.Cells(1,mycolumncounter).Value = ""
     
-  if objExcel.Cells(1,mycolumncounter).Value = "Computer" or objExcel.Cells(1,mycolumncounter).Value = "computer_dns_name" then int_hostname_location = mycolumncounter
+  if objExcel.Cells(1,mycolumncounter).Value = "Computer" or objExcel.Cells(1,mycolumncounter).Value = "computer_dns_name" or objExcel.Cells(1,mycolumncounter).Value = "name" or _
+  objExcel.Cells(1,mycolumncounter).Value = "Device Name" then int_hostname_location = mycolumncounter
   if objExcel.Cells(1,mycolumncounter).Value = "Hostname" or objExcel.Cells(1,mycolumncounter).Value = "FQDN" then int_hostname_location = mycolumncounter
-  if objExcel.Cells(1,mycolumncounter).Value = "Operating System" or objExcel.Cells(1,mycolumncounter).Value = "OS" then int_vuln_location = mycolumncounter
-  if objExcel.Cells(1,mycolumncounter).Value = "OS Version" or objExcel.Cells(1,mycolumncounter).Value = "OS version" then int_vuln_location = mycolumncounter
+  if objExcel.Cells(1,mycolumncounter).Value = "Operating System" or objExcel.Cells(1,mycolumncounter).Value = "OS" or _
+  objExcel.Cells(1,mycolumncounter).Value = "OS Platform" then int_vuln_location = mycolumncounter
+  if objExcel.Cells(1,mycolumncounter).Value = "OS Version" or objExcel.Cells(1,mycolumncounter).Value = "OS version"  or objExcel.Cells(1,mycolumncounter).Value = "osVersion" then int_vuln_location = mycolumncounter
   if objExcel.Cells(1,mycolumncounter).Value = "os_environment_display_string" then int_vuln_location = mycolumncounter
-  
+  if objExcel.Cells(1,mycolumncounter).Value = "OS Distribution" then 
+    int_vuln_location = mycolumncounter 'defender overwrite. OS Version can give only a build number which need further code to support
+    exit do
+  end if
   mycolumncounter = mycolumncounter +1
 loop
 
@@ -81,8 +86,9 @@ if int_vuln_location = "" then
 end if
 
 intRowCounter = 2
+intNonEmpty = int_hostname_location 'need to point at a column that is always populated. 
 
-Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null value (end of rows)
+Do Until objExcel.Cells(intRowCounter,intNonEmpty).Value = "" 'loop till you hit null value (end of rows)
   strCompName = objExcel.Cells(intRowCounter,int_hostname_location).Value
   if boolUniqueOnly = False or (boolUniqueOnly = True and DictCompName.exists(strCompName) = False) then 
 	  strTmpVulnInfo = objExcel.Cells(intRowCounter,int_vuln_location).Value
@@ -91,7 +97,7 @@ Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null valu
         DictOSServversion.add strTmpVulnInfo, 1
         if Instr(strTmpVulnInfo, "Windows") > 0 and DictOSServversionWindows.exists(strTmpVulnInfo) = False then _
           DictOSServversionWindows.add strTmpVulnInfo, 1
-        if (instr(strTmpVulnInfo, "Linux") > 0 or instr(strTmpVulnInfo, "Ubuntu") > 0) and DictOSServversionLinux.exists(ShortenOSname(strTmpVulnInfo)) = False then _
+        if (instr(strTmpVulnInfo, "Linux") > 0 or instr(strTmpVulnInfo, "Ubuntu") > 0 or instr(strTmpVulnInfo, "CentOS") > 0) and DictOSServversionLinux.exists(ShortenOSname(strTmpVulnInfo)) = False then _
           DictOSServversionLinux.add ShortenOSname(strTmpVulnInfo), 1
         
       else
@@ -104,19 +110,19 @@ Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null valu
 	  else 
 		if DictOSWorkversion.exists(strTmpVulnInfo) = False then
 			DictOSWorkversion.add strTmpVulnInfo, 1
-			if Instr(strTmpVulnInfo, "Mac") > 0 and DictOSWorkversionMac.exists(strTmpVulnInfo) = False then _
+			if (Instr(strTmpVulnInfo, "Mac") > 0 or Instr(strTmpVulnInfo, "mac") > 0) and DictOSWorkversionMac.exists(strTmpVulnInfo) = False then _
 			  DictOSWorkversionMac.add strTmpVulnInfo, 1
 			if instr(strTmpVulnInfo, "Windows") > 0 and DictOSWorkversionWindows.exists(strTmpVulnInfo) = False then _
 			  DictOSWorkversionWindows.add strTmpVulnInfo, 1
 		else
 		  DictOSWorkversion.item(strTmpVulnInfo) = DictOSWorkversion.item(strTmpVulnInfo) + 1
-		  if Instr(strTmpVulnInfo, "Mac") > 0  then _
+		  if Instr(strTmpVulnInfo, "Mac") > 0  or  Instr(strTmpVulnInfo, "mac") > 0 then _
 		  DictOSWorkversionMac.item(strTmpVulnInfo) = DictOSWorkversionMac.item(strTmpVulnInfo) + 1
 		  if Instr(strTmpVulnInfo, "Windows") > 0  then _
 		  DictOSWorkversionWindows.item(strTmpVulnInfo) = DictOSWorkversionWindows.item(strTmpVulnInfo) + 1	  
 		end if
 	  end if
-	  if instr(strTmpVulnInfo, "OSX") then
+	  if instr(strTmpVulnInfo, "OSX") > 0 or instr(strTmpVulnInfo, "macOS") > 0 then
 		strConsolidated = "Mac OS X"
 	  elseif instr(strTmpVulnInfo, "Linux") > 0 and (instr(strTmpVulnInfo, "release") > 0 Or instr(strTmpVulnInfo, "SUSE") > 0) and instr(strTmpVulnInfo, ".") > 0 then
 		strConsolidated = ShortenOSname(strTmpVulnInfo)
@@ -134,13 +140,13 @@ Do Until objExcel.Cells(intRowCounter,2).Value = "" 'loop till you hit null valu
 		strConsolidated = "Windows XP"
 	  elseif instr(strTmpVulnInfo, "Vista") then
 		strConsolidated = "Windows Vista"
-	  elseif instr(strTmpVulnInfo, "Windows 7") > 0 or instr(strTmpVulnInfo, "6.1.7601") > 0 then
+	  elseif instr(strTmpVulnInfo, "Windows 7") > 0 or instr(strTmpVulnInfo, "Windows7") > 0 or instr(strTmpVulnInfo, "6.1.7601") > 0 then
 		strConsolidated = "Windows 7"
 	  elseif instr(strTmpVulnInfo, "Windows 8.1") then
 		strConsolidated = "Windows 8.1"
 	  elseif instr(strTmpVulnInfo, "Windows 8") then
 		strConsolidated = "Windows 8"
-	  elseif instr(strTmpVulnInfo, "Windows 10") >0  or instr(strTmpVulnInfo, "10.0.18363") >0  then
+	  elseif instr(strTmpVulnInfo, "Windows 10") >0  or instr(strTmpVulnInfo, "Windows10") >0  or instr(strTmpVulnInfo, "10.0.18363") >0  then
 		if instr(strTmpVulnInfo, "Server") then
 			strConsolidated = "Windows 2016"
 		else
@@ -599,7 +605,10 @@ Sub FixUpHeader() 'https://www.experts-exchange.com/questions/23820327/Freeze-Pa
 With objExcel.ActiveSheet
 	.Rows(1).Font.Bold = True '1.  Bold the headers (always in row 1)
 	.AutoFilterMode = False 'turn off any existing autofilter just in case
+on error resume next
 	.Rows(1).AutoFilter '2. Turn on AutoFilter for all coloms
+  if err.number <> 0 then exit sub 'row is already autofiltered?
+on error goto 0
 	.Columns.AutoFit '3. Set Column width to AutoFit Selection
 	'4. Set a freeze under column 1 so that the header is always present at the top
 	.Range("A2").Select

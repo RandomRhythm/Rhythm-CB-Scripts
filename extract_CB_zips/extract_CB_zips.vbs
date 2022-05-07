@@ -84,7 +84,7 @@ For Each f1 in fc
         intExistLoop = 0
         'wait for file to be created
         Do while exitFileExistsLoop = False and WshRunning = execResults.Status
-          if objFSO.FileExists(CurrentDirectory & "\filedata") = True then 
+          if objFSO.FileExists(CurrentDirectory & "\" & strFDname) = True then 
             exitFileExistsLoop = True
           else
             wscript.Sleep 2500
@@ -93,7 +93,7 @@ For Each f1 in fc
           end if
         loop
         wscript.Sleep 800
-        if objFSO.FileExists(CurrentDirectory & "\filedata") = False then 
+        if objFSO.FileExists(CurrentDirectory & "\" & strFDname) = False then 
           if execResults.Status = WshRunning then
             logdata CurrentDirectory & "\extract.log", "7z is still running and extraction was not verified: " & ProcessDirectory & "\" & f1.name, False
           elseif execResults.ExitCode <> 0 then
